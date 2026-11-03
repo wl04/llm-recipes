@@ -1,0 +1,61 @@
+id: rx9070xt-ubuntu-vulkan
+recipe: qwen3.8-27b-lmstudio-gguf
+hardware:
+  gpu: AMD Radeon RX 9070 XT
+  cpu: AMD Ryzen 7 9800X3D
+  memory:
+    architecture: discrete
+    dedicated_vram_gib: 16
+    system_ram_gib: 64
+    unified_memory_gib: null
+os:
+  name: Ubuntu
+  version: '26.10'
+  kernel: 7.3.0-10-generic
+  kernel_driver: amdgpu
+software:
+  harness: LM Studio Bionic
+  harness_version: '1.1.10 (build 8)'
+  engine: llama.cpp
+  engine_version: '2.67'
+  engine_version_note: LM Studio-specific version; upstream llama.cpp version unknown
+  backend: Vulkan
+  backend_api_version: 1.4.354
+  gpu_driver: Mesa RADV
+  gpu_driver_version: 26.2.4-1ubuntu1 # From the supplied system information
+speculation: MTP
+model:
+  name: Qwen3.8-27B
+  format: GGUF
+  quantization: IQ3_XXS
+  repository: https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF
+  artifacts:
+  - Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf
+  - mmproj-Qwen3.8-27B-BF16.gguf
+settings:
+  Automatic hardware optimization: 'Off'
+  Context length: '131072'
+  GPU offload: 65 (maximum in the UI)
+  CPU thread pool: '6'
+  Evaluation batch size: '2048'
+  Physical batch size: '512'
+  Concurrent predictions: '1'
+  Flash Attention: 'On'
+  K / V cache quantization: Q8_0 / Q8_0
+  KV cache GPU offload / Unified KV cache: Both on
+  Context checkpoints: '32'
+  Keep model in memory / mmap: Both on
+  Speculative decoding: MTP
+  Max / min draft tokens / draft probability: 3 / 0 / 0
+  Temperature: '1'
+  Top K: '20'
+  Top P: '0.95'
+  Min P: '0'
+  Repeat penalty: '1'
+  Presence penalty: '0'
+  Seed: Random
+  Enable Thinking: 'On'
+  Reasoning budget: '8192'
+  Limit response length: 'Off'
+  Context overflow: Truncate Middle
+  On-demand tensor loading: Auto

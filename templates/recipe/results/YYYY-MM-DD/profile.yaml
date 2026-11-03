@@ -1,0 +1,33 @@
+id: replace-with-profile-id
+recipe: replace-with-recipe-id
+hardware:
+  gpu: null
+  cpu: null
+  memory:
+    architecture: null # discrete, unified, or system-only
+    dedicated_vram_gib: null
+    system_ram_gib: null
+    unified_memory_gib: null
+os:
+  name: null
+  version: null
+  kernel: null
+  kernel_driver: null
+software:
+  harness: null
+  harness_version: null
+  engine: null
+  engine_version: null
+  engine_version_note: null
+  backend: null
+  backend_api_version: null
+  gpu_driver: null
+  gpu_driver_version: null
+speculation: null
+model:
+  name: null
+  format: null
+  quantization: null
+  repository: null
+  artifacts: []
+settings: {} # Effective settings used for this result
