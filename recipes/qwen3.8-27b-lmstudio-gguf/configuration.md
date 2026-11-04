@@ -14,60 +14,103 @@ Values below are generated from the result profiles. `—` means unspecified.
 
 [Profile](results/2026-11-02/profile.yaml) · [Results](results/2026-11-02/summary.md)
 
-| Field | Value |
+| Setting | Value |
 |---|---|
-| id | rx9070xt-ubuntu-vulkan |
-| recipe | qwen3.8-27b-lmstudio-gguf |
-| hardware / gpu | AMD Radeon RX 9070 XT |
-| hardware / cpu | AMD Ryzen 7 9800X3D |
-| hardware / memory / architecture | discrete |
-| hardware / memory / dedicated_vram_gib | 16 |
-| hardware / memory / system_ram_gib | 64 |
-| hardware / memory / unified_memory_gib | — |
-| os / name | Ubuntu |
-| os / version | 26.10 |
-| os / kernel | 7.3.0-10-generic |
-| os / kernel_driver | amdgpu |
-| software / harness | LM Studio Bionic |
-| software / harness_version | 1.1.10 (build 8) |
-| software / engine | llama.cpp |
-| software / engine_version | 2.67 |
-| software / engine_version_note | LM Studio-specific version; upstream llama.cpp version unknown |
-| software / backend | Vulkan |
-| software / backend_api_version | 1.4.354 |
-| software / gpu_driver | Mesa RADV |
-| software / gpu_driver_version | 26.2.4-1ubuntu1 |
-| speculation | MTP |
-| model / name | Qwen3.8-27B |
-| model / format | GGUF |
-| model / quantization | IQ3_XXS |
-| model / repository | https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF |
-| model / artifacts | Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf<br>mmproj-Qwen3.8-27B-BF16.gguf |
-| settings / Automatic hardware optimization | Off |
-| settings / Context length | 131072 |
-| settings / GPU offload | 65 (maximum in the UI) |
-| settings / CPU thread pool | 6 |
-| settings / Evaluation batch size | 2048 |
-| settings / Physical batch size | 512 |
-| settings / Concurrent predictions | 1 |
-| settings / Flash Attention | On |
-| settings / K / V cache quantization | Q8_0 / Q8_0 |
-| settings / KV cache GPU offload / Unified KV cache | Both on |
-| settings / Context checkpoints | 32 |
-| settings / Keep model in memory / mmap | Both on |
-| settings / Speculative decoding | MTP |
-| settings / Max / min draft tokens / draft probability | 3 / 0 / 0 |
-| settings / Temperature | 1 |
-| settings / Top K | 20 |
-| settings / Top P | 0.95 |
-| settings / Min P | 0 |
-| settings / Repeat penalty | 1 |
-| settings / Presence penalty | 0 |
-| settings / Seed | Random |
-| settings / Enable Thinking | On |
-| settings / Reasoning budget | 8192 |
-| settings / Limit response length | Off |
-| settings / Context overflow | Truncate Middle |
-| settings / On-demand tensor loading | Auto |
+| Profile | rx9070xt-ubuntu-vulkan |
+
+
+| Setting | Value |
+|---|---|
+| Recipe | qwen3.8-27b-lmstudio-gguf |
+
+
+#### Hardware
+
+
+| Setting | Value |
+|---|---|
+| GPU | AMD Radeon RX 9070 XT |
+| CPU | AMD Ryzen 7 9800X3D |
+| Memory architecture | discrete |
+| Dedicated VRAM (GiB) | 16 |
+| System RAM (GiB) | 64 |
+| Unified memory (GiB) | — |
+
+
+#### Operating system
+
+
+| Setting | Value |
+|---|---|
+| Operating system | Ubuntu |
+| OS version | 26.10 |
+| Kernel version | 7.3.0-10-generic |
+| Kernel driver | amdgpu |
+
+
+#### Software
+
+
+| Setting | Value |
+|---|---|
+| Agent / harness | LM Studio Bionic |
+| Harness version | 1.1.10 (build 8) |
+| Inference engine | llama.cpp |
+| Engine version | 2.67 |
+| Engine version notes | LM Studio-specific version; upstream llama.cpp version unknown |
+| Compute backend | Vulkan |
+| Backend API version | 1.4.354 |
+| GPU driver | Mesa RADV |
+| GPU driver version | 26.2.4-1ubuntu1 |
+
+
+| Setting | Value |
+|---|---|
+| Speculative decoding | MTP |
+
+
+#### Model
+
+
+| Setting | Value |
+|---|---|
+| Model name | Qwen3.8-27B |
+| Model format | GGUF |
+| Weight quantization | IQ3_XXS |
+| Model repository | https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF |
+| Model files | Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf<br>mmproj-Qwen3.8-27B-BF16.gguf |
+
+
+#### Inference settings
+
+
+| Setting | Value |
+|---|---|
+| Automatic hardware optimization | Off |
+| Context length | 131072 |
+| GPU offload | 65 (maximum in the UI) |
+| CPU thread pool | 6 |
+| Evaluation batch size | 2048 |
+| Physical batch size | 512 |
+| Concurrent predictions | 1 |
+| Flash Attention | On |
+| K / V cache quantization | Q8_0 / Q8_0 |
+| KV cache GPU offload / Unified KV cache | Both on |
+| Context checkpoints | 32 |
+| Keep model in memory / mmap | Both on |
+| Speculative decoding | MTP |
+| Max / min draft tokens / draft probability | 3 / 0 / 0 |
+| Temperature | 1 |
+| Top K | 20 |
+| Top P | 0.95 |
+| Min P | 0 |
+| Repeat penalty | 1 |
+| Presence penalty | 0 |
+| Seed | Random |
+| Enable Thinking | On |
+| Reasoning budget | 8192 |
+| Limit response length | Off |
+| Context overflow | Truncate Middle |
+| On-demand tensor loading | Auto |
 
 <!-- END GENERATED CONFIGURATIONS -->

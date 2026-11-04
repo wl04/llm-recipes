@@ -59,3 +59,66 @@ settings:
   Limit response length: 'Off'
   Context overflow: Truncate Middle
   On-demand tensor loading: Auto
+
+# Display labels keyed by dotted YAML path.
+labels:
+  id: Profile
+  recipe: Recipe
+  hardware: Hardware
+  hardware.gpu: GPU
+  hardware.cpu: CPU
+  hardware.memory.architecture: Memory architecture
+  hardware.memory.dedicated_vram_gib: Dedicated VRAM (GiB)
+  hardware.memory.system_ram_gib: System RAM (GiB)
+  hardware.memory.unified_memory_gib: Unified memory (GiB)
+  os: Operating system
+  os.name: Operating system
+  os.version: OS version
+  os.kernel: Kernel version
+  os.kernel_driver: Kernel driver
+  software: Software
+  software.harness: Agent / harness
+  software.harness_version: Harness version
+  software.engine: Inference engine
+  software.engine_version: Engine version
+  software.engine_version_note: Engine version notes
+  software.backend: Compute backend
+  software.backend_api_version: Backend API version
+  software.gpu_driver: GPU driver
+  software.gpu_driver_version: GPU driver version
+  speculation: Speculative decoding
+  model: Model
+  model.name: Model name
+  model.format: Model format
+  model.quantization: Weight quantization
+  model.repository: Model repository
+  model.artifacts: Model files
+  settings: Inference settings
+  settings.Automatic hardware optimization: Automatic hardware optimization
+  settings.Context length: Context length
+  settings.GPU offload: GPU offload
+  settings.CPU thread pool: CPU thread pool
+  settings.Evaluation batch size: Evaluation batch size
+  settings.Physical batch size: Physical batch size
+  settings.Concurrent predictions: Concurrent predictions
+  settings.Flash Attention: Flash Attention
+  settings.K / V cache quantization: K / V cache quantization
+  settings.KV cache GPU offload / Unified KV cache: KV cache GPU offload / Unified
+    KV cache
+  settings.Context checkpoints: Context checkpoints
+  settings.Keep model in memory / mmap: Keep model in memory / mmap
+  settings.Speculative decoding: Speculative decoding
+  settings.Max / min draft tokens / draft probability: Max / min draft tokens / draft
+    probability
+  settings.Temperature: Temperature
+  settings.Top K: Top K
+  settings.Top P: Top P
+  settings.Min P: Min P
+  settings.Repeat penalty: Repeat penalty
+  settings.Presence penalty: Presence penalty
+  settings.Seed: Seed
+  settings.Enable Thinking: Enable Thinking
+  settings.Reasoning budget: Reasoning budget
+  settings.Limit response length: Limit response length
+  settings.Context overflow: Context overflow
+  settings.On-demand tensor loading: On-demand tensor loading

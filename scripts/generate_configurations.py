@@ -19,12 +19,16 @@ def cell(value):
     return html.escape(str(value)).replace('|', '&#124;').replace('\n', '<br>')
 
 
-def rows(data, prefix=''):
+def rows(data, labels, prefix=''):
     for key, value in data.items():
-        label = f'{prefix} / {key}' if prefix else str(key)
+        path = f'{prefix}.{key}' if prefix else str(key)
         if isinstance(value, dict):
-            yield from rows(value, label)
-        elif isinstance(value, list):
+            yield from rows(value, labels, path)
+            continue
+        label = labels.get(path)
+        if not isinstance(label, str) or not label.strip():
+            raise ValueError(f'Missing display label for {path}')
+        if isinstance(value, list):
             yield f'| {cell(label)} | ' + '<br>'.join(cell(item) for item in value) + ' |'
         else:
             yield f'| {cell(label)} | {cell(value)} |'
@@ -41,7 +45,22 @@ def render(recipe):
         lines += [f'### {profile.parent.name}', '', f'[Profile]({relative})']
         if (profile.parent / 'summary.md').is_file():
             lines[-1] += f' · [Results]({quote((profile.parent / "summary.md").relative_to(recipe).as_posix())})'
-        lines += ['', '| Field | Value |', '|---|---|', *rows(data), '']
+        labels = data.get('labels')
+        if not isinstance(labels, dict):
+            raise ValueError(f'{profile}: expected a labels mapping')
+        for key, value in data.items():
+            if key == 'labels':
+                continue
+            if isinstance(value, dict):
+                title = labels.get(key)
+                if not isinstance(title, str) or not title.strip():
+                    raise ValueError(f'Missing display label for {key}')
+                lines += ['', f'#### {cell(title)}', '']
+                section_rows = list(rows(value, labels, key))
+            else:
+                section_rows = list(rows({key: value}, labels))
+            if section_rows:
+                lines += ['', '| Setting | Value |', '|---|---|', *section_rows, '']
     return '\n'.join(lines).rstrip() + '\n'
 
 

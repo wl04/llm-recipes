@@ -31,3 +31,38 @@ model:
   repository: null
   artifacts: []
 settings: {} # Effective settings used for this result
+
+# Display labels keyed by dotted YAML path.
+labels:
+  id: Profile
+  recipe: Recipe
+  hardware: Hardware
+  hardware.gpu: GPU
+  hardware.cpu: CPU
+  hardware.memory.architecture: Memory architecture
+  hardware.memory.dedicated_vram_gib: Dedicated VRAM (GiB)
+  hardware.memory.system_ram_gib: System RAM (GiB)
+  hardware.memory.unified_memory_gib: Unified memory (GiB)
+  os: Operating system
+  os.name: Operating system
+  os.version: OS version
+  os.kernel: Kernel version
+  os.kernel_driver: Kernel driver
+  software: Software
+  software.harness: Agent / harness
+  software.harness_version: Harness version
+  software.engine: Inference engine
+  software.engine_version: Engine version
+  software.engine_version_note: Engine version notes
+  software.backend: Compute backend
+  software.backend_api_version: Backend API version
+  software.gpu_driver: GPU driver
+  software.gpu_driver_version: GPU driver version
+  speculation: Speculative decoding
+  model: Model
+  model.name: Model name
+  model.format: Model format
+  model.quantization: Weight quantization
+  model.repository: Model repository
+  model.artifacts: Model files
+  settings: Inference settings

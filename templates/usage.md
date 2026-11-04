@@ -40,3 +40,9 @@ Edit the result profiles to change configuration details. The generator renders 
 Run generation after editing a profile or adding a result. Commit the YAML and generated Markdown together. `--check` exits unsuccessfully when the generated section needs updating and leaves files untouched.
 
 On Windows, use `.venv\Scripts\python.exe` in place of `.venv/bin/python`. The [generator](../scripts/generate_configurations.py) and its [dependency file](../scripts/requirements.txt) are included in the repository.
+
+## Display labels
+
+Each profile has a `labels` mapping for readable field names and section headings. Keys are dotted YAML paths, for example `hardware.memory.dedicated_vram_gib: Dedicated VRAM (GiB)`. Labels affect the generated guide; values stay in their existing fields.
+
+When adding a setting, add its label too, for example `settings.Context length: Context length (tokens)`. The generator reports missing labels instead of displaying internal field paths. Keep units in labels where useful. The labels mapping itself is omitted from the generated guide.
