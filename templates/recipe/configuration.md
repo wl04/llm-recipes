@@ -1,8 +1,4 @@
-# Model / harness
-
-## Overview
-
-Briefly describe what you use this setup for.
+<!-- Optional: add an Overview section here to describe how you use this setup. -->
 
 <!-- BEGIN GENERATED CONFIGURATIONS -->
 <!-- END GENERATED CONFIGURATIONS -->

@@ -1,30 +1,11 @@
-# Qwen3.8-27B / LM Studio Bionic
-
-## Overview
-
-Coding work on [gpu-switcher](https://github.com/wl04/gpu-switcher).
-
 <!-- BEGIN GENERATED CONFIGURATIONS -->
 
-## Configurations
+# Qwen3.8-27B / GGUF / RX 9070 XT / 16 GB VRAM
 
-Values below are generated from the result profiles. `—` means unspecified.
-
-### 2026-11-02
-
-[Profile](results/2026-11-02/profile.yaml) · [Results](results/2026-11-02/summary.md)
-
-| Setting | Value |
-|---|---|
-| Profile | rx9070xt-ubuntu-vulkan |
+**[View results: Coding workload](results/2026-11-02/summary.md)** — workload, performance statistics, memory usage, and observations.
 
 
-| Setting | Value |
-|---|---|
-| Recipe | qwen3.8-27b-lmstudio-gguf |
-
-
-#### Hardware
+## Hardware
 
 
 | Setting | Value |
@@ -32,12 +13,11 @@ Values below are generated from the result profiles. `—` means unspecified.
 | GPU | AMD Radeon RX 9070 XT |
 | CPU | AMD Ryzen 7 9800X3D |
 | Memory architecture | discrete |
-| Dedicated VRAM (GiB) | 16 |
-| System RAM (GiB) | 64 |
-| Unified memory (GiB) | — |
+| Dedicated VRAM (GB) | 16 |
+| System RAM (GB) | 64 |
 
 
-#### Operating system
+## Operating system
 
 
 | Setting | Value |
@@ -48,7 +28,7 @@ Values below are generated from the result profiles. `—` means unspecified.
 | Kernel driver | amdgpu |
 
 
-#### Software
+## Software
 
 
 | Setting | Value |
@@ -64,12 +44,7 @@ Values below are generated from the result profiles. `—` means unspecified.
 | GPU driver version | 26.2.4-1ubuntu1 |
 
 
-| Setting | Value |
-|---|---|
-| Speculative decoding | MTP |
-
-
-#### Model
+## Model
 
 
 | Setting | Value |
@@ -81,7 +56,7 @@ Values below are generated from the result profiles. `—` means unspecified.
 | Model files | Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf<br>mmproj-Qwen3.8-27B-BF16.gguf |
 
 
-#### Inference settings
+## Inference settings
 
 
 | Setting | Value |
@@ -112,5 +87,9 @@ Values below are generated from the result profiles. `—` means unspecified.
 | Limit response length | Off |
 | Context overflow | Truncate Middle |
 | On-demand tensor loading | Auto |
+
+---
+
+[Profile YAML](results/2026-11-02/profile.yaml)
 
 <!-- END GENERATED CONFIGURATIONS -->

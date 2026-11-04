@@ -6,7 +6,7 @@ My model configurations and observations from using them.
 
 | Model | Software | Hardware | Results |
 |---|---|---|---|
-| [Qwen3.8-27B · IQ3_XXS GGUF](recipes/qwen3.8-27b-lmstudio-gguf/configuration.md) | LM Studio Bionic · llama.cpp · Vulkan · Ubuntu 26.10 | RX 9070 XT · 16 GB VRAM | [Coding workload](recipes/qwen3.8-27b-lmstudio-gguf/results/2026-11-02/summary.md) |
+| [Qwen3.8-27B · IQ3_XXS GGUF](recipes/qwen3.8-27b-gguf-rx-9070-xt-16-gb-vram/configuration.md) | LM Studio Bionic · llama.cpp · Vulkan · Ubuntu 26.10 | RX 9070 XT · 16 GB VRAM | [Coding workload](recipes/qwen3.8-27b-gguf-rx-9070-xt-16-gb-vram/results/2026-11-02/summary.md) |
 
 ## Templates
 

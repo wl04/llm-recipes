@@ -1,5 +1,4 @@
-id: replace-with-profile-id
-recipe: replace-with-recipe-id
+id: Model / Format / Hardware / Memory
 hardware:
   gpu: null
   cpu: null
@@ -23,26 +22,24 @@ software:
   backend_api_version: null
   gpu_driver: null
   gpu_driver_version: null
-speculation: null
 model:
   name: null
   format: null
   quantization: null
   repository: null
   artifacts: []
-settings: {} # Effective settings used for this result
+settings:
+  Speculative decoding: null # Effective settings used for this result
 
 # Display labels keyed by dotted YAML path.
 labels:
-  id: Profile
-  recipe: Recipe
   hardware: Hardware
   hardware.gpu: GPU
   hardware.cpu: CPU
   hardware.memory.architecture: Memory architecture
-  hardware.memory.dedicated_vram_gib: Dedicated VRAM (GiB)
-  hardware.memory.system_ram_gib: System RAM (GiB)
-  hardware.memory.unified_memory_gib: Unified memory (GiB)
+  hardware.memory.dedicated_vram_gib: Dedicated VRAM (GB)
+  hardware.memory.system_ram_gib: System RAM (GB)
+  hardware.memory.unified_memory_gib: Unified memory (GB)
   os: Operating system
   os.name: Operating system
   os.version: OS version
@@ -58,7 +55,6 @@ labels:
   software.backend_api_version: Backend API version
   software.gpu_driver: GPU driver
   software.gpu_driver_version: GPU driver version
-  speculation: Speculative decoding
   model: Model
   model.name: Model name
   model.format: Model format
@@ -66,3 +62,4 @@ labels:
   model.repository: Model repository
   model.artifacts: Model files
   settings: Inference settings
+  settings.Speculative decoding: Speculative decoding

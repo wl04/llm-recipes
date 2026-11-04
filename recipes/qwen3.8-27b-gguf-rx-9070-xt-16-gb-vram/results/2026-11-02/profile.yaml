@@ -1,5 +1,4 @@
-id: rx9070xt-ubuntu-vulkan
-recipe: qwen3.8-27b-lmstudio-gguf
+id: Qwen3.8-27B / GGUF / RX 9070 XT / 16 GB VRAM
 hardware:
   gpu: AMD Radeon RX 9070 XT
   cpu: AMD Ryzen 7 9800X3D
@@ -23,7 +22,6 @@ software:
   backend_api_version: 1.4.354
   gpu_driver: Mesa RADV
   gpu_driver_version: 26.2.4-1ubuntu1 # From the supplied system information
-speculation: MTP
 model:
   name: Qwen3.8-27B
   format: GGUF
@@ -62,15 +60,13 @@ settings:
 
 # Display labels keyed by dotted YAML path.
 labels:
-  id: Profile
-  recipe: Recipe
   hardware: Hardware
   hardware.gpu: GPU
   hardware.cpu: CPU
   hardware.memory.architecture: Memory architecture
-  hardware.memory.dedicated_vram_gib: Dedicated VRAM (GiB)
-  hardware.memory.system_ram_gib: System RAM (GiB)
-  hardware.memory.unified_memory_gib: Unified memory (GiB)
+  hardware.memory.dedicated_vram_gib: Dedicated VRAM (GB)
+  hardware.memory.system_ram_gib: System RAM (GB)
+  hardware.memory.unified_memory_gib: Unified memory (GB)
   os: Operating system
   os.name: Operating system
   os.version: OS version
@@ -86,7 +82,6 @@ labels:
   software.backend_api_version: Backend API version
   software.gpu_driver: GPU driver
   software.gpu_driver_version: GPU driver version
-  speculation: Speculative decoding
   model: Model
   model.name: Model name
   model.format: Model format
