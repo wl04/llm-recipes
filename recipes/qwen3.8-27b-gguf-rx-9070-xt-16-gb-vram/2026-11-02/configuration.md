@@ -2,7 +2,7 @@
 
 # Qwen3.8-27B / GGUF / RX 9070 XT / 16 GB VRAM
 
-**[View results: Coding workload](results/2026-11-02/summary.md)** — workload, performance statistics, memory usage, and observations.
+**[View results: Coding workload](summary.md)** — workload, performance statistics, memory usage, and observations.
 
 
 ## Hardware
@@ -90,6 +90,6 @@
 
 ---
 
-[Profile YAML](results/2026-11-02/profile.yaml)
+[Profile YAML](profile.yaml)
 
 <!-- END GENERATED CONFIGURATIONS -->

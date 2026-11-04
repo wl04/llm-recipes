@@ -5,7 +5,6 @@ import html
 import re
 from pathlib import Path
 import sys
-from urllib.parse import quote
 
 import yaml
 
@@ -57,66 +56,49 @@ def profile_identity(data):
     return caption, slug
 
 
-def render(recipe):
-    lines = []
-    identity = None
-    links = []
-    profiles = sorted(recipe.glob('results/*/profile.yaml'), reverse=True)
-    for index, profile in enumerate(profiles, 1):
-        data = yaml.safe_load(profile.read_text())
-        if not isinstance(data, dict):
-            raise ValueError(f'{profile}: expected a YAML mapping')
-        caption, slug = profile_identity(data)
-        if recipe.name != slug:
-            raise ValueError(f'{profile}: recipe folder must be {slug}')
-        if identity is None:
-            identity = caption
-            lines += [f'# {cell(caption)}', '']
-        elif caption != identity:
-            raise ValueError(f'{profile}: all results in a recipe must share the same id')
-        relative = quote(profile.relative_to(recipe).as_posix())
-        if len(profiles) > 1:
-            lines += [f'## Experiment {index}', '']
-        profile_label = 'Profile YAML' if len(profiles) == 1 else f'Experiment {index} profile YAML'
-        links.append(f'[{profile_label}]({relative})')
-        summary = profile.parent / 'summary.md'
-        if summary.is_file():
-            heading = next((line[2:].strip() for line in summary.read_text().splitlines() if line.startswith('# ')), 'Results')
-            title = re.sub(r'^\d{4}-\d{2}-\d{2}\s*[—–-]\s*', '', heading)
-            title = cell(title).replace('[', '&#91;').replace(']', '&#93;')
-            target = quote(summary.relative_to(recipe).as_posix())
-            lines += [f'**[View results: {title}]({target})** — workload, performance statistics, memory usage, and observations.', '']
-        labels = data.get('labels')
-        if not isinstance(labels, dict):
-            raise ValueError(f'{profile}: expected a labels mapping')
-        for key, value in data.items():
-            if key in {'labels', 'id'}:
-                continue
-            if empty(value):
-                continue
-            if isinstance(value, dict):
-                title = labels.get(key)
-                if not isinstance(title, str) or not title.strip():
-                    raise ValueError(f'Missing display label for {key}')
-                lines += ['', f'{"###" if len(profiles) > 1 else "##"} {cell(title)}', '']
-                section_rows = list(rows(value, labels, key))
-            else:
-                section_rows = list(rows({key: value}, labels))
-            if section_rows:
-                lines += ['', '| Setting | Value |', '|---|---|', *section_rows, '']
-    if links:
-        lines += ['---', '', ' · '.join(links), '']
+def render(result):
+    profile = result / 'profile.yaml'
+    data = yaml.safe_load(profile.read_text())
+    if not isinstance(data, dict):
+        raise ValueError(f'{profile}: expected a YAML mapping')
+    caption, slug = profile_identity(data)
+    if result.parent.name != slug:
+        raise ValueError(f'{profile}: recipe folder must be {slug}')
+    lines = [f'# {cell(caption)}', '']
+    summary = result / 'summary.md'
+    if summary.is_file():
+        heading = next((line[2:].strip() for line in summary.read_text().splitlines() if line.startswith('# ')), 'Results')
+        title = re.sub(r'^\d{4}-\d{2}-\d{2}\s*[—–-]\s*', '', heading)
+        title = cell(title).replace('[', '&#91;').replace(']', '&#93;')
+        lines += [f'**[View results: {title}](summary.md)** — workload, performance statistics, memory usage, and observations.', '']
+    labels = data.get('labels')
+    if not isinstance(labels, dict):
+        raise ValueError(f'{profile}: expected a labels mapping')
+    for key, value in data.items():
+        if key in {'labels', 'id'} or empty(value):
+            continue
+        if isinstance(value, dict):
+            title = labels.get(key)
+            if not isinstance(title, str) or not title.strip():
+                raise ValueError(f'Missing display label for {key}')
+            lines += ['', f'## {cell(title)}', '']
+            section_rows = list(rows(value, labels, key))
+        else:
+            section_rows = list(rows({key: value}, labels))
+        if section_rows:
+            lines += ['', '| Setting | Value |', '|---|---|', *section_rows, '']
+    lines += ['---', '', '[Profile YAML](profile.yaml)', '']
     return '\n'.join(lines).rstrip() + '\n'
 
 
-def update(recipe):
-    path = recipe / 'configuration.md'
+def update(result):
+    path = result / 'configuration.md'
     original = path.read_text()
     if original.count(START) != 1 or original.count(END) != 1:
         raise ValueError(f'{path}: expected exactly one pair of generated-section markers')
     before, rest = original.split(START)
     old, after = rest.split(END)
-    return path, original, before + START + '\n\n' + render(recipe) + '\n' + END + after
+    return path, original, before + START + '\n\n' + render(result) + '\n' + END + after
 
 
 def main():
@@ -124,7 +106,7 @@ def main():
     parser.add_argument('--check', action='store_true', help='Fail if generated content is stale; write nothing')
     args = parser.parse_args()
     try:
-        changes = [update(p.parent) for p in sorted((ROOT / 'recipes').glob('*/configuration.md'))]
+        changes = [update(p.parent) for p in sorted((ROOT / 'recipes').glob('*/*/profile.yaml'))]
     except (ValueError, OSError, yaml.YAMLError) as exc:
         print(exc, file=sys.stderr)
         return 2

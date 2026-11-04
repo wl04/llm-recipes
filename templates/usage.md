@@ -4,20 +4,19 @@ Copy `templates/recipe/` to `recipes/<model-format-hardware-memory>/`. Choose a 
 
 ```text
 recipes/<model-format-hardware-memory>/
-  configuration.md
-  results/
-    YYYY-MM-DD/
-      summary.md
-      profile.yaml
+  YYYY-MM-DD/
+    configuration.md
+    summary.md
+    profile.yaml
 ```
 
 1. Set `id` in `profile.yaml` using the naming rule below; the configuration title is generated from it. An overview in `configuration.md` is optional. Keep the generated-section markers in place.
 2. Rename `YYYY-MM-DD` to the result date. For multiple configurations on one date, add a suffix such as `2026-11-02-mtp-on`.
 3. Fill in `profile.yaml` with the hardware, software, model, and effective settings used for that result. Use `null` for unknown values.
 4. Fill in `summary.md` with the workload, statistics, memory measurements, and observations. Keep one date in the title and number sessions #1, #2, and so on. Remove unused sections.
-5. Generate the configuration section using the commands below, and add the recipe to the root catalog.
+5. Generate the configuration section using the commands below, and add links to this result’s configuration and summary to the root catalog.
 
-For another result, copy the two files from `templates/recipe/results/YYYY-MM-DD/` into a new dated result folder. The existing result remains a snapshot of its configuration.
+For another result, copy the three files from `templates/recipe/YYYY-MM-DD/` into a new dated result folder. The existing result remains a snapshot of its configuration.
 
 ## Generate configuration guides
 
@@ -35,7 +34,7 @@ Generate the guides, then check that they are current:
 .venv/bin/python scripts/generate_configurations.py --check
 ```
 
-Edit the result profiles to change configuration details. The generator renders every result profile in reverse folder-name order into the marked section of each recipe's `configuration.md`. Text outside the markers stays editable. YAML key order controls table order. Store explanatory notes as YAML values; YAML comments are not rendered.
+Edit the result profiles to change configuration details. The generator renders each result's `profile.yaml` into the marked section of the `configuration.md` in the same folder. Each result has its own guide and report. Text outside the markers stays editable. YAML key order controls table order. Store explanatory notes as YAML values; YAML comments are not rendered.
 
 Run generation after editing a profile or adding a result. Commit the YAML and generated Markdown together. `--check` exits unsuccessfully when the generated section needs updating and leaves files untouched.
 
@@ -47,7 +46,7 @@ Each profile has a `labels` mapping for readable field names and section heading
 
 When adding a setting, add its label too, for example `settings.Context length: Context length (tokens)`. The generator reports missing labels instead of displaying internal field paths. Keep units in labels where useful. The labels mapping itself is omitted from the generated guide.
 
-The profile identifier supplies the generated document title. Generated guides show a prominent results link above each configuration and small profile links at the bottom. The results link uses the report title without its date prefix. Multiple result profiles are numbered as experiments in reverse folder-name order. Record speculative decoding under `settings` alongside the other inference settings.
+The profile identifier supplies the generated document title. Generated guides show a prominent results link above each configuration and small profile links at the bottom. The results link uses the report title without its date prefix. Record speculative decoding under `settings` alongside the other inference settings.
 
 ## Recipe identity and folder name
 
