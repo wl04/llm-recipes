@@ -18,8 +18,6 @@ recipes/<model-format-hardware-memory>/
     summary.md         # Workload, statistics, and observations
 ```
 
-Each row in the catalog links to one experiment. Related experiments share a recipe folder; configurations recorded on the same date use descriptive folder suffixes.
-
 ## Adding or updating experiments
 
 Follow the [template instructions and naming rules](templates/usage.md). Edit the experiment's `profile.yaml` and `summary.md`, then run [the generator](scripts/generate_configurations.py) to refresh its `configuration.md`. Add a catalog row for each new experiment.
