@@ -21,5 +21,3 @@ recipes/<model-format-hardware-memory>/
 ## Adding or updating experiments
 
 Follow the [template instructions and naming rules](templates/usage.md). Edit the experiment's `profile.yaml` and `summary.md`, then run [the generator](scripts/generate_configurations.py) to refresh its `configuration.md`. Add a catalog row for each new experiment.
-
-See [setup and generation commands](templates/usage.md#generate-configuration-guides). Commit the profile and generated Markdown together.
