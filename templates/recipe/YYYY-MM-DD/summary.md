@@ -2,8 +2,6 @@
 
 Fill in the information available and remove unused sections.
 
-[Configuration snapshot](profile.yaml)
-
 ## Workload
 
 Describe what you were doing: project, conversations, test suite, or benchmark. Include relevant harness options, tool use, concurrency, and context compaction.
@@ -31,3 +29,7 @@ Record device/process VRAM, process/system RAM, GTT or unified memory, and swap 
 ## Observations
 
 Describe responsiveness, useful results, tool behavior, repetitive output, truncation, interruptions, and adjustments. Include speculative acceptance, time to first token, power, or temperatures when useful.
+
+---
+
+[Profile YAML](profile.yaml)

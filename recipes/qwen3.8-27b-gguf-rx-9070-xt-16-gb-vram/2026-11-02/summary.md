@@ -1,7 +1,5 @@
 # 2026-11-02 — Coding workload
 
-[Configuration snapshot](profile.yaml)
-
 ## Workload
 
 Development of [gpu-switcher](https://github.com/wl04/gpu-switcher), with growing context, repeated tool calls, and context compaction.
@@ -54,3 +52,7 @@ VRAM occupancy is **98.3%**. GTT is GPU-accessible system RAM; its usage alone d
 No repetitive loops were observed. Overall experience with LM Studio Bionic was positive.
 
 No OOM or crash was recorded. One request reached 131071 context tokens with `truncated=1`; subsequent processing continued with a shorter context. Some prompt states exceeded the separate 8 GiB prompt-cache limit and were not cached.
+
+---
+
+[Profile YAML](profile.yaml)
