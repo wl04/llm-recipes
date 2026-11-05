@@ -41,6 +41,4 @@ recipes/<model-format-hardware-memory>/
   YYYY-MM-DD/          # Configuration snapshot and measured results
 ```
 
-Model weights and conversion working files live outside the repository and are mounted into the container. Shared experiment templates and documentation are in `templates/`; `scripts/generate_configurations.py` generates configuration guides from profiles.
-
 [Adding or updating experiments →](templates/usage.md)

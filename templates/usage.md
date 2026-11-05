@@ -18,7 +18,17 @@ recipes/<model-format-hardware-memory>/
 
 For another result, copy the three files from `templates/recipe/YYYY-MM-DD/` into a new dated result folder. The existing result remains a snapshot of its configuration.
 
+## Container recipes
+
+Keep `setup.md`, native serving settings, model revision locks, `container/` build files, and preparation/serving scripts at the recipe level, alongside the dated experiment folders. Document build, model preparation, and run commands in `setup.md`. Pin the base image digest, upstream revisions, and build dependencies used by the recipe.
+
+Store model weights and conversion working files outside the repository and mount them into the container. Include the external directory and mount commands in `setup.md`.
+
+Link `setup.md` from the root catalog's Setup column and from the configuration and summary footers.
+
 ## Generate configuration guides
+
+Shared experiment templates live in `templates/recipe/`. The [generator](../scripts/generate_configurations.py) turns their completed profiles into configuration guides.
 
 From the repository root, create a Python 3 virtual environment and install the pinned dependency:
 
@@ -38,7 +48,7 @@ Edit the result profiles to change configuration details. The generator renders 
 
 Run generation after editing a profile or adding a result. Commit the YAML and generated Markdown together. `--check` exits unsuccessfully when the generated section needs updating and leaves files untouched.
 
-On Windows, use `.venv\Scripts\python.exe` in place of `.venv/bin/python`. The [generator](../scripts/generate_configurations.py) and its [dependency file](../scripts/requirements.txt) are included in the repository.
+On Windows, use `.venv\Scripts\python.exe` in place of `.venv/bin/python`.
 
 ## Display labels
 
