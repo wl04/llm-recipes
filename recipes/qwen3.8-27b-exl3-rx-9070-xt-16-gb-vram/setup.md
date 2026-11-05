@@ -60,7 +60,7 @@ The helper prints the resulting draft weight size and records conversion argumen
 
 ## Serve and check generation
 
-The workstation converted the draft successfully: 0.932 GB of weights. `tabby.yml` contains the native serving settings: a 4096-token context, Q4 target and draft caches, one request at a time, and text input. The launcher selects the RX 9070 XT by name before starting TabbyAPI, mounts model files read-only, and exposes the API at `http://127.0.0.1:5000/v1`. Local API calls use no key; browser cross-origin requests are disabled.
+The workstation converted the draft successfully: 0.932 GB of weights. `tabby.yml` contains the native serving settings: a 4096-token context, Q4 target and draft caches, one request at a time, and text input. The launcher selects the RX 9070 XT by name before starting TabbyAPI, mounts model files read-only, and exposes the API at `http://127.0.0.1:5000/v1`. Local API calls use no key; browser cross-origin requests are disabled. TabbyAPI runs in a temporary writable directory owned by your host user. Its file logs live there for the container lifetime; console output remains available through `sudo docker logs llm-recipes-exl3` while the container exists.
 
 Start the target-only check in one terminal:
 

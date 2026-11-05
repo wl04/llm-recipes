@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 
 from ruamel.yaml import YAML
 
@@ -54,10 +55,19 @@ def main():
         raise RuntimeError(f"Expected one RX 9070 XT, found {devices}")
     os.environ["HIP_VISIBLE_DEVICES"] = str(devices[0])
     print(f"Selected RX 9070 XT (original HIP index {devices[0]})", flush=True)
-    destination = Path("/tmp/tabby-recipe.yml")
+    runtime = prepare_runtime(Path("/opt/src/tabbyAPI"))
+    destination = runtime / "config.yml"
     destination.write_text(yaml_dump(config))
-    os.chdir("/opt/src/tabbyAPI")
-    os.execv(sys.executable, [sys.executable, "main.py", "--config", str(destination)])
+    os.chdir(runtime)
+    os.execv(sys.executable, [sys.executable, "/opt/src/tabbyAPI/main.py", "--config", str(destination)])
+
+
+def prepare_runtime(source):
+    """Keep relative runtime writes owned by the invoking user."""
+    runtime = Path(tempfile.mkdtemp(prefix="tabby-runtime-"))
+    for name in ("templates", "sampler_overrides", "loras"):
+        (runtime / name).symlink_to(source / name, target_is_directory=True)
+    return runtime
 
 
 def yaml_dump(config):
