@@ -1,0 +1,25 @@
+network:
+  host: 0.0.0.0
+  port: 5000
+  disable_auth: true
+  allowed_origins: []
+  disable_fetch_requests: true
+model:
+  model_dir: /models
+  model_name: qwen3.8-27b-exl3-3bpw
+  backend: exllamav3
+  max_seq_len: 4096
+  cache_size: 4096
+  cache_mode: Q4
+  chunk_size: 1024
+  max_batch_size: 1
+  tensor_parallel: false
+  vision: false
+  inline_model_loading: false
+draft_model:
+  draft_mode: model
+  draft_model_dir: /models
+  draft_model_name: qwen3.8-27b-dflash2-exl3-3bpw
+  draft_cache_mode: Q4
+memory:
+  sysmem_recurrent_cache: 4096

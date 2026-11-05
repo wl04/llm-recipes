@@ -57,3 +57,46 @@ The second command selects the RX 9070 XT by name and runs the pinned upstream E
 The target model is already quantized and stays in `qwen3.8-27b-exl3-3bpw`. Conversion refuses to overwrite existing output or work directories. If conversion fails, retain the error output and move those directories aside before starting a fresh attempt. Allow additional disk space for converted weights and working files.
 
 The helper prints the resulting draft weight size and records conversion arguments, build pins, and output checksums alongside the external weights. The next workstation check is model loading and generation with drafting disabled and enabled, followed by measuring context capacity and VRAM use.
+
+## Serve and check generation
+
+The workstation converted the draft successfully: 0.932 GB of weights. `tabby.yml` contains the native serving settings: a 4096-token context, Q4 target and draft caches, one request at a time, and text input. The launcher selects the RX 9070 XT by name before starting TabbyAPI, mounts model files read-only, and exposes the API at `http://127.0.0.1:5000/v1`. Local API calls use no key; browser cross-origin requests are disabled.
+
+Start the target-only check in one terminal:
+
+```bash
+cd ~/Dev/llm-recipes
+recipe=recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
+bash "$recipe/scripts/serve.sh" off 4096
+```
+
+Wait for the server to finish loading. In another terminal, run:
+
+```bash
+cd ~/Dev/llm-recipes
+python3 recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/check_generation.py
+```
+
+The check sends a fixed coding prompt with greedy sampling and a 128-token output limit. It prints the generated text, token usage, available server timings, and total request time. The first request includes any lazy compilation costs; run it again to check warm behavior. Repeated prompts can reuse cached context, so these checks establish generation behavior rather than comparable prefill measurements.
+
+Stop the server with `sudo docker stop llm-recipes-exl3`. Start it again with drafting enabled, then run the same generation check:
+
+```bash
+bash "$recipe/scripts/serve.sh" on 4096
+```
+
+Confirm the startup output identifies the converted draft as loaded. Keep the startup output and any errors available while checking both modes. Watch `amdgpu_top` for dedicated VRAM and GTT usage; the generator response and server logs provide performance statistics.
+
+After both modes generate successfully, increase the context in steps, restarting between runs: `16384`, `32768`, `65536`, `98304`, then `131072`. For example:
+
+```bash
+bash "$recipe/scripts/serve.sh" on 16384
+```
+
+The context argument sets both maximum sequence length and cache capacity. A short generation at a larger allocation checks loading and basic execution; measuring performance at that context requires a prompt that actually fills it. Maximum working context and DFlash2 speedup remain to be measured on the workstation.
+
+An optional third argument selects the external model directory. The existing image is reused:
+
+```bash
+bash "$recipe/scripts/serve.sh" on 4096 "$HOME/Models/llm-recipes"
+```
