@@ -11,11 +11,11 @@ Configurations and results from running language models on my own hardware. Each
 
 ## Recipes
 
-| Model | Software | Hardware | Setup | Configuration | Results |
-|---|---|---|---|---|---|
-| Qwen3.8-27B · IQ3_XXS GGUF | LM Studio Bionic · llama.cpp · Vulkan · Ubuntu 26.10 | RX 9070 XT · 16 GB VRAM · Ryzen 7 9800X3D · 64 GB RAM | — | [Configuration](recipes/qwen3.8-27b-gguf-rx-9070-xt-16-gb-vram/2026-11-02/configuration.md) | [Summary](recipes/qwen3.8-27b-gguf-rx-9070-xt-16-gb-vram/2026-11-02/summary.md) |
-| Qwen3.8-27B · 3 bpw EXL3 | TabbyAPI · ExLlamaV3 · ROCm · Ubuntu 26.10 | RX 9070 XT · 16 GB VRAM · Ryzen 7 9800X3D · 64 GB RAM | [Build and run](recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/setup.md) | [Configuration](recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/2026-11-05/configuration.md) | [Summary](recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/2026-11-05/summary.md) |
-| Qwen3.8-27B · 3 bpw EXL3 · Vision | TabbyAPI · ExLlamaV3 · ROCm · Ubuntu 26.10 | RX 9070 XT · 16 GB VRAM · Ryzen 7 9800X3D · 64 GB RAM | [Build and run](recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/setup.md) | [Configuration](recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/2026-11-05-vision/configuration.md) | [Summary](recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/2026-11-05-vision/summary.md) |
+| Model | Variant | Software | Hardware | Setup | Configuration | Results |
+|---|---|---|---|---|---|---|
+| Qwen3.8-27B · IQ3_XXS GGUF | Coding workload | LM Studio Bionic · llama.cpp · Vulkan · Ubuntu 26.10 | RX 9070 XT · 16 GB VRAM · Ryzen 7 9800X3D · 64 GB RAM | — | [Configuration](recipes/qwen3.8-27b-gguf-rx-9070-xt-16-gb-vram/2026-11-02/configuration.md) | [Summary](recipes/qwen3.8-27b-gguf-rx-9070-xt-16-gb-vram/2026-11-02/summary.md) |
+| Qwen3.8-27B · 3 bpw EXL3 | Text · DFlash2 on/off | TabbyAPI · ExLlamaV3 · ROCm · Ubuntu 26.10 | RX 9070 XT · 16 GB VRAM · Ryzen 7 9800X3D · 64 GB RAM | [Build and run](recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/setup.md) | [Configuration](recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/2026-11-05/configuration.md) | [Summary](recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/2026-11-05/summary.md) |
+| ↳ | Vision · DFlash2 on | TabbyAPI · ExLlamaV3 · ROCm · Ubuntu 26.10 | RX 9070 XT · 16 GB VRAM · Ryzen 7 9800X3D · 64 GB RAM | [Build and run](recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/setup.md) | [Configuration](recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/2026-11-05-vision/configuration.md) | [Summary](recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/2026-11-05-vision/summary.md) |
 
 ## Structure
 
