@@ -41,4 +41,6 @@ recipes/<model-format-hardware-memory>/
   YYYY-MM-DD/          # Configuration snapshot and measured results
 ```
 
-[Adding or updating experiments →](templates/usage.md)
+---
+
+[Adding or updating experiments](templates/usage.md)
