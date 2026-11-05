@@ -112,3 +112,16 @@ python3 recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/check_long_contex
 The helper counts tokens using TabbyAPI, reserves space for 128 output tokens plus headroom, and checks the reported input count for truncation. Each invocation starts with a fresh run identifier to avoid reusing an earlier prompt's prefix cache. It prints the response, usage, server timings, and request duration. Watch `amdgpu_top` during prefill and generation for peak VRAM and GTT usage. Requests allow up to one hour; a client timeout can leave server work running, so stop the container before retrying after a timeout.
 
 The synthetic records exercise context capacity and throughput. The final coding task provides a basic output check; it does not measure retrieval accuracy across the records. Keep the reported cached-token count alongside prefill measurements. Smaller inputs can be selected with `--prompt-tokens 32768` or `--prompt-tokens 65536` while retaining the same server allocation.
+
+## GPU-resident vision
+
+The [vision result](2026-11-05-vision/summary.md) records successful screenshot reading with DFlash2 and a 131072-token allocation. To use this configuration, set these fields under `model` in `tabby.yml`:
+
+```yaml
+  vision: true
+  vision_offload: false
+```
+
+Restart the server with `scripts/serve.sh on 131072`. Send images through `/v1/chat/completions` using a message containing text and an `image_url` content item with a base64 `data:image/png;base64,...` URL. Embedded images work with the existing external-fetch restriction. The recorded request set temperature 0, `max_tokens: 256`, and `chat_template_kwargs: {enable_thinking: false}`.
+
+The observed post-request device VRAM usage was 16158 of 16304 MiB. The dated vision profile records this configuration separately from the text-only measurements.
