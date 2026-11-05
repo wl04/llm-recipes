@@ -46,7 +46,12 @@ Each profile has a `labels` mapping for readable field names and section heading
 
 When adding a setting, add its label too, for example `settings.Context length: Context length (tokens)`. The generator reports missing labels instead of displaying internal field paths. Keep units in labels where useful. The labels mapping itself is omitted from the generated guide.
 
-The profile identifier supplies the generated document title. Both Markdown documents end with links to their companions: configuration guides link to Results and Profile YAML; summaries link to Configuration and Profile YAML. The configuration footer is generated. Record speculative decoding under `settings` alongside the other inference settings.
+The profile identifier supplies the generated document title. Both Markdown documents end with links to their companions: configuration guides link to Results and Profile YAML; summaries link to Configuration and Profile YAML. When a recipe has `setup.md`, use these footers:
+
+- Configuration: `[Results](summary.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)`
+- Summary: `[Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)`
+
+The generator adds the configuration link automatically when `setup.md` exists in the recipe folder. Update the authored summary footer to match. Recipes without `setup.md` use the two companion links. The configuration footer is generated. Record speculative decoding under `settings` alongside the other inference settings.
 
 ## Recipe identity and folder name
 

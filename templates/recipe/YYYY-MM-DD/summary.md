@@ -30,6 +30,10 @@ Record device/process VRAM, process/system RAM, GTT or unified memory, and swap 
 
 Describe responsiveness, useful results, tool behavior, repetitive output, truncation, interruptions, and adjustments. Include speculative acceptance, time to first token, power, or temperatures when useful.
 
+<!-- If ../setup.md exists, use this footer instead:
+[Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)
+-->
+
 ---
 
 [Configuration](configuration.md) · [Profile YAML](profile.yaml)

@@ -81,7 +81,11 @@ def render(result):
             section_rows = list(rows({key: value}, labels))
         if section_rows:
             lines += ['', '| Setting | Value |', '|---|---|', *section_rows, '']
-    lines += ['---', '', '[Results](summary.md) · [Profile YAML](profile.yaml)', '']
+    links = ['[Results](summary.md)']
+    if (result.parent / 'setup.md').is_file():
+        links.append('[Build and run](../setup.md)')
+    links.append('[Profile YAML](profile.yaml)')
+    lines += ['---', '', ' · '.join(links), '']
     return '\n'.join(lines).rstrip() + '\n'
 
 

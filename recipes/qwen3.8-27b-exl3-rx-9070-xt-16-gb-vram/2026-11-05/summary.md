@@ -69,8 +69,6 @@ During near-128K prompt processing with DFlash2: 14,822 MiB total VRAM used. Poi
 - Some long responses repeated the function in both modes. The task checks execution and throughput; it does not establish retrieval accuracy throughout the context. Fresh identifiers also make exact-output comparisons between long requests inconclusive.
 - Two requests per case provide initial observations. Longer outputs and representative interactive workloads would clarify the practical benefit of faster decoding.
 
-[Build and run this recipe](../setup.md)
-
 ---
 
-[Configuration](configuration.md) · [Profile YAML](profile.yaml)
+[Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)
