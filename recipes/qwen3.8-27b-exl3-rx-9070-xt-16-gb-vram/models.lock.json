@@ -1,0 +1,19 @@
+{
+  "target": {
+    "repo_id": "turboderp/Qwen3.8-27B-exl3",
+    "revision": "86b95530f9d365d90dd24d01a997a8de0cdf6c55",
+    "directory": "qwen3.8-27b-exl3-3bpw",
+    "files": ["LICENSE", "README.md", "chat_template.jinja", "config.json", "generation_config.json", "merges.txt", "model-00001-of-00002.safetensors", "model-00002-of-00002.safetensors", "model.safetensors.index.json", "preprocessor_config.json", "quantization_config.json", "tokenizer.json", "tokenizer_config.json", "video_preprocessor_config.json", "vocab.json"]
+  },
+  "draft": {
+    "repo_id": "z-lab/Qwen3.8-27B-DFlash2",
+    "revision": "50307d4c4cde6860d4eee73e2547cd786fe8e8a4",
+    "directory": "qwen3.8-27b-dflash2-source",
+    "files": ["README.md", "config.json", "model.safetensors"]
+  },
+  "conversion": {
+    "directory": "qwen3.8-27b-dflash2-exl3-3bpw",
+    "work_directory": "draft-conversion-work",
+    "arguments": ["-b", "3.0", "--out_scales", "always", "-cb", "mul1"]
+  }
+}
