@@ -51,6 +51,15 @@ Total reported VRAM capacity was 16,304 MiB. Processing snapshots showed 100% GP
 
 The engine used one visible GPU. Vision was disabled. Upstream ExLlamaV3 normally places unquantized token embeddings in CPU RAM; ordinary CPU allocations are distinct from GTT. Download size therefore differs from resident GPU memory.
 
+<details>
+<summary>GPU snapshot</summary>
+
+![amdgpu_top showing the RX 9070 XT processing a near-128K prompt with DFlash2 and 14,822 MiB total VRAM used](assets/amdgpu-top-dflash2-128k.png)
+
+During near-128K prompt processing with DFlash2: 14,822 MiB total VRAM used. Point-in-time snapshot, not measured peak.
+
+</details>
+
 ## Observations
 
 - Warm short-prompt generation reached 167.08 tokens/s with DFlash2 versus 43.85 tokens/s disabled: approximately 3.81× faster. The short outputs were identical across modes.
