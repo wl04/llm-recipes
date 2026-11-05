@@ -100,3 +100,15 @@ An optional third argument selects the external model directory. The existing im
 ```bash
 bash "$recipe/scripts/serve.sh" on 4096 "$HOME/Models/llm-recipes"
 ```
+
+## Exercise the full context
+
+With the server running at 131072 tokens, send a synthetic prompt close to 130000 tokens:
+
+```bash
+python3 recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/check_long_context.py
+```
+
+The helper counts tokens using TabbyAPI, reserves space for 128 output tokens plus headroom, and checks the reported input count for truncation. Each invocation starts with a fresh run identifier to avoid reusing an earlier prompt's prefix cache. It prints the response, usage, server timings, and request duration. Watch `amdgpu_top` during prefill and generation for peak VRAM and GTT usage. Requests allow up to one hour; a client timeout can leave server work running, so stop the container before retrying after a timeout.
+
+The synthetic records exercise context capacity and throughput. The final coding task provides a basic output check; it does not measure retrieval accuracy across the records. Keep the reported cached-token count alongside prefill measurements. Smaller inputs can be selected with `--prompt-tokens 32768` or `--prompt-tokens 65536` while retaining the same server allocation.
