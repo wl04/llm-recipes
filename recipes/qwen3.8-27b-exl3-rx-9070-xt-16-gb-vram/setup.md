@@ -127,3 +127,101 @@ bash recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/serve.sh \
 The launcher sets `vision_offload: false`, keeping vision weights GPU-resident. Send images through `/v1/chat/completions` using a message containing text and an `image_url` content item with a base64 `data:image/png;base64,...` URL. Embedded images work with the existing external-fetch restriction. The recorded request set temperature 0, `max_tokens: 256`, and `chat_template_kwargs: {enable_thinking: false}`.
 
 The observed post-request device VRAM usage was 16158 of 16304 MiB. The dated vision profile records this configuration separately from the text-only measurements.
+
+## Pi coding agent
+
+Run [Pi](https://github.com/badlogic/pi-mono) on the Ubuntu host, in the project you want it to work on. It connects to TabbyAPI at `http://127.0.0.1:5000/v1`; Pi handles files, shell commands, and conversation history on the host.
+
+### Install
+
+Install [nvm using its official instructions](https://github.com/nvm-sh/nvm#installing-and-updating), then open a new terminal. Use Node.js LTS and the latest stable Pi release:
+
+```bash
+nvm install --lts
+nvm alias default 'lts/*'
+nvm use default
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest
+node --version
+pi --version
+```
+
+Pi requires Node.js 22.19 or newer. With nvm, global npm packages live under your home directory; run the npm command as your regular user. Repeat it to update Pi. Global packages belong to the selected Node installation, so reinstall Pi after switching Node versions if necessary. Record the actual Pi and Node versions when adding experiment results.
+
+### Configure the local model
+
+Use a dedicated Pi agent directory for this recipe. Run this in the terminal where you will launch Pi:
+
+```bash
+export PI_CODING_AGENT_DIR="$HOME/.pi/agent-tabby-local"
+mkdir -p "$PI_CODING_AGENT_DIR"
+```
+
+Create or edit `$PI_CODING_AGENT_DIR/models.json` with:
+
+```json
+{
+  "providers": {
+    "tabby-local": {
+      "baseUrl": "http://127.0.0.1:5000/v1",
+      "api": "openai-completions",
+      "apiKey": "local",
+      "models": [
+        {
+          "id": "qwen3.8-27b-exl3-3bpw",
+          "name": "Qwen3.8-27B EXL3",
+          "reasoning": true,
+          "input": ["text", "image"],
+          "contextWindow": 131072,
+          "maxTokens": 8192,
+          "compat": {
+            "maxTokensField": "max_tokens",
+            "thinkingFormat": "qwen",
+            "supportsReasoningEffort": false
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+Pi's `openai-completions` adapter uses the chat-completions endpoint, including streamed responses and tool calls. The dummy API key makes the provider available in Pi; the recipe's local server has authentication disabled. `thinkingFormat: qwen` sends the thinking toggle as `enable_thinking`, which TabbyAPI forwards to the chat template.
+
+Create or edit `$PI_CODING_AGENT_DIR/settings.json` with:
+
+```json
+{
+  "defaultProvider": "tabby-local",
+  "defaultModel": "qwen3.8-27b-exl3-3bpw",
+  "defaultThinkingLevel": "off",
+  "compaction": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+  }
+}
+```
+
+This starts with thinking off and an 8192-token response allowance. The compaction values retain Pi's current defaults, reserving room for responses and summarization as the conversation grows. Pi stores its sessions and user settings in the selected agent directory. Project configuration remains in `.pi` under the working project.
+
+### Start a session
+
+Start TabbyAPI from the repository root in one terminal:
+
+```bash
+bash recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/serve.sh \
+  --draft on --vision on --context 131072
+```
+
+Once the server is ready, launch Pi from your working project in another terminal:
+
+```bash
+cd /path/to/your/project
+PI_CODING_AGENT_DIR="$HOME/.pi/agent-tabby-local" pi
+```
+
+The model's `contextWindow` must match the serving allocation. For text-only serving, use `--vision off` and set `input` to `["text"]` in `models.json`. Open `/model` to reload model configuration and select the local model; `/thinking` changes the thinking setting.
+
+For an initial tool-use check, use a scratch project and ask Pi to read a file, make a small edit, run a command to verify it, and summarize the result. With vision enabled, also try reading an image. The recorded recipe results cover direct API requests; Pi's streamed tool-call workflow remains to be validated on the workstation.
+
+Upstream references: [model configuration](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/models-configuration.md), [agent directory](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/configuration.md), and [settings](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/settings.md).
