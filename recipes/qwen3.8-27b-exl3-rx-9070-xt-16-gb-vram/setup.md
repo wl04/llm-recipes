@@ -149,14 +149,7 @@ Pi requires Node.js 22.19 or newer. With nvm, global npm packages live under you
 
 ### Configure the local model
 
-Use a dedicated Pi agent directory for this recipe. Run this in the terminal where you will launch Pi:
-
-```bash
-export PI_CODING_AGENT_DIR="$HOME/.pi/agent-tabby-local"
-mkdir -p "$PI_CODING_AGENT_DIR"
-```
-
-Create or edit `$PI_CODING_AGENT_DIR/models.json` with:
+Use Pi’s standard `~/.pi/agent/` directory. Create it with `mkdir -p ~/.pi/agent` if needed. Merge this provider into `~/.pi/agent/models.json`, preserving any existing providers:
 
 ```json
 {
@@ -190,7 +183,7 @@ Create or edit `$PI_CODING_AGENT_DIR/models.json` with:
 
 Pi's `openai-completions` adapter uses the chat-completions endpoint, including streamed responses and tool calls. The dummy API key makes the provider available in Pi; the recipe's local server has authentication disabled. `thinkingFormat: qwen` sends the thinking toggle as `enable_thinking`. With `supportsReasoningEffort: true`, Pi also sends `reasoning_effort`; TabbyAPI forwards both to the chat template. The explicit `thinkingLevelMap` entry makes `xhigh` available in Pi.
 
-Create or edit `$PI_CODING_AGENT_DIR/settings.json` with:
+To make this model the startup selection, merge these settings into `~/.pi/agent/settings.json`. Keep your existing default provider/model if you prefer selecting this model through `/model`:
 
 ```json
 {
@@ -199,13 +192,39 @@ Create or edit `$PI_CODING_AGENT_DIR/settings.json` with:
   "defaultThinkingLevel": "xhigh",
   "compaction": {
     "enabled": true,
-    "reserveTokens": 40960,
-    "keepRecentTokens": 20000
+    "modelOverrides": {
+      "tabby-local/qwen3.8-27b-exl3-3bpw": {
+        "reserveTokens": 40960,
+        "keepRecentTokens": 20000
+      }
+    }
   }
 }
 ```
 
-This starts at `xhigh` with a 32,768-token allowance shared by reasoning and the final answer. Automatic compaction reserves 40,960 tokens, covering that allowance plus 8,192 tokens of additional headroom, and retains 20,000 recent tokens. These are starting settings for interactive coding; the Pi workflow remains to be measured on this workstation. Higher reasoning effort can increase response time; use `/thinking` to select a lower effort for simpler tasks. Pi stores its sessions and user settings in the selected agent directory. Project configuration remains in `.pi` under the working project.
+This starts at `xhigh` with a 32,768-token allowance shared by reasoning and the final answer. The model-specific compaction override starts compaction when estimated context usage exceeds 90,112 tokens (131,072 minus 40,960), retaining approximately 20,000 recent tokens alongside the summary. The reserve is a conservative starting choice for response and tool-result headroom, not a reasoning budget or a measured optimum. Other models retain their existing compaction settings. Pi's default reserve is 16,384 tokens.
+
+Pi stores sessions and user settings in `~/.pi/agent/`; project configuration lives in `.pi` under the working project. Higher reasoning effort can increase response time; use `/thinking` to select a lower effort for simpler tasks.
+
+### Optional reasoning budget
+
+`reasoning_effort` guides reasoning depth. A separate token budget caps the reasoning phase; `maxTokens` caps the whole generated response, including reasoning. Compaction manages conversation history independently.
+
+The pinned TabbyAPI accepts `reasoning_budget_tokens` (also `thinking_budget` or `thinking_token_budget`). When the budget is reached, it forces the reasoning phase to end so the model can answer. This can bound lengthy thinking, with a possible accuracy tradeoff.
+
+For example, add this field to the model entry in `models.json` to cap reasoning at 8,192 tokens when `xhigh` is selected:
+
+```json
+{
+  "samplingParamsByThinkingLevel": {
+    "xhigh": {
+      "reasoning_budget_tokens": 8192
+    }
+  }
+}
+```
+
+This is an optional starting limit, not a benchmark-derived recommendation. It complements `xhigh` rather than replacing it, and leaves room within the 32,768-token total output allowance for the final answer. Pi forwards this explicit field through its OpenAI-compatible adapter. Merely setting Pi's `thinkingBudgets` does not send a budget with the compatibility configuration above; that mechanism also requires a supported `thinkingTokenBudgetField` mapping. The Pi tool-call workflow and budget behavior remain to be measured on the workstation.
 
 ### Start a session
 
@@ -220,7 +239,7 @@ Once the server is ready, launch Pi from your working project in another termina
 
 ```bash
 cd /path/to/your/project
-PI_CODING_AGENT_DIR="$HOME/.pi/agent-tabby-local" pi
+pi
 ```
 
 The model's `contextWindow` must match the serving allocation. For text-only serving, use `--vision off` and set `input` to `["text"]` in `models.json`. Open `/model` to reload model configuration and select the local model; `/thinking` changes the thinking setting.
