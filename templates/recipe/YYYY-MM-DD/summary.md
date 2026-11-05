@@ -32,4 +32,4 @@ Describe responsiveness, useful results, tool behavior, repetitive output, trunc
 
 ---
 
-[Profile YAML](profile.yaml)
+[Configuration](configuration.md) · [Profile YAML](profile.yaml)

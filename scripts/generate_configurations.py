@@ -65,12 +65,6 @@ def render(result):
     if result.parent.name != slug:
         raise ValueError(f'{profile}: recipe folder must be {slug}')
     lines = [f'# {cell(caption)}', '']
-    summary = result / 'summary.md'
-    if summary.is_file():
-        heading = next((line[2:].strip() for line in summary.read_text().splitlines() if line.startswith('# ')), 'Results')
-        title = re.sub(r'^\d{4}-\d{2}-\d{2}\s*[—–-]\s*', '', heading)
-        title = cell(title).replace('[', '&#91;').replace(']', '&#93;')
-        lines += [f'**[View results: {title}](summary.md)** — workload, performance statistics, memory usage, and observations.', '']
     labels = data.get('labels')
     if not isinstance(labels, dict):
         raise ValueError(f'{profile}: expected a labels mapping')
@@ -87,7 +81,7 @@ def render(result):
             section_rows = list(rows({key: value}, labels))
         if section_rows:
             lines += ['', '| Setting | Value |', '|---|---|', *section_rows, '']
-    lines += ['---', '', '[Profile YAML](profile.yaml)', '']
+    lines += ['---', '', '[Results](summary.md) · [Profile YAML](profile.yaml)', '']
     return '\n'.join(lines).rstrip() + '\n'
 
 

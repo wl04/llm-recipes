@@ -55,4 +55,4 @@ No OOM or crash was recorded. One request reached 131071 context tokens with `tr
 
 ---
 
-[Profile YAML](profile.yaml)
+[Configuration](configuration.md) · [Profile YAML](profile.yaml)
