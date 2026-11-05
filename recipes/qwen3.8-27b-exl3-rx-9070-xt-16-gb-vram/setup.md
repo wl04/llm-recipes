@@ -189,20 +189,11 @@ To make this model the startup selection, merge these settings into `~/.pi/agent
 {
   "defaultProvider": "tabby-local",
   "defaultModel": "qwen3.8-27b-exl3-3bpw",
-  "defaultThinkingLevel": "xhigh",
-  "compaction": {
-    "enabled": true,
-    "modelOverrides": {
-      "tabby-local/qwen3.8-27b-exl3-3bpw": {
-        "reserveTokens": 40960,
-        "keepRecentTokens": 20000
-      }
-    }
-  }
+  "defaultThinkingLevel": "xhigh"
 }
 ```
 
-This starts at `xhigh` with a 32,768-token allowance shared by reasoning and the final answer. The model-specific compaction override starts compaction when estimated context usage exceeds 90,112 tokens (131,072 minus 40,960), retaining approximately 20,000 recent tokens alongside the summary. The reserve is a conservative starting choice for response and tool-result headroom, not a reasoning budget or a measured optimum. Other models retain their existing compaction settings. Pi's default reserve is 16,384 tokens.
+This starts at `xhigh` with a 32,768-token allowance shared by reasoning and the final answer. Pi manages automatic compaction using its defaults.
 
 Pi stores sessions and user settings in `~/.pi/agent/`; project configuration lives in `.pi` under the working project. Higher reasoning effort can increase response time; use `/thinking` to select a lower effort for simpler tasks.
 
