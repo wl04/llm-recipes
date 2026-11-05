@@ -1,0 +1,6 @@
+*
+!Dockerfile
+!versions.lock.json
+!requirements.lock
+!fetch_sources.py
+!check_image.py

@@ -1,0 +1,35 @@
+# Core upstream dependencies; Torch/ROCm/Triton are supplied by the pinned AMD image.
+tokenizers>=0.21.1
+numpy>=2.1.0
+rich
+typing_extensions
+safetensors>=0.3.2
+ninja
+pillow
+pyyaml
+marisa_trie
+pydantic
+llguidance>=1.7.0
+fastapi-slim >= 0.115
+pydantic >= 2.11, < 3
+ruamel.yaml
+uvicorn >= 0.28.1
+jinja2 >= 3.0.0
+loguru
+sse-starlette >= 2.2.0
+packaging
+tokenizers >= 0.21.0
+numpy
+aiofiles
+aiohttp
+async_lru
+huggingface_hub
+psutil
+httptools >= 0.5.0
+requests
+uvloop ; platform_system == 'Linux' and platform_machine == 'x86_64'
+winloop ; platform_system == 'Windows'
+setuptools ; python_version >= '3.12'
+setuptools==81.0.0
+wheel==0.42.0
+ninja==1.13.2
