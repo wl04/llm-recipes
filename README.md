@@ -29,12 +29,12 @@ recipes/<model-format-hardware-memory>/
     assets/            # Optional screenshots used in the report
 ```
 
-The ExLlamaV3 container recipe also keeps its build and serving files at the recipe level:
+Container recipes also keep build and serving files at the recipe level. Native configuration filenames depend on the serving software:
 
 ```text
-recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/
+recipes/<model-format-hardware-memory>/
   setup.md             # Build, model preparation, and run instructions
-  tabby.yml            # Native TabbyAPI serving settings
+  <server-config>      # Native serving settings
   models.lock.json     # Model revisions, files, and draft conversion options
   container/           # Dockerfile, pinned dependencies, and build helpers
   scripts/             # Model preparation, serving, and generation checks
