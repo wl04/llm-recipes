@@ -1,6 +1,6 @@
 # ExLlamaV3 / ROCm setup
 
-The base image passed a PyTorch matrix multiplication on the RX 9070 XT. It contains Python 3.12.3, Torch 2.14.0+rocm10.1.0, and HIP 7.16.26385. The Dockerfile builds pinned upstream ExLlamaV3 and prepares TabbyAPI sources. The workstation also passed extension compilation, ExLlamaV3/DFlash2 and TabbyAPI schema imports, and the image’s GPU matrix multiplication check. Model conversion, loading, and generation are the next validation steps.
+The base image passed a PyTorch matrix multiplication on the RX 9070 XT. It contains Python 3.12.3, Torch 2.14.0+rocm10.1.0, and HIP 7.16.26385. The Dockerfile builds pinned upstream ExLlamaV3 and prepares TabbyAPI sources. The workstation also passed extension compilation, ExLlamaV3/DFlash2 and TabbyAPI schema imports, and the image’s GPU matrix multiplication check. Draft conversion and generation passed with drafting enabled and disabled, including prompts near 130K tokens. [Measured results](2026-11-05/summary.md) cover throughput and memory observations.
 
 ## Build on the workstation
 
@@ -56,7 +56,7 @@ The second command selects the RX 9070 XT by name and runs the pinned upstream E
 
 The target model is already quantized and stays in `qwen3.8-27b-exl3-3bpw`. Conversion refuses to overwrite existing output or work directories. If conversion fails, retain the error output and move those directories aside before starting a fresh attempt. Allow additional disk space for converted weights and working files.
 
-The helper prints the resulting draft weight size and records conversion arguments, build pins, and output checksums alongside the external weights. The next workstation check is model loading and generation with drafting disabled and enabled, followed by measuring context capacity and VRAM use.
+The helper prints the resulting draft weight size and records conversion arguments, build pins, and output checksums alongside the external weights. The recorded checks cover model loading and generation with drafting disabled and enabled at 4K and 128K allocations.
 
 ## Serve and check generation
 
@@ -93,7 +93,7 @@ After both modes generate successfully, increase the context in steps, restartin
 bash "$recipe/scripts/serve.sh" on 16384
 ```
 
-The context argument sets both maximum sequence length and cache capacity. A short generation at a larger allocation checks loading and basic execution; measuring performance at that context requires a prompt that actually fills it. Maximum working context and DFlash2 speedup remain to be measured on the workstation.
+The context argument sets both maximum sequence length and cache capacity. A short generation at a larger allocation checks loading and basic execution; measuring performance at that context requires a prompt that actually fills it. The recorded long-context checks processed approximately 130K input tokens at this allocation in both modes; see the results for measured speeds.
 
 An optional third argument selects the external model directory. The existing image is reused:
 
