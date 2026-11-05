@@ -16,6 +16,7 @@ RECIPE = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--draft", choices=("on", "off"), default="on")
+    parser.add_argument("--vision", choices=("on", "off"), default="off")
     parser.add_argument("--context", type=int, default=4096)
     parser.add_argument("--check-config", action="store_true")
     args = parser.parse_args()
@@ -23,7 +24,8 @@ def main():
         parser.error("context must be at least 1024 and a multiple of 256")
     yaml = YAML(typ="safe")
     config = yaml.load(RECIPE / "tabby.yml")
-    config["model"].update(max_seq_len=args.context, cache_size=args.context)
+    config["model"].update(max_seq_len=args.context, cache_size=args.context,
+                           vision=args.vision == "on", vision_offload=False)
     config["draft_model"]["draft_mode"] = "model" if args.draft == "on" else "disabled"
     sys.path.insert(0, "/opt/src/tabbyAPI")
     from common.config_models import TabbyConfigModel

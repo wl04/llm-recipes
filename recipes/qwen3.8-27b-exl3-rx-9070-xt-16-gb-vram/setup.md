@@ -62,12 +62,14 @@ The helper prints the resulting draft weight size and records conversion argumen
 
 The workstation converted the draft successfully: 0.932 GB of weights. `tabby.yml` contains the native serving settings: a 4096-token context, Q4 target and draft caches, one request at a time, and text input. The launcher selects the RX 9070 XT by name before starting TabbyAPI, mounts model files read-only, and exposes the API at `http://127.0.0.1:5000/v1`. Local API calls use no key; browser cross-origin requests are disabled. TabbyAPI runs in a temporary writable directory owned by your host user. Its file logs live there for the container lifetime; console output remains available through `sudo docker logs llm-recipes-exl3` while the container exists.
 
+The launcher accepts `--draft on|off`, `--vision on|off`, `--context TOKENS`, and `--models DIRECTORY` in any order. Defaults are drafting on, vision off, and a 4096-token context. These options override the corresponding values in `tabby.yml`; `--help` lists them.
+
 Start the target-only check in one terminal:
 
 ```bash
 cd ~/Dev/llm-recipes
 recipe=recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
-bash "$recipe/scripts/serve.sh" off 4096
+bash "$recipe/scripts/serve.sh" --draft off --vision off --context 4096
 ```
 
 Wait for the server to finish loading. In another terminal, run:
@@ -82,7 +84,7 @@ The check sends a fixed coding prompt with greedy sampling and a 128-token outpu
 Stop the server with `sudo docker stop llm-recipes-exl3`. Start it again with drafting enabled, then run the same generation check:
 
 ```bash
-bash "$recipe/scripts/serve.sh" on 4096
+bash "$recipe/scripts/serve.sh" --draft on --vision off --context 4096
 ```
 
 Confirm the startup output identifies the converted draft as loaded. Keep the startup output and any errors available while checking both modes. Watch `amdgpu_top` for dedicated VRAM and GTT usage; the generator response and server logs provide performance statistics.
@@ -90,15 +92,15 @@ Confirm the startup output identifies the converted draft as loaded. Keep the st
 After both modes generate successfully, increase the context in steps, restarting between runs: `16384`, `32768`, `65536`, `98304`, then `131072`. For example:
 
 ```bash
-bash "$recipe/scripts/serve.sh" on 16384
+bash "$recipe/scripts/serve.sh" --draft on --vision off --context 16384
 ```
 
 The context argument sets both maximum sequence length and cache capacity. A short generation at a larger allocation checks loading and basic execution; measuring performance at that context requires a prompt that actually fills it. The recorded long-context checks processed approximately 130K input tokens at this allocation in both modes; see the results for measured speeds.
 
-An optional third argument selects the external model directory. The existing image is reused:
+Use `--models` to select the external model directory. The existing image is reused:
 
 ```bash
-bash "$recipe/scripts/serve.sh" on 4096 "$HOME/Models/llm-recipes"
+bash "$recipe/scripts/serve.sh" --draft on --vision off --context 4096 --models "$HOME/Models/llm-recipes"
 ```
 
 ## Exercise the full context
@@ -115,13 +117,13 @@ The synthetic records exercise context capacity and throughput. The final coding
 
 ## GPU-resident vision
 
-The [vision result](2026-11-05-vision/summary.md) records successful screenshot reading with DFlash2 and a 131072-token allocation. To use this configuration, set these fields under `model` in `tabby.yml`:
+The [vision result](2026-11-05-vision/summary.md) records successful screenshot reading with DFlash2 and a 131072-token allocation. Start it with named options:
 
-```yaml
-  vision: true
-  vision_offload: false
+```bash
+bash recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/serve.sh \
+  --draft on --vision on --context 131072
 ```
 
-Restart the server with `scripts/serve.sh on 131072`. Send images through `/v1/chat/completions` using a message containing text and an `image_url` content item with a base64 `data:image/png;base64,...` URL. Embedded images work with the existing external-fetch restriction. The recorded request set temperature 0, `max_tokens: 256`, and `chat_template_kwargs: {enable_thinking: false}`.
+The launcher sets `vision_offload: false`, keeping vision weights GPU-resident. Send images through `/v1/chat/completions` using a message containing text and an `image_url` content item with a base64 `data:image/png;base64,...` URL. Embedded images work with the existing external-fetch restriction. The recorded request set temperature 0, `max_tokens: 256`, and `chat_template_kwargs: {enable_thinking: false}`.
 
 The observed post-request device VRAM usage was 16158 of 16304 MiB. The dated vision profile records this configuration separately from the text-only measurements.
