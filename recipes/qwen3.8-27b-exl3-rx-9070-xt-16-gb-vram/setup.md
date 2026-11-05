@@ -172,11 +172,14 @@ Create or edit `$PI_CODING_AGENT_DIR/models.json` with:
           "reasoning": true,
           "input": ["text", "image"],
           "contextWindow": 131072,
-          "maxTokens": 8192,
+          "maxTokens": 32768,
+          "thinkingLevelMap": {
+            "xhigh": "xhigh"
+          },
           "compat": {
             "maxTokensField": "max_tokens",
             "thinkingFormat": "qwen",
-            "supportsReasoningEffort": false
+            "supportsReasoningEffort": true
           }
         }
       ]
@@ -185,7 +188,7 @@ Create or edit `$PI_CODING_AGENT_DIR/models.json` with:
 }
 ```
 
-Pi's `openai-completions` adapter uses the chat-completions endpoint, including streamed responses and tool calls. The dummy API key makes the provider available in Pi; the recipe's local server has authentication disabled. `thinkingFormat: qwen` sends the thinking toggle as `enable_thinking`, which TabbyAPI forwards to the chat template.
+Pi's `openai-completions` adapter uses the chat-completions endpoint, including streamed responses and tool calls. The dummy API key makes the provider available in Pi; the recipe's local server has authentication disabled. `thinkingFormat: qwen` sends the thinking toggle as `enable_thinking`. With `supportsReasoningEffort: true`, Pi also sends `reasoning_effort`; TabbyAPI forwards both to the chat template. The explicit `thinkingLevelMap` entry makes `xhigh` available in Pi.
 
 Create or edit `$PI_CODING_AGENT_DIR/settings.json` with:
 
@@ -193,16 +196,16 @@ Create or edit `$PI_CODING_AGENT_DIR/settings.json` with:
 {
   "defaultProvider": "tabby-local",
   "defaultModel": "qwen3.8-27b-exl3-3bpw",
-  "defaultThinkingLevel": "off",
+  "defaultThinkingLevel": "xhigh",
   "compaction": {
     "enabled": true,
-    "reserveTokens": 16384,
+    "reserveTokens": 40960,
     "keepRecentTokens": 20000
   }
 }
 ```
 
-This starts with thinking off and an 8192-token response allowance. The compaction values retain Pi's current defaults, reserving room for responses and summarization as the conversation grows. Pi stores its sessions and user settings in the selected agent directory. Project configuration remains in `.pi` under the working project.
+This starts at `xhigh` with a 32,768-token allowance shared by reasoning and the final answer. Automatic compaction reserves 40,960 tokens, covering that allowance plus 8,192 tokens of additional headroom, and retains 20,000 recent tokens. These are starting settings for interactive coding; the Pi workflow remains to be measured on this workstation. Higher reasoning effort can increase response time; use `/thinking` to select a lower effort for simpler tasks. Pi stores its sessions and user settings in the selected agent directory. Project configuration remains in `.pi` under the working project.
 
 ### Start a session
 
