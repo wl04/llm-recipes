@@ -165,7 +165,6 @@ Use Pi’s standard `~/.pi/agent/` directory. Create it with `mkdir -p ~/.pi/age
           "reasoning": true,
           "input": ["text", "image"],
           "contextWindow": 131072,
-          "maxTokens": 32768,
           "thinkingLevelMap": {
             "xhigh": "xhigh"
           },
@@ -193,7 +192,7 @@ To make this model the startup selection, merge these settings into `~/.pi/agent
 }
 ```
 
-This starts at `xhigh` with a 32,768-token allowance shared by reasoning and the final answer. Pi manages automatic compaction using its defaults.
+This starts at `xhigh`. Pi uses its defaults for the total output allowance and automatic compaction.
 
 Pi stores sessions and user settings in `~/.pi/agent/`; project configuration lives in `.pi` under the working project. Higher reasoning effort can increase response time; use `/thinking` to select a lower effort for simpler tasks.
 
@@ -215,7 +214,7 @@ For example, add this field to the model entry in `models.json` to cap reasoning
 }
 ```
 
-This is an optional starting limit, not a benchmark-derived recommendation. It complements `xhigh` rather than replacing it, and leaves room within the 32,768-token total output allowance for the final answer. Pi forwards this explicit field through its OpenAI-compatible adapter. Merely setting Pi's `thinkingBudgets` does not send a budget with the compatibility configuration above; that mechanism also requires a supported `thinkingTokenBudgetField` mapping. The Pi tool-call workflow and budget behavior remain to be measured on the workstation.
+This is an optional starting limit, not a benchmark-derived recommendation. It complements `xhigh` rather than replacing it. Reasoning and the final answer share the total output allowance; choose any explicit reasoning budget with room for the answer. Pi forwards this explicit field through its OpenAI-compatible adapter. Merely setting Pi's `thinkingBudgets` does not send a budget with the compatibility configuration above; that mechanism also requires a supported `thinkingTokenBudgetField` mapping. The Pi tool-call workflow and budget behavior remain to be measured on the workstation.
 
 ### Start a session
 
