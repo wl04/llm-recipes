@@ -165,6 +165,15 @@ Use Pi’s standard `~/.pi/agent/` directory. Create it with `mkdir -p ~/.pi/age
           "reasoning": true,
           "input": ["text", "image"],
           "contextWindow": 131072,
+          "samplingParams": {
+            "temperature": 1,
+            "top_k": 20,
+            "top_p": 0.95,
+            "min_p": 0,
+            "repetition_penalty": 1,
+            "presence_penalty": 0,
+            "reasoning_budget_tokens": 8192
+          },
           "thinkingLevelMap": {
             "xhigh": "xhigh"
           },
@@ -179,6 +188,10 @@ Use Pi’s standard `~/.pi/agent/` directory. Create it with `mkdir -p ~/.pi/age
 ```
 
 Pi's `openai-completions` adapter uses the chat-completions endpoint, including streamed responses and tool calls. The dummy API key makes the provider available in Pi; the recipe's local server has authentication disabled. `thinkingFormat: qwen` sends the thinking toggle as `enable_thinking`; Pi’s default effort support for this endpoint also sends `reasoning_effort`. TabbyAPI forwards both to the chat template and accepts Pi’s default `max_completion_tokens` field. The explicit `thinkingLevelMap` entry makes `xhigh` available in Pi. Custom provider entries use their own model metadata, so this mapping is specified for the local model.
+
+The model-level `samplingParams` match the recorded [LM Studio configuration](../qwen3.8-27b-gguf-rx-9070-xt-16-gb-vram/2026-11-02/profile.yaml): temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, presence penalty 0, and an 8,192-token reasoning budget. The seed is omitted for stochastic sampling, matching LM Studio's random-seed selection. Pi sends these values with requests for this model; the inference engine translates them into its native sampler.
+
+Thinking is enabled by the `xhigh` selection below. TabbyAPI enforces `reasoning_budget_tokens` by ending the reasoning phase when the budget is reached; reasoning and the answer share Pi's total output allowance. The LM Studio profile records thinking enabled but no explicit reasoning effort, so `xhigh` remains the Pi choice rather than a verified effort match. LM Studio had its response-length limit disabled; Pi retains its default output limit. Pi also retains its default compaction behavior, while the LM Studio profile used middle truncation. The engines use different weight/cache quantizations and speculative implementations, so this alignment controls sampling and reasoning budget rather than making their execution identical.
 
 To make this model the startup selection, merge these settings into `~/.pi/agent/settings.json`. Keep your existing default provider/model if you prefer selecting this model through `/model`:
 
