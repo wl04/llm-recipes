@@ -169,9 +169,7 @@ Use Pi’s standard `~/.pi/agent/` directory. Create it with `mkdir -p ~/.pi/age
             "xhigh": "xhigh"
           },
           "compat": {
-            "maxTokensField": "max_tokens",
-            "thinkingFormat": "qwen",
-            "supportsReasoningEffort": true
+            "thinkingFormat": "qwen"
           }
         }
       ]
@@ -180,7 +178,7 @@ Use Pi’s standard `~/.pi/agent/` directory. Create it with `mkdir -p ~/.pi/age
 }
 ```
 
-Pi's `openai-completions` adapter uses the chat-completions endpoint, including streamed responses and tool calls. The dummy API key makes the provider available in Pi; the recipe's local server has authentication disabled. `thinkingFormat: qwen` sends the thinking toggle as `enable_thinking`. With `supportsReasoningEffort: true`, Pi also sends `reasoning_effort`; TabbyAPI forwards both to the chat template. The explicit `thinkingLevelMap` entry makes `xhigh` available in Pi.
+Pi's `openai-completions` adapter uses the chat-completions endpoint, including streamed responses and tool calls. The dummy API key makes the provider available in Pi; the recipe's local server has authentication disabled. `thinkingFormat: qwen` sends the thinking toggle as `enable_thinking`; Pi’s default effort support for this endpoint also sends `reasoning_effort`. TabbyAPI forwards both to the chat template and accepts Pi’s default `max_completion_tokens` field. The explicit `thinkingLevelMap` entry makes `xhigh` available in Pi. Custom provider entries use their own model metadata, so this mapping is specified for the local model.
 
 To make this model the startup selection, merge these settings into `~/.pi/agent/settings.json`. Keep your existing default provider/model if you prefer selecting this model through `/model`:
 
