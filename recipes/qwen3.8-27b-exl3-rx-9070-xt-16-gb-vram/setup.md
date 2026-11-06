@@ -194,26 +194,6 @@ This starts at `xhigh`. Pi uses its defaults for the total output allowance and 
 
 Pi stores sessions and user settings in `~/.pi/agent/`; project configuration lives in `.pi` under the working project. Higher reasoning effort can increase response time; use `/thinking` to select a lower effort for simpler tasks.
 
-### Optional reasoning budget
-
-`reasoning_effort` guides reasoning depth. A separate token budget caps the reasoning phase; `maxTokens` caps the whole generated response, including reasoning. Compaction manages conversation history independently.
-
-The pinned TabbyAPI accepts `reasoning_budget_tokens` (also `thinking_budget` or `thinking_token_budget`). When the budget is reached, it forces the reasoning phase to end so the model can answer. This can bound lengthy thinking, with a possible accuracy tradeoff.
-
-For example, add this field to the model entry in `models.json` to cap reasoning at 8,192 tokens when `xhigh` is selected:
-
-```json
-{
-  "samplingParamsByThinkingLevel": {
-    "xhigh": {
-      "reasoning_budget_tokens": 8192
-    }
-  }
-}
-```
-
-This is an optional starting limit, not a benchmark-derived recommendation. It complements `xhigh` rather than replacing it. Reasoning and the final answer share the total output allowance; choose any explicit reasoning budget with room for the answer. Pi forwards this explicit field through its OpenAI-compatible adapter. Merely setting Pi's `thinkingBudgets` does not send a budget with the compatibility configuration above; that mechanism also requires a supported `thinkingTokenBudgetField` mapping. The Pi tool-call workflow and budget behavior remain to be measured on the workstation.
-
 ### Start a session
 
 Start TabbyAPI from the repository root in one terminal:
