@@ -124,9 +124,7 @@ bash recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/serve.sh \
   --draft on --vision on --context 131072
 ```
 
-The launcher sets `vision_offload: false`, keeping vision weights GPU-resident. Send images through `/v1/chat/completions` using a message containing text and an `image_url` content item with a base64 `data:image/png;base64,...` URL. Embedded images work with the existing external-fetch restriction. The recorded request set temperature 0, `max_tokens: 256`, and `chat_template_kwargs: {enable_thinking: false}`.
-
-The observed post-request device VRAM usage was 16158 of 16304 MiB. The dated vision profile records this configuration separately from the text-only measurements.
+The launcher sets `vision_offload: false`, keeping vision weights GPU-resident.
 
 ## Pi coding agent
 
@@ -224,7 +222,5 @@ pi
 ```
 
 The model's `contextWindow` must match the serving allocation. For text-only serving, use `--vision off` and set `input` to `["text"]` in `models.json`. Open `/model` to reload model configuration and select the local model; `/thinking` changes the thinking setting.
-
-For an initial tool-use check, use a scratch project and ask Pi to read a file, make a small edit, run a command to verify it, and summarize the result. With vision enabled, also try reading an image.
 
 Upstream references: [model configuration](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/models-configuration.md), [agent directory](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/configuration.md), and [settings](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/settings.md).
