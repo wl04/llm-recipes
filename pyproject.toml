@@ -19,6 +19,26 @@ select = ["E", "F", "I", "UP", "B", "RUF"]
 "recipes/*/container/*.py" = ["E402", "I001"]
 
 [tool.mypy]
-files = ["scripts/generate_configurations.py", "tests"]
+files = [
+    "scripts/generate_configurations.py",
+    "recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/gpu.py",
+    "recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/serve.py",
+    "recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/prepare_models.py",
+    "tests",
+]
 strict = true
 warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = [
+    "torch",
+    "torch.*",
+    "ruamel.*",
+    "huggingface_hub",
+    "exllamav3",
+    "exllamav3.*",
+    "exllamav3_ext",
+    "common",
+    "common.*",
+]
+ignore_missing_imports = true

@@ -3,3 +3,4 @@ types-PyYAML==6.0.12.20261103
 pytest==9.2.0
 ruff==0.17.4
 mypy==2.4.1
+ruamel.yaml==0.19.1

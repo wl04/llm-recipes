@@ -2,14 +2,20 @@
 """Download pinned artifacts and convert the DFlash2 draft inside the recipe image."""
 
 import argparse
+import fcntl
 import hashlib
 import json
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
+
+import gpu
 
 RECIPE = Path(__file__).resolve().parents[1]
 
 
-def digest(path, algorithm="sha256", git_blob=False):
+def digest(path: Path, algorithm: str = "sha256", git_blob: bool = False) -> str:
     result = hashlib.new(algorithm)
     if git_blob:
         result.update(f"blob {path.stat().st_size}\0".encode())
@@ -19,13 +25,13 @@ def digest(path, algorithm="sha256", git_blob=False):
     return result.hexdigest()
 
 
-def write_json(path, value):
+def write_json(path: Path, value: Any) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, indent=2) + "\n")
     temporary.replace(path)
 
 
-def verify(root, spec):
+def verify(root: Path, spec: dict[str, Any]) -> None:
     manifest = json.loads((root / "prepared.json").read_text())
     if manifest["source"] != spec:
         raise RuntimeError(f"Source lock mismatch: {root}")
@@ -36,7 +42,7 @@ def verify(root, spec):
             raise RuntimeError(f"Checksum mismatch: {root / filename}")
 
 
-def download(root, spec):
+def download(root: Path, spec: dict[str, Any]) -> None:
     from huggingface_hub import HfApi, hf_hub_download
 
     destination = root / spec["directory"]
@@ -76,7 +82,7 @@ def download(root, spec):
     print(f"Prepared: {destination}", flush=True)
 
 
-def quantize(root, lock):
+def quantize(root: Path, lock: dict[str, Any]) -> None:
     source = root / lock["draft"]["directory"]
     output = root / lock["conversion"]["directory"]
     work = root / lock["conversion"]["work_directory"]
@@ -90,11 +96,8 @@ def quantize(root, lock):
     import torch
     from exllamav3.conversion.convert_model import main, parser, prepare
 
-    devices = [
-        i for i in range(torch.cuda.device_count()) if "RX 9070 XT" in torch.cuda.get_device_name(i)
-    ]
-    if len(devices) != 1:
-        raise RuntimeError(f"Expected exactly one RX 9070 XT, found {len(devices)}")
+    names = [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
+    device = gpu.select_device(names)
     arguments = [
         "-i",
         str(source),
@@ -103,7 +106,7 @@ def quantize(root, lock):
         "-w",
         str(work),
         "-d",
-        str(devices[0]),
+        str(device),
         *lock["conversion"]["arguments"],
     ]
     print(f"Converter arguments: {arguments}", flush=True)
@@ -136,7 +139,23 @@ def quantize(root, lock):
     print(f"Weight size: {sum(path.stat().st_size for path in weights) / 1e9:.3f} GB")
 
 
-def cli():
+@contextmanager
+def preparation_lock(models: Path) -> Iterator[None]:
+    """Hold the preparation lock; refuse to start when another process holds it."""
+    guard = (models / ".prepare.lock").open("a")
+    try:
+        try:
+            fcntl.flock(guard, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise SystemExit(
+                f"Another preparation is already running in {models}; wait for it to finish"
+            ) from exc
+        yield
+    finally:
+        guard.close()
+
+
+def cli() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("download", "quantize-draft"))
     parser.add_argument("--models", type=Path, default=Path("/models"))
@@ -148,10 +167,7 @@ def cli():
     lock = json.loads((RECIPE / "config/models.lock.json").read_text())
     args.models.mkdir(parents=True, exist_ok=True)
     # One preparation process per mounted model directory, including downloads.
-    import fcntl
-
-    with (args.models / ".prepare.lock").open("a") as guard:
-        fcntl.flock(guard, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    with preparation_lock(args.models):
         if args.action == "download":
             for name in ("target", "draft"):
                 download(args.models, lock[name])

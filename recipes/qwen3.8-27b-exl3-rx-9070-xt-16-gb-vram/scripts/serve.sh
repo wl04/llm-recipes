@@ -39,8 +39,8 @@ done
 context=$((10#$context))
 (( context >= 1024 && context % 256 == 0 )) || fail "--context must be at least 1024 and a multiple of 256"
 recipe_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-model_dir=$(cd -- "$model_dir" && pwd)
 mkdir -p -- "$model_dir/.cache" "$log_dir"
+model_dir=$(cd -- "$model_dir" && pwd)
 log_dir=$(cd -- "$log_dir" && pwd)
 echo "Persistent TabbyAPI logs: $log_dir"
 groups=(--group-add "$(stat -c %g /dev/kfd)")
