@@ -43,4 +43,4 @@ The confirmed context allocation was 131,072 tokens; this request used 5,835 inp
 
 ---
 
-[Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)
+[Recipe](../recipe.md) · [Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)

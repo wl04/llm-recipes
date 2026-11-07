@@ -4,6 +4,7 @@ Copy `templates/recipe/` to `recipes/<model-format-hardware-memory>/`. Choose a 
 
 ```text
 recipes/<model-format-hardware-memory>/
+  recipe.md
   YYYY-MM-DD/
     configuration.md
     summary.md
@@ -14,9 +15,11 @@ recipes/<model-format-hardware-memory>/
 2. Rename `YYYY-MM-DD` to the result date. For multiple configurations on one date, add a suffix such as `2026-11-02-mtp-on`.
 3. Fill in `profile.yaml` with the hardware, software, model, and effective settings used for that result. Use `null` for unknown values.
 4. Fill in `summary.md` with the workload, statistics, memory measurements, and observations. Keep one date in the title and number sessions #1, #2, and so on. Remove unused sections.
-5. Generate the configuration section using the commands below, and add links to this result’s configuration and summary to the root catalog.
+5. Generate the configuration section using the commands below, and regenerate the experiment table in `recipe.md`. Add one root catalog row per recipe, linking to `recipe.md`.
 
 For another result, copy the three files from `templates/recipe/YYYY-MM-DD/` into a new dated result folder. The existing result remains a snapshot of its configuration.
+
+Write a brief current-state description in `recipe.md` and keep its experiment markers. The generator builds its experiment table from dated report titles and links to each configuration and summary. For container recipes, add a prominent setup link and an implementation footer link when available.
 
 ## Container recipes
 
@@ -26,11 +29,11 @@ Store model weights and conversion working files outside the repository and moun
 
 Use an optional recipe-level `implementation.md` for current build mechanics, dependency locks, conversion settings, storage mounts, configuration flow, and measurement helpers. Describe the current implementation; keep measured observations in dated `summary.md` files. Link setup and implementation documents to each other in their footers.
 
-Link `setup.md` from the root catalog's Setup column and from the configuration and summary footers.
+Link `setup.md` from `recipe.md` and from the configuration and summary footers.
 
 ## Generate configuration guides
 
-Shared experiment templates live in `templates/recipe/`. The [generator](../scripts/generate_configurations.py) turns their completed profiles into configuration guides.
+Shared experiment templates live in `templates/recipe/`. The [generator](../scripts/generate_configurations.py) turns their completed profiles into configuration guides and updates recipe experiment tables.
 
 From the repository root, create a Python 3 virtual environment and install the pinned dependency:
 
@@ -58,12 +61,12 @@ Each profile has a `labels` mapping for readable field names and section heading
 
 When adding a setting, add its label too, for example `settings.Context length: Context length (tokens)`. The generator reports missing labels instead of displaying internal field paths. Keep units in labels where useful. The labels mapping itself is omitted from the generated guide.
 
-The profile identifier supplies the generated document title. Both Markdown documents end with links to their companions: configuration guides link to Results and Profile YAML; summaries link to Configuration and Profile YAML. When a recipe has `setup.md`, use these footers:
+The profile identifier supplies the generated document title. Both Markdown documents end with links to their companions: configuration guides link to Recipe, Results, and Profile YAML; summaries link to Recipe, Configuration, and Profile YAML. When a recipe has `setup.md`, use these footers:
 
-- Configuration: `[Results](summary.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)`
-- Summary: `[Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)`
+- Configuration: `[Recipe](../recipe.md) · [Results](summary.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)`
+- Summary: `[Recipe](../recipe.md) · [Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)`
 
-The generator adds the configuration link automatically when `setup.md` exists in the recipe folder. Update the authored summary footer to match. Recipes without `setup.md` use the two companion links. The configuration footer is generated. Record speculative decoding under `settings` alongside the other inference settings.
+The generator adds the Build and run link automatically when `setup.md` exists in the recipe folder. Update the authored summary footer to match. Recipes without `setup.md` link to Recipe and their two companion files. The configuration footer is generated. Record speculative decoding under `settings` alongside the other inference settings.
 
 ## Recipe identity and folder name
 

@@ -71,4 +71,4 @@ During near-128K prompt processing with DFlash2: 14,822 MiB total VRAM used. Poi
 
 ---
 
-[Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)
+[Recipe](../recipe.md) · [Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)

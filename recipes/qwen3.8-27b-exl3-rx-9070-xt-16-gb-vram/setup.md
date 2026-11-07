@@ -179,4 +179,4 @@ Changes to mounted scripts or serving settings take effect on the next launch. R
 
 ---
 
-[Implementation](implementation.md) · [Text results](2026-11-05/summary.md) · [Vision results](2026-11-05-vision/summary.md)
+[Recipe](recipe.md) · [Implementation](implementation.md) · [Text results](2026-11-05/summary.md) · [Vision results](2026-11-05-vision/summary.md)

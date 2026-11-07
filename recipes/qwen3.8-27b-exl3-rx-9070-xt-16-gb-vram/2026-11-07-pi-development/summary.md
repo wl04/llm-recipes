@@ -63,4 +63,4 @@ The session ended with a graceful shutdown and model unload. Alongside the clien
 
 ---
 
-[Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)
+[Recipe](../recipe.md) · [Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)

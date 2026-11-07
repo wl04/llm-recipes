@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render profile YAML into marked sections of recipe configuration guides."""
+"""Render configuration guides and recipe experiment indexes."""
 import argparse
 import html
 import re
@@ -11,6 +11,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 START = '<!-- BEGIN GENERATED CONFIGURATIONS -->'
 END = '<!-- END GENERATED CONFIGURATIONS -->'
+INDEX_START = '<!-- BEGIN GENERATED EXPERIMENTS -->'
+INDEX_END = '<!-- END GENERATED EXPERIMENTS -->'
 
 
 def cell(value):
@@ -81,7 +83,7 @@ def render(result):
             section_rows = list(rows({key: value}, labels))
         if section_rows:
             lines += ['', '| Setting | Value |', '|---|---|', *section_rows, '']
-    links = ['[Results](summary.md)']
+    links = ['[Recipe](../recipe.md)', '[Results](summary.md)']
     if (result.parent / 'setup.md').is_file():
         links.append('[Build and run](../setup.md)')
     links.append('[Profile YAML](profile.yaml)')
@@ -99,12 +101,34 @@ def update(result):
     return path, original, before + START + '\n\n' + render(result) + '\n' + END + after
 
 
+def update_index(recipe):
+    path = recipe / 'recipe.md'
+    original = path.read_text()
+    if original.count(INDEX_START) != 1 or original.count(INDEX_END) != 1:
+        raise ValueError(f'{path}: expected exactly one pair of experiment markers')
+    lines = ['## Experiments', '', '| Experiment | Configuration | Results |', '|---|---|---|']
+    for profile in sorted(recipe.glob('*/profile.yaml'), reverse=True):
+        result = profile.parent
+        summary = result / 'summary.md'
+        titles = [line[2:].strip() for line in summary.read_text().splitlines() if line.startswith('# ')]
+        if len(titles) != 1:
+            raise ValueError(f'{summary}: expected one report title')
+        if not (result / 'configuration.md').is_file():
+            raise ValueError(f'{result}: missing configuration.md')
+        lines.append(f'| {cell(titles[0])} | [Configuration]({result.name}/configuration.md) | [Results]({result.name}/summary.md) |')
+    before, rest = original.split(INDEX_START)
+    _, after = rest.split(INDEX_END)
+    return path, original, before + INDEX_START + '\n\n' + '\n'.join(lines) + '\n\n' + INDEX_END + after
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true', help='Fail if generated content is stale; write nothing')
     args = parser.parse_args()
     try:
-        changes = [update(p.parent) for p in sorted((ROOT / 'recipes').glob('*/*/profile.yaml'))]
+        profiles = sorted((ROOT / 'recipes').glob('*/*/profile.yaml'))
+        changes = [update(p.parent) for p in profiles]
+        changes += [update_index(recipe) for recipe in sorted({p.parent.parent for p in profiles})]
     except (ValueError, OSError, yaml.YAMLError) as exc:
         print(exc, file=sys.stderr)
         return 2

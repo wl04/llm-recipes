@@ -86,6 +86,6 @@
 
 ---
 
-[Results](summary.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)
+[Recipe](../recipe.md) · [Results](summary.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)
 
 <!-- END GENERATED CONFIGURATIONS -->
