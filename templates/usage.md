@@ -20,9 +20,11 @@ For another result, copy the three files from `templates/recipe/YYYY-MM-DD/` int
 
 ## Container recipes
 
-Keep `setup.md`, native serving settings, model revision locks, `container/` build files, and preparation/serving scripts at the recipe level, alongside the dated experiment folders. Document build, model preparation, and run commands in `setup.md`. Pin the base image digest, upstream revisions, and build dependencies used by the recipe.
+Keep `setup.md`, native serving settings, model revision locks, `container/` build files, and preparation/serving scripts at the recipe level, alongside the dated experiment folders. Structure `setup.md` as a practical guide: prerequisites, image build, model preparation, launch, client setup, and daily operation (including stopping and reading logs). Lead with the working launch configuration and keep installation checks short. Pin the base image digest, upstream revisions, and build dependencies used by the recipe.
 
 Store model weights and conversion working files outside the repository and mount them into the container. Include the external directory and mount commands in `setup.md`.
+
+Use an optional recipe-level `implementation.md` for current build mechanics, dependency locks, conversion settings, storage mounts, configuration flow, and measurement helpers. Describe the current implementation; keep measured observations in dated `summary.md` files. Link setup and implementation documents to each other in their footers.
 
 Link `setup.md` from the root catalog's Setup column and from the configuration and summary footers.
 
