@@ -36,8 +36,10 @@ Container recipes also keep build and serving files at the recipe level. Native 
 ```text
 recipes/<model-format-hardware-memory>/
   setup.md             # Build, model preparation, and run instructions
-  <server-config>      # Native serving settings
-  models.lock.json     # Model revisions, files, and draft conversion options
+  implementation.md    # Optional current implementation details
+  config/
+    <server-config>    # Native serving settings
+    models.lock.json   # Model revisions, files, and draft conversion options
   container/           # Dockerfile, pinned dependencies, and build helpers
   scripts/             # Model preparation, serving, and generation checks
   YYYY-MM-DD/          # Configuration snapshot and measured results

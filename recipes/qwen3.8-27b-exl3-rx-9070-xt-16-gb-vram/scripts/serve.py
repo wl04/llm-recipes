@@ -23,7 +23,7 @@ def main():
     if args.context < 1024 or args.context % 256:
         parser.error("context must be at least 1024 and a multiple of 256")
     yaml = YAML(typ="safe")
-    config = yaml.load(RECIPE / "tabby.yml")
+    config = yaml.load(RECIPE / "config/tabby.yml")
     config["model"].update(max_seq_len=args.context, cache_size=args.context,
                            vision=args.vision == "on", vision_offload=False)
     config["draft_model"]["draft_mode"] = "model" if args.draft == "on" else "disabled"

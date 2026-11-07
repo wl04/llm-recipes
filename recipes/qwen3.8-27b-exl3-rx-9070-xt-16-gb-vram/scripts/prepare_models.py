@@ -126,7 +126,7 @@ def cli():
     recipe_lock = json.loads((RECIPE / "container/versions.lock.json").read_text())
     if image_lock != recipe_lock:
         raise RuntimeError("Image build pins differ from the checkout; rebuild the recipe image")
-    lock = json.loads((RECIPE / "models.lock.json").read_text())
+    lock = json.loads((RECIPE / "config/models.lock.json").read_text())
     args.models.mkdir(parents=True, exist_ok=True)
     # One preparation process per mounted model directory, including downloads.
     import fcntl

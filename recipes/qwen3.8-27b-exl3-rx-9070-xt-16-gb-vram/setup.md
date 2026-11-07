@@ -160,7 +160,7 @@ Launcher options can appear in any order:
 | `--models DIRECTORY` | `~/Models/llm-recipes` | Select the prepared model directory |
 | `--logs DIRECTORY` | `~/.local/state/llm-recipes/exl3` | Select the persistent log directory |
 
-Edit [tabby.yml](tabby.yml) for sampling and other native server settings, then restart. Clients can override sampling defaults and set `reasoning_budget_tokens` per request. Pi’s `/thinking` selects reasoning effort.
+Edit [config/tabby.yml](config/tabby.yml) for sampling and other native server settings, then restart. Clients can override sampling defaults and set `reasoning_budget_tokens` per request. Pi’s `/thinking` selects reasoning effort.
 
 File logs survive container removal. The default location follows `$XDG_STATE_HOME` when set. TabbyAPI rotates logs at 20 MB, compresses rotated files, and retains them for one week. View them with:
 

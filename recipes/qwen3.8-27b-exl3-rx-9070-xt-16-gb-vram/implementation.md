@@ -8,7 +8,7 @@ The base image supplies Torch, the ROCm SDK, and Triton. The Dockerfile compiles
 
 ## Model preparation
 
-[models.lock.json](models.lock.json) records the target and original draft revisions. The download helper verifies file sizes and Git/LFS hashes and saves a local checksum manifest. The target is already quantized. The draft converter uses a 3.0-bit target, `mul1` codebook, and output scales enabled, and saves conversion settings and checksums beside the output.
+[config/models.lock.json](config/models.lock.json) records the target and original draft revisions. The download helper verifies file sizes and Git/LFS hashes and saves a local checksum manifest. The target is already quantized. The draft converter uses a 3.0-bit target, `mul1` codebook, and output scales enabled, and saves conversion settings and checksums beside the output.
 
 | External directory | Contents |
 | --- | --- |
@@ -31,7 +31,7 @@ The base image supplies Torch, the ROCm SDK, and Triton. The Dockerfile compiles
 
 The temporary runtime's `logs` directory points to `/logs`. TabbyAPI handles file rotation, compression, and retention. The container is removed when it exits; mounted files remain on the host.
 
-[tabby.yml](tabby.yml) holds native server defaults. Launch arguments select drafting, vision, sequence length, and cache capacity. Vision weights stay GPU-resident. Sampling entries use `force: false`, allowing explicit request values to take precedence. Thinking is enabled by default; clients control effort and can supply a reasoning budget. Pi connects through the OpenAI-compatible chat API.
+[config/tabby.yml](config/tabby.yml) holds native server defaults. Launch arguments select drafting, vision, sequence length, and cache capacity. Vision weights stay GPU-resident. Sampling entries use `force: false`, allowing explicit request values to take precedence. Thinking is enabled by default; clients control effort and can supply a reasoning budget. Pi connects through the OpenAI-compatible chat API.
 
 ## Measurement helpers
 
