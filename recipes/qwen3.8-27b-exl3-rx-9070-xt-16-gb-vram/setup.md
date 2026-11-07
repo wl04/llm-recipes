@@ -1,6 +1,6 @@
 # ExLlamaV3 / ROCm setup
 
-The base image passed a PyTorch matrix multiplication on the RX 9070 XT. It contains Python 3.12.3, Torch 2.14.0+rocm10.1.0, and HIP 7.16.26385. The Dockerfile builds pinned upstream ExLlamaV3 and prepares TabbyAPI sources. The workstation also passed extension compilation, ExLlamaV3/DFlash2 and TabbyAPI schema imports, and the image’s GPU matrix multiplication check. Draft conversion and generation passed with drafting enabled and disabled, including prompts near 130K tokens. [Measured results](2026-11-05/summary.md) cover throughput and memory observations.
+Build the ROCm image, prepare the model weights, and serve Qwen3.8-27B through TabbyAPI. See [measured results](2026-11-05/summary.md) for throughput and memory usage.
 
 ## Build on the workstation
 
@@ -23,7 +23,7 @@ sudo docker run --rm \
   llm-recipes/exl3-rdna4:probe
 ```
 
-The checker selects the RX 9070 XT by name, imports the precompiled extension and DFlash2 architecture, imports TabbyAPI's configuration schema, and runs a GPU matrix multiplication. A successful result prepares us for model loading; it does not exercise model kernels or speculative generation.
+The checker selects the RX 9070 XT, checks engine imports, and runs a GPU matrix multiplication.
 
 ## Build inputs
 
@@ -56,11 +56,11 @@ The second command selects the RX 9070 XT by name and runs the pinned upstream E
 
 The target model is already quantized and stays in `qwen3.8-27b-exl3-3bpw`. Conversion refuses to overwrite existing output or work directories. If conversion fails, retain the error output and move those directories aside before starting a fresh attempt. Allow additional disk space for converted weights and working files.
 
-The helper prints the resulting draft weight size and records conversion arguments, build pins, and output checksums alongside the external weights. The recorded checks cover model loading and generation with drafting disabled and enabled at 4K and 128K allocations.
+The helper prints the draft weight size and saves conversion settings and checksums alongside the external weights.
 
 ## Serve and check generation
 
-The workstation converted the draft successfully: 0.932 GB of weights. `tabby.yml` contains the native serving settings: a 4096-token context, Q4 target and draft caches, one request at a time, and text input. The launcher selects the RX 9070 XT by name before starting TabbyAPI, mounts model files read-only, and exposes the API at `http://127.0.0.1:5000/v1`. Local API calls use no key; browser cross-origin requests are disabled. TabbyAPI runs in a temporary writable directory owned by your host user. Its file logs live there for the container lifetime; console output remains available through `sudo docker logs llm-recipes-exl3` while the container exists.
+`tabby.yml` contains the native serving settings: a 4096-token context, Q4 target and draft caches, one request at a time, and text input. The launcher selects the RX 9070 XT by name before starting TabbyAPI, mounts model files read-only, and exposes the API at `http://127.0.0.1:5000/v1`. Local API calls use no key; browser cross-origin requests are disabled. TabbyAPI runs in a temporary writable directory owned by your host user. Its file logs live there for the container lifetime; console output remains available through `sudo docker logs llm-recipes-exl3` while the container exists.
 
 The launcher accepts `--draft on|off`, `--vision on|off`, `--context TOKENS`, and `--models DIRECTORY` in any order. Defaults are drafting on, vision off, and a 4096-token context. These options override the corresponding values in `tabby.yml`; `--help` lists them.
 
@@ -145,7 +145,7 @@ node --version
 pi --version
 ```
 
-Pi requires Node.js 22.19 or newer. With nvm, global npm packages live under your home directory; run the npm command as your regular user. Repeat it to update Pi. Global packages belong to the selected Node installation, so reinstall Pi after switching Node versions if necessary. Record the actual Pi and Node versions when adding experiment results.
+Run npm as your regular user. Repeat the install command to update Pi or after switching Node versions. Record Pi and Node versions with experiment results.
 
 ### Configure the local model
 
@@ -187,12 +187,6 @@ Use Pi’s standard `~/.pi/agent/` directory. Create it with `mkdir -p ~/.pi/age
 }
 ```
 
-Pi's `openai-completions` adapter uses the chat-completions endpoint, including streamed responses and tool calls. The dummy API key makes the provider available in Pi; the recipe's local server has authentication disabled. `thinkingFormat: qwen` sends the thinking toggle as `enable_thinking`; Pi’s default effort support for this endpoint also sends `reasoning_effort`. TabbyAPI forwards both to the chat template and accepts Pi’s default `max_completion_tokens` field. The explicit `thinkingLevelMap` entry makes `xhigh` available in Pi. Custom provider entries use their own model metadata, so this mapping is specified for the local model.
-
-The model-level `samplingParams` match the recorded [LM Studio configuration](../qwen3.8-27b-gguf-rx-9070-xt-16-gb-vram/2026-11-02/profile.yaml): temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, presence penalty 0, and an 8,192-token reasoning budget. The seed is omitted for stochastic sampling, matching LM Studio's random-seed selection. Pi sends these values with requests for this model; the inference engine translates them into its native sampler.
-
-Thinking is enabled by the `xhigh` selection below. TabbyAPI enforces `reasoning_budget_tokens` by ending the reasoning phase when the budget is reached; reasoning and the answer share Pi's total output allowance. The LM Studio profile records thinking enabled but no explicit reasoning effort, so `xhigh` remains the Pi choice rather than a verified effort match. LM Studio had its response-length limit disabled; Pi retains its default output limit. Pi also retains its default compaction behavior, while the LM Studio profile used middle truncation. The engines use different weight/cache quantizations and speculative implementations, so this alignment controls sampling and reasoning budget rather than making their execution identical.
-
 To make this model the startup selection, merge these settings into `~/.pi/agent/settings.json`. Keep your existing default provider/model if you prefer selecting this model through `/model`:
 
 ```json
@@ -203,10 +197,6 @@ To make this model the startup selection, merge these settings into `~/.pi/agent
 }
 ```
 
-This starts at `xhigh`. Pi uses its defaults for the total output allowance and automatic compaction.
-
-Pi stores sessions and user settings in `~/.pi/agent/`; project configuration lives in `.pi` under the working project. Higher reasoning effort can increase response time; use `/thinking` to select a lower effort for simpler tasks.
-
 ### Optional instruction for focused reasoning
 
 To try discouraging repeated reconsideration, launch Pi with an appended system instruction:
@@ -215,7 +205,7 @@ To try discouraging repeated reconsideration, launch Pi with an appended system 
 pi --append-system-prompt "Reason carefully and avoid repeating analysis that has already been resolved. Revisit a conclusion when new evidence contradicts it. When uncertainty remains, prefer a targeted check or test over repeated speculation."
 ```
 
-Compare similar coding tasks with and without this instruction, keeping `xhigh` and sampling settings unchanged. Record completion quality, generated tokens, and elapsed time. Its benefit for this recipe's coding workload is unmeasured.
+This optional instruction has not been measured on the recipe’s coding workload.
 
 ### Start a session
 
@@ -235,6 +225,6 @@ pi
 
 The model's `contextWindow` must match the serving allocation. For text-only serving, use `--vision off` and set `input` to `["text"]` in `models.json`. Open `/model` to reload model configuration and select the local model; `/thinking` changes the thinking setting.
 
-For an initial tool-use check, use a scratch project and ask Pi to read a file, make a small edit, run a command to verify it, and summarize the result. With vision enabled, also try reading an image. The recorded recipe results cover direct API requests; Pi's streamed tool-call workflow remains to be validated on the workstation.
+For an initial tool-use check, use a scratch project and ask Pi to read a file, make a small edit, run a command to verify it, and summarize the result. With vision enabled, also try reading an image.
 
 Upstream references: [model configuration](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/models-configuration.md), [agent directory](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/configuration.md), and [settings](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/settings.md).
