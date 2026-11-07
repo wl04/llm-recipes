@@ -19,6 +19,6 @@ select = ["E", "F", "I", "UP", "B", "RUF"]
 "recipes/*/container/*.py" = ["E402", "I001"]
 
 [tool.mypy]
-files = ["scripts/generate_configurations.py"]
+files = ["scripts/generate_configurations.py", "tests"]
 strict = true
 warn_unused_ignores = true

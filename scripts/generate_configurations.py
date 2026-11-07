@@ -3,6 +3,7 @@
 
 import argparse
 import html
+import os
 import re
 import sys
 from collections.abc import Generator, Mapping
@@ -101,6 +102,20 @@ def render(result: Path) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def write_atomic(path: Path, content: str) -> None:
+    """Write content through a temporary file, then atomically replace the document.
+
+    A crash before the rename leaves the previous document intact; a leftover
+    temporary file from an interrupted run is cleaned up on the next attempt.
+    """
+    temporary = path.with_name(path.name + ".tmp")
+    try:
+        temporary.write_text(content)
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def update(result: Path) -> tuple[Path, str, str]:
     path = result / "configuration.md"
     original = path.read_text()
@@ -161,7 +176,7 @@ def main() -> int:
             if args.check:
                 print(f"Stale: {path.relative_to(ROOT)}")
             else:
-                path.write_text(new)
+                write_atomic(path, new)
                 print(f"Updated: {path.relative_to(ROOT)}")
     return int(args.check and stale)
 
