@@ -18,7 +18,6 @@ model:
   inline_model_loading: false
   template_vars_default:
     enable_thinking: true
-  reasoning_budget_tokens: 8192
 draft_model:
   draft_mode: model
   draft_model_dir: /models
