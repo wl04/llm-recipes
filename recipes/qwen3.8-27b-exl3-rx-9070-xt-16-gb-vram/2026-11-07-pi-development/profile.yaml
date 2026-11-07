@@ -1,0 +1,137 @@
+id: Qwen3.8-27B / EXL3 / RX 9070 XT / 16 GB VRAM
+hardware:
+  gpu: AMD Radeon RX 9070 XT (gfx1201)
+  cpu: AMD Ryzen 7 9800X3D
+  memory:
+    architecture: discrete
+    dedicated_vram_gib: 16
+    system_ram_gib: 64
+    unified_memory_gib: null
+os:
+  name: Ubuntu
+  version: '26.10'
+  kernel: 7.3.0-10-generic
+  kernel_driver: amdgpu
+software:
+  harness: Pi
+  harness_version: 1.5.0 (reported workstation version)
+  engine: ExLlamaV3
+  engine_version: 1.6.6
+  engine_version_note: bd1f519172406a9560bd5c90e61000691bb69a07
+  backend: ROCm / HIP
+  backend_api_version: HIP 7.16.26385
+  gpu_driver: amdgpu
+  gpu_driver_version: null
+  pytorch: 2.14.0+rocm10.1.0
+  python: 3.12.3
+  docker: 29.9.3
+  base_image: rocm/pytorch@sha256:099f59a3bee9c436f5cc57db6bc6076fdeda579c57e9e22ae40f856d5905b3e4
+  server: TabbyAPI
+  server_version: 8f92fac5d9307bf1e09668c3715b32ff46ad0333
+model:
+  name: Qwen3.8-27B
+  format: EXL3
+  quantization: SC_3.00bpw_H4
+  repository: turboderp/Qwen3.8-27B-exl3
+  artifacts: []
+  revision: 86b95530f9d365d90dd24d01a997a8de0cdf6c55
+  draft_repository: z-lab/Qwen3.8-27B-DFlash2
+  draft_revision: 50307d4c4cde6860d4eee73e2547cd786fe8e8a4
+  draft_quantization: 3.0 bpw, mul1 codebook, --out_scales always
+  draft_size: 0.932 GB (decimal, converted weights)
+settings:
+  Speculative decoding: DFlash2
+  Context length: 131072
+  Cache capacity: 131072
+  Target cache: Q4
+  Draft cache: Q4
+  Chunk size: 1024
+  Maximum batch size: 1
+  Vision: true
+  Vision offload: false
+  Tensor parallel: false
+  GPU selection: RX 9070 XT only (HIP_VISIBLE_DEVICES)
+  Recurrent state: FP16
+  System recurrent cache MB: 4096
+  Temperature: 1
+  Top K: 20
+  Top P: 0.95
+  Min P: 0
+  Repeat penalty: 1
+  Presence penalty: 0
+  Thinking enabled: true
+  Reasoning effort: null
+  Server reasoning budget: Unset; client can specify per request
+  Maximum output tokens: 12,297–16,384 per request; 861 of 899 requests use 16,384
+  Request endpoint: /v1/chat/completions (streaming)
+  Configuration notes: Hardware and build pins follow the existing workstation recipe;
+    startup confirms ExLlamaV3 1.6.6 and the serving settings. Sampling values are
+    server fallbacks; requests explicitly log top-k 20 and top-p 0.95.
+labels:
+  hardware: Hardware
+  hardware.gpu: GPU
+  hardware.cpu: CPU
+  hardware.memory.architecture: Memory architecture
+  hardware.memory.dedicated_vram_gib: Dedicated VRAM (GB)
+  hardware.memory.system_ram_gib: System RAM (GB)
+  hardware.memory.unified_memory_gib: Unified memory (GB)
+  os: Operating system
+  os.name: Operating system
+  os.version: OS version
+  os.kernel: Kernel version
+  os.kernel_driver: Kernel driver
+  software: Software
+  software.harness: Agent / harness
+  software.harness_version: Harness version
+  software.engine: Inference engine
+  software.engine_version: Engine version
+  software.engine_version_note: Engine version notes
+  software.backend: Compute backend
+  software.backend_api_version: Backend API version
+  software.gpu_driver: GPU driver
+  software.gpu_driver_version: GPU driver version
+  model: Model
+  model.name: Model name
+  model.format: Model format
+  model.quantization: Weight quantization
+  model.repository: Model repository
+  model.artifacts: Model files
+  settings: Inference settings
+  settings.Speculative decoding: Speculative decoding
+  software.pytorch: PyTorch
+  software.python: Python
+  software.docker: Docker Engine
+  software.base_image: Base image
+  model.revision: Target revision
+  model.draft_repository: Draft repository
+  model.draft_revision: Draft source revision
+  model.draft_quantization: Draft quantization
+  model.draft_size: Converted draft weight size
+  settings.Context length: Context length
+  settings.Cache capacity: Cache capacity
+  settings.Target cache: Target cache
+  settings.Draft cache: Draft cache
+  settings.Chunk size: Chunk size
+  settings.Maximum batch size: Maximum batch size
+  settings.Vision: Vision
+  settings.Tensor parallel: Tensor parallel
+  settings.GPU selection: GPU selection
+  settings.Recurrent state: Recurrent state
+  settings.System recurrent cache MB: System recurrent cache MB
+  settings.Temperature: Temperature
+  settings.Seed: Seed
+  settings.Maximum output tokens: Maximum output tokens
+  settings.Request endpoint: Request endpoint
+  settings.Long prompt BOS: Long prompt bos
+  software.server: API server
+  software.server_version: API server revision
+  settings.Vision offload: Vision offload
+  settings.Top K: Top K
+  settings.Top P: Top P
+  settings.Min P: Min P
+  settings.Repeat penalty: Repeat penalty
+  settings.Presence penalty: Presence penalty
+  settings.Thinking enabled: Thinking enabled
+  settings.Reasoning effort: Reasoning effort
+  settings.Server reasoning budget: Server reasoning budget
+  settings.Configuration notes: Configuration notes
