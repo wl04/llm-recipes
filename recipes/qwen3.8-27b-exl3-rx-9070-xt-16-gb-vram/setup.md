@@ -4,11 +4,13 @@ Run Qwen3.8-27B with DFlash2, optional vision, and a local TabbyAPI endpoint.
 
 ## Prerequisites
 
-- Ubuntu with an AMD Radeon RX 9070 XT (16 GB VRAM) and 64 GB system RAM.
+- Ubuntu with an AMD RDNA4 GPU with at least 16 GB VRAM. Tested on an RX 9070 XT with 64 GB system RAM.
 - Docker Engine accessible through `sudo docker`, with `/dev/kfd` and `/dev/dri` available.
 - Python 3 on the host for the generation checks.
 - Disk space for approximately 17.3 GB of model downloads, plus converted weights, conversion working files, and the Docker image/build cache.
 - A checkout of this repository at `~/Dev/llm-recipes`.
+
+The scripts currently select the RX 9070 XT by name. For another RDNA4 GPU, adjust the GPU selection in the image checker, model-preparation helper, and serving launcher.
 
 ## Build the image
 
