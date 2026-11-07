@@ -207,6 +207,16 @@ This starts at `xhigh`. Pi uses its defaults for the total output allowance and 
 
 Pi stores sessions and user settings in `~/.pi/agent/`; project configuration lives in `.pi` under the working project. Higher reasoning effort can increase response time; use `/thinking` to select a lower effort for simpler tasks.
 
+### Optional instruction for focused reasoning
+
+To try discouraging repeated reconsideration, launch Pi with an appended system instruction:
+
+```bash
+pi --append-system-prompt "Reason carefully and avoid repeating analysis that has already been resolved. Revisit a conclusion when new evidence contradicts it. When uncertainty remains, prefer a targeted check or test over repeated speculation."
+```
+
+Compare similar coding tasks with and without this instruction, keeping `xhigh` and sampling settings unchanged. Record completion quality, generated tokens, and elapsed time. Its benefit for this recipe's coding workload is unmeasured.
+
 ### Start a session
 
 Start TabbyAPI from the repository root in one terminal:
