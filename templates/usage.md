@@ -31,16 +31,26 @@ Use an optional recipe-level `implementation.md` for current build mechanics, de
 
 Link `setup.md` from `recipe.md` and from the configuration and summary footers.
 
+## Repository checks
+
+From the repository root, create a virtual environment and install the pinned development dependencies:
+
+```bash
+uv venv .venv
+uv pip install -p .venv -r dev-requirements.txt
+```
+
+Run the CPU-only checks (ruff lint and format, mypy, pytest, shellcheck):
+
+```bash
+bash scripts/check.sh
+```
+
+The same command runs in CI (`.github/workflows/check.yml`). If `shellcheck` is not installed, `check.sh` skips the shell step with a warning. GPU and Docker verification is documented per recipe in `setup.md` and is not part of this check suite.
+
 ## Generate configuration guides
 
 Shared experiment templates live in `templates/recipe/`. The [generator](../scripts/generate_configurations.py) turns their completed profiles into configuration guides and updates recipe experiment tables.
-
-From the repository root, create a Python 3 virtual environment and install the pinned dependency:
-
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r scripts/requirements.txt
-```
 
 Generate the guides, then check that they are current:
 
