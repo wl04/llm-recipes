@@ -7,6 +7,7 @@ Usage: bash serve.sh [options]
   --vision on|off      GPU-resident vision (default: off)
   --context TOKENS     Context and cache capacity (default: 4096)
   --models DIRECTORY   External model directory (default: ~/Models/llm-recipes)
+  --logs DIRECTORY     Persistent logs (default: ~/.local/state/llm-recipes/exl3)
   -h, --help           Show this help
 HELP
 }
@@ -15,16 +16,18 @@ draft=on
 vision=off
 context=4096
 model_dir="$HOME/Models/llm-recipes"
+log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/llm-recipes/exl3"
 while (( $# )); do
     case "$1" in
         -h|--help) usage; exit 0 ;;
-        --draft|--vision|--context|--models)
+        --draft|--vision|--context|--models|--logs)
             (( $# >= 2 )) && [[ -n $2 && $2 != --* ]] || fail "Missing value for $1"
             case "$1" in
                 --draft) draft=$2 ;;
                 --vision) vision=$2 ;;
                 --context) context=$2 ;;
                 --models) model_dir=$2 ;;
+                --logs) log_dir=$2 ;;
             esac
             shift 2 ;;
         *) fail "Unknown argument: $1. Use named options." ;;
@@ -37,7 +40,9 @@ context=$((10#$context))
 (( context >= 1024 && context % 256 == 0 )) || fail "--context must be at least 1024 and a multiple of 256"
 recipe_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 model_dir=$(cd -- "$model_dir" && pwd)
-mkdir -p -- "$model_dir/.cache"
+mkdir -p -- "$model_dir/.cache" "$log_dir"
+log_dir=$(cd -- "$log_dir" && pwd)
+echo "Persistent TabbyAPI logs: $log_dir"
 groups=(--group-add "$(stat -c %g /dev/kfd)")
 for node in /dev/dri/renderD*; do groups+=(--group-add "$(stat -c %g "$node")"); done
 sudo docker run --rm --init --name llm-recipes-exl3 \
@@ -49,5 +54,6 @@ sudo docker run --rm --init --name llm-recipes-exl3 \
     --mount "type=bind,src=$recipe_dir,dst=/recipe,readonly" \
     --mount "type=bind,src=$model_dir,dst=/models,readonly" \
     --mount "type=bind,src=$model_dir/.cache,dst=/cache" \
+    --mount "type=bind,src=$log_dir,dst=/logs" \
     llm-recipes/exl3-rdna4:probe \
     python3 /recipe/scripts/serve.py --draft "$draft" --vision "$vision" --context "$context"

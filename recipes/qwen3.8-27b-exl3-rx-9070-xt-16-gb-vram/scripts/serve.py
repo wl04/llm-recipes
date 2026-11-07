@@ -62,6 +62,7 @@ def main():
     os.environ["HIP_VISIBLE_DEVICES"] = str(devices[0])
     print(f"Selected RX 9070 XT (original HIP index {devices[0]})", flush=True)
     runtime = prepare_runtime(Path("/opt/src/tabbyAPI"))
+    (runtime / "logs").symlink_to(Path("/logs"), target_is_directory=True)
     destination = runtime / "config.yml"
     destination.write_text(yaml_dump(config))
     os.chdir(runtime)
