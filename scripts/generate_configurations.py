@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Render configuration guides and recipe experiment indexes."""
+
 import argparse
 import html
 import re
+from collections.abc import Generator, Mapping
 from pathlib import Path
 import sys
 
@@ -15,13 +17,13 @@ INDEX_START = '<!-- BEGIN GENERATED EXPERIMENTS -->'
 INDEX_END = '<!-- END GENERATED EXPERIMENTS -->'
 
 
-def cell(value):
+def cell(value: object) -> str:
     if value is None:
         return '—'
     return html.escape(str(value)).replace('|', '&#124;').replace('\n', '<br>')
 
 
-def empty(value):
+def empty(value: object) -> bool:
     if value is None or (isinstance(value, str) and not value.strip()):
         return True
     if isinstance(value, (dict, list)):
@@ -30,7 +32,7 @@ def empty(value):
     return False
 
 
-def rows(data, labels, prefix=''):
+def rows(data: Mapping[str, object], labels: Mapping[str, object], prefix: str = '') -> Generator[str, None, None]:
     for key, value in data.items():
         if empty(value):
             continue
@@ -47,7 +49,7 @@ def rows(data, labels, prefix=''):
             yield f'| {cell(label)} | {cell(value)} |'
 
 
-def profile_identity(data):
+def profile_identity(data: Mapping[str, object]) -> tuple[str, str]:
     caption = data.get('id')
     if not isinstance(caption, str):
         raise ValueError('Profile id must be Model / Format / Hardware / Memory')
@@ -58,7 +60,7 @@ def profile_identity(data):
     return caption, slug
 
 
-def render(result):
+def render(result: Path) -> str:
     profile = result / 'profile.yaml'
     data = yaml.safe_load(profile.read_text())
     if not isinstance(data, dict):
@@ -91,17 +93,17 @@ def render(result):
     return '\n'.join(lines).rstrip() + '\n'
 
 
-def update(result):
+def update(result: Path) -> tuple[Path, str, str]:
     path = result / 'configuration.md'
     original = path.read_text()
     if original.count(START) != 1 or original.count(END) != 1:
         raise ValueError(f'{path}: expected exactly one pair of generated-section markers')
     before, rest = original.split(START)
-    old, after = rest.split(END)
+    _, after = rest.split(END)
     return path, original, before + START + '\n\n' + render(result) + '\n' + END + after
 
 
-def update_index(recipe):
+def update_index(recipe: Path) -> tuple[Path, str, str]:
     path = recipe / 'recipe.md'
     original = path.read_text()
     if original.count(INDEX_START) != 1 or original.count(INDEX_END) != 1:
@@ -121,7 +123,7 @@ def update_index(recipe):
     return path, original, before + INDEX_START + '\n\n' + '\n'.join(lines) + '\n\n' + INDEX_END + after
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true', help='Fail if generated content is stale; write nothing')
     args = parser.parse_args()
