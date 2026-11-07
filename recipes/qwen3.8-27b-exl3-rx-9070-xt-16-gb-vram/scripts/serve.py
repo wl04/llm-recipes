@@ -71,8 +71,9 @@ def verify_prepared_manifest(manifest: object, expected_spec: dict[str, Any], pa
     checksums = manifest.get("sha256")
     if not isinstance(checksums, dict) or not checksums:
         raise RuntimeError(f"{path}: prepared.json has no file checksums")
-    if set(checksums) != set(expected_spec["files"]):
-        raise RuntimeError(f"{path}: prepared model is incomplete; rerun the download")
+    missing = set(expected_spec["files"]) - set(checksums)
+    if missing:
+        raise RuntimeError(f"{path}: prepared model is incomplete, missing {sorted(missing)}")
 
 
 def verify_draft_manifest(

@@ -46,6 +46,16 @@ def test_verify_prepared_manifest_fails_when_source_spec_mismatches() -> None:
         serve.verify_prepared_manifest(manifest, spec, Path("/models/model"))
 
 
+def test_verify_prepared_manifest_accepts_extra_files_in_converted_output() -> None:
+    spec = {"repo_id": "repo", "revision": "abc", "directory": "model", "files": ["config.json"]}
+    manifest = {
+        "source": spec,
+        "sha256": {"config.json": "a", "quantization_config.json": "b", "source.json": "c"},
+    }
+
+    serve.verify_prepared_manifest(manifest, spec, Path("/models/model"))
+
+
 def test_verify_prepared_manifest_fails_when_locked_file_is_missing() -> None:
     spec = {
         "repo_id": "repo",
