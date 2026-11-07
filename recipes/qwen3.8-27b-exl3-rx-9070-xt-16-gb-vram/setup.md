@@ -62,6 +62,8 @@ The helper prints the draft weight size and saves conversion settings and checks
 
 `tabby.yml` contains the native serving settings: a 4096-token context, Q4 target and draft caches, one request at a time, and text input. The launcher selects the RX 9070 XT by name before starting TabbyAPI, mounts model files read-only, and exposes the API at `http://127.0.0.1:5000/v1`. Local API calls use no key; browser cross-origin requests are disabled. TabbyAPI runs in a temporary writable directory owned by your host user. Its file logs live there for the container lifetime; console output remains available through `sudo docker logs llm-recipes-exl3` while the container exists.
 
+`tabby.yml` sets model defaults: temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, presence penalty 0, thinking enabled, and an 8,192-token reasoning budget. Explicit client values take precedence. Restart the server after changing these settings; no image rebuild is needed.
+
 The launcher accepts `--draft on|off`, `--vision on|off`, `--context TOKENS`, and `--models DIRECTORY` in any order. Defaults are drafting on, vision off, and a 4096-token context. These options override the corresponding values in `tabby.yml`; `--help` lists them.
 
 Start the target-only check in one terminal:
@@ -163,15 +165,6 @@ Use Pi’s standard `~/.pi/agent/` directory. Create it with `mkdir -p ~/.pi/age
           "reasoning": true,
           "input": ["text", "image"],
           "contextWindow": 131072,
-          "samplingParams": {
-            "temperature": 1,
-            "top_k": 20,
-            "top_p": 0.95,
-            "min_p": 0,
-            "repetition_penalty": 1,
-            "presence_penalty": 0,
-            "reasoning_budget_tokens": 8192
-          },
           "thinkingLevelMap": {
             "xhigh": "xhigh"
           },

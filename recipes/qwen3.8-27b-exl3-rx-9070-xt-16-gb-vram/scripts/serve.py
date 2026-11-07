@@ -35,6 +35,10 @@ def main():
         annotation = TabbyConfigModel.model_fields[section].annotation
         model = next(t for t in get_args(annotation) if t is not type(None))
         unknown = set(fields) - set(model.model_fields)
+        if section == "sampling":
+            from common.sampling import BaseSamplerRequest, split_sampling_section
+            unknown -= set(BaseSamplerRequest.model_fields)
+            split_sampling_section(fields, "the sampling config")
         if unknown:
             raise ValueError(f"Unknown settings in {section}: {unknown}")
     TabbyConfigModel.model_validate(config)

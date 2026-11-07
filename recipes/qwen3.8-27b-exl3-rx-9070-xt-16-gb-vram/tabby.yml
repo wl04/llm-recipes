@@ -16,6 +16,9 @@ model:
   tensor_parallel: false
   vision: false
   inline_model_loading: false
+  template_vars_default:
+    enable_thinking: true
+  reasoning_budget_tokens: 8192
 draft_model:
   draft_mode: model
   draft_model_dir: /models
@@ -23,3 +26,22 @@ draft_model:
   draft_cache_mode: Q4
 memory:
   sysmem_recurrent_cache: 4096
+sampling:
+  temperature:
+    override: 1.0
+    force: false
+  top_k:
+    override: 20
+    force: false
+  top_p:
+    override: 0.95
+    force: false
+  min_p:
+    override: 0
+    force: false
+  repetition_penalty:
+    override: 1
+    force: false
+  presence_penalty:
+    override: 0
+    force: false
