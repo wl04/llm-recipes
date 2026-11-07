@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exercise a near-full context with synthetic records and a short completion."""
+
 import argparse
 import hashlib
 import json
@@ -12,8 +13,9 @@ BASE = "http://127.0.0.1:5000/v1"
 
 
 def post(route, data, timeout=120):
-    request = Request(BASE + route, data=json.dumps(data).encode(),
-                      headers={"Content-Type": "application/json"})
+    request = Request(
+        BASE + route, data=json.dumps(data).encode(), headers={"Content-Type": "application/json"}
+    )
     try:
         with urlopen(request, timeout=timeout) as response:
             return json.load(response)
@@ -23,11 +25,19 @@ def post(route, data, timeout=120):
 
 def build_prompt(budget, nonce, count):
     header = f"Run {nonce}. Read these synthetic service records.\n"
-    suffix = "\nWrite a Python function that counts records by service name.\n\ndef count_by_service(records):\n"
+    suffix = (
+        "\nWrite a Python function that counts records by service name."
+        "\n\ndef count_by_service(records):\n"
+    )
+
     def render(n):
-        records = (f"record {i}: service=worker_{i % 97}, duration_ms={(i * 37) % 10000}, status={'ok' if i % 13 else 'retry'}\n"
-                   for i in range(n))
+        records = (
+            f"record {i}: service=worker_{i % 97}, duration_ms={(i * 37) % 10000}, "
+            f"status={'ok' if i % 13 else 'retry'}\n"
+            for i in range(n)
+        )
         return header + "".join(records) + suffix
+
     low, high = 0, 128
     best, tokens = render(0), count(render(0))
     if tokens > budget:
@@ -59,25 +69,47 @@ def main():
         parser.error("leave at least 256 tokens of headroom beyond prompt + output")
     nonce = uuid4().hex
     print("Counting synthetic prompt tokens with the server tokenizer…", flush=True)
-    prompt, measured = build_prompt(args.prompt_tokens, nonce, lambda text:
-        post("/token/encode", {"text": text, "add_bos_token": False})["length"])
-    print(f"Sending {measured:,} input tokens; up to {args.output_tokens} output tokens. Watch amdgpu_top during prefill.", flush=True)
+    prompt, measured = build_prompt(
+        args.prompt_tokens,
+        nonce,
+        lambda text: post("/token/encode", {"text": text, "add_bos_token": False})["length"],
+    )
+    print(
+        f"Sending {measured:,} input tokens; up to {args.output_tokens} output tokens. "
+        "Watch amdgpu_top during prefill.",
+        flush=True,
+    )
     started = time.monotonic()
-    result = post("/completions", {
-        "model": "qwen3.8-27b-exl3-3bpw", "prompt": prompt,
-        "max_tokens": args.output_tokens, "temperature": 0, "seed": 42,
-        "add_bos_token": False, "stream": False,
-    }, timeout=args.timeout)
-    report = {"workload": "synthetic service records", "run_nonce": nonce,
-              "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
-              "tokenizer_prompt_tokens": measured,
-              "request_seconds": round(time.monotonic() - started, 3), **result}
+    result = post(
+        "/completions",
+        {
+            "model": "qwen3.8-27b-exl3-3bpw",
+            "prompt": prompt,
+            "max_tokens": args.output_tokens,
+            "temperature": 0,
+            "seed": 42,
+            "add_bos_token": False,
+            "stream": False,
+        },
+        timeout=args.timeout,
+    )
+    report = {
+        "workload": "synthetic service records",
+        "run_nonce": nonce,
+        "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+        "tokenizer_prompt_tokens": measured,
+        "request_seconds": round(time.monotonic() - started, 3),
+        **result,
+    }
     print(json.dumps(report, indent=2))
     if not result.get("choices") or not result["choices"][0].get("text"):
         raise RuntimeError("Server returned no generated text")
     actual = result.get("usage", {}).get("prompt_tokens")
     if actual != measured:
-        raise RuntimeError(f"Prompt count mismatch: sent {measured}, server reports {actual}; inspect truncation/tokenization")
+        raise RuntimeError(
+            "Prompt count mismatch: "
+            f"sent {measured}, server reports {actual}; inspect truncation/tokenization"
+        )
 
 
 if __name__ == "__main__":

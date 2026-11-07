@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Download pinned artifacts and convert the DFlash2 draft inside the recipe image."""
+
 import argparse
 import hashlib
 import json
@@ -57,8 +58,11 @@ def download(root, spec):
     hashes = {}
     for filename in spec["files"]:
         item = metadata[filename]
-        path = Path(hf_hub_download(spec["repo_id"], filename, revision=spec["revision"],
-                                    local_dir=destination))
+        path = Path(
+            hf_hub_download(
+                spec["repo_id"], filename, revision=spec["revision"], local_dir=destination
+            )
+        )
         if path.stat().st_size != item.size:
             raise RuntimeError(f"Size mismatch: {filename}")
         sha256 = digest(path)
@@ -78,18 +82,30 @@ def quantize(root, lock):
     work = root / lock["conversion"]["work_directory"]
     for path in (output, work):
         if path.exists():
-            raise RuntimeError(f"Refusing to overwrite {path}; move it aside before a fresh conversion")
+            raise RuntimeError(
+                f"Refusing to overwrite {path}; move it aside before a fresh conversion"
+            )
     verify(source, lock["draft"])
 
     import torch
-    from exllamav3.conversion.convert_model import parser, prepare, main
+    from exllamav3.conversion.convert_model import main, parser, prepare
 
-    devices = [i for i in range(torch.cuda.device_count())
-               if "RX 9070 XT" in torch.cuda.get_device_name(i)]
+    devices = [
+        i for i in range(torch.cuda.device_count()) if "RX 9070 XT" in torch.cuda.get_device_name(i)
+    ]
     if len(devices) != 1:
         raise RuntimeError(f"Expected exactly one RX 9070 XT, found {len(devices)}")
-    arguments = ["-i", str(source), "-o", str(output), "-w", str(work),
-                 "-d", str(devices[0]), *lock["conversion"]["arguments"]]
+    arguments = [
+        "-i",
+        str(source),
+        "-o",
+        str(output),
+        "-w",
+        str(work),
+        "-d",
+        str(devices[0]),
+        *lock["conversion"]["arguments"],
+    ]
     print(f"Converter arguments: {arguments}", flush=True)
     args, state, ok, error = prepare(parser.parse_args(arguments))
     if not ok:
@@ -107,12 +123,15 @@ def quantize(root, lock):
             if not (output / filename).is_file():
                 raise RuntimeError(f"Missing converted shard: {filename}")
     files = [path for path in output.iterdir() if path.is_file()]
-    write_json(output / "prepared.json", {
-        "source": lock["draft"],
-        "build": json.loads((RECIPE / "container/versions.lock.json").read_text()),
-        "arguments": arguments,
-        "sha256": {path.name: digest(path) for path in files},
-    })
+    write_json(
+        output / "prepared.json",
+        {
+            "source": lock["draft"],
+            "build": json.loads((RECIPE / "container/versions.lock.json").read_text()),
+            "arguments": arguments,
+            "sha256": {path.name: digest(path) for path in files},
+        },
+    )
     print(f"Converted draft: {output}", flush=True)
     print(f"Weight size: {sum(path.stat().st_size for path in weights) / 1e9:.3f} GB")
 
@@ -130,6 +149,7 @@ def cli():
     args.models.mkdir(parents=True, exist_ok=True)
     # One preparation process per mounted model directory, including downloads.
     import fcntl
+
     with (args.models / ".prepare.lock").open("a") as guard:
         fcntl.flock(guard, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if args.action == "download":

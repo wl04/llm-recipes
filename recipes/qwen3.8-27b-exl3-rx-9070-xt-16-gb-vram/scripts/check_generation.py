@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Send one short generation request to the local recipe server."""
+
 import json
 import time
 from urllib.request import Request, urlopen
@@ -12,14 +13,23 @@ def main():
     expected = "qwen3.8-27b-exl3-3bpw"
     if not any(model["id"] == expected for model in models):
         raise RuntimeError(f"Expected loaded model {expected}; received {models}")
-    request = Request(base + "/completions", data=json.dumps({
-        "model": expected,
-        "prompt": "Write a Python function that returns the unique items in a list, preserving their order.\n\ndef unique_items(items):\n",
-        "max_tokens": 128,
-        "temperature": 0,
-        "seed": 42,
-        "stream": False,
-    }).encode(), headers={"Content-Type": "application/json"})
+    request = Request(
+        base + "/completions",
+        data=json.dumps(
+            {
+                "model": expected,
+                "prompt": (
+                    "Write a Python function that returns the unique items in a list, "
+                    "preserving their order.\n\ndef unique_items(items):\n"
+                ),
+                "max_tokens": 128,
+                "temperature": 0,
+                "seed": 42,
+                "stream": False,
+            }
+        ).encode(),
+        headers={"Content-Type": "application/json"},
+    )
     started = time.monotonic()
     with urlopen(request, timeout=600) as response:
         result = json.load(response)

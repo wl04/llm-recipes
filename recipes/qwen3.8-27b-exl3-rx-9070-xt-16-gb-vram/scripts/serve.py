@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Validate native TabbyAPI settings and launch on the discrete GPU."""
+
 import argparse
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 from ruamel.yaml import YAML
 
@@ -24,19 +25,26 @@ def main():
         parser.error("context must be at least 1024 and a multiple of 256")
     yaml = YAML(typ="safe")
     config = yaml.load(RECIPE / "config/tabby.yml")
-    config["model"].update(max_seq_len=args.context, cache_size=args.context,
-                           vision=args.vision == "on", vision_offload=False)
+    config["model"].update(
+        max_seq_len=args.context,
+        cache_size=args.context,
+        vision=args.vision == "on",
+        vision_offload=False,
+    )
     config["draft_model"]["draft_mode"] = "model" if args.draft == "on" else "disabled"
     sys.path.insert(0, "/opt/src/tabbyAPI")
     from common.config_models import TabbyConfigModel
+
     # Pydantic otherwise ignores misspelled fields in these upstream models.
     for section, fields in config.items():
         from typing import get_args
+
         annotation = TabbyConfigModel.model_fields[section].annotation
         model = next(t for t in get_args(annotation) if t is not type(None))
         unknown = set(fields) - set(model.model_fields)
         if section == "sampling":
             from common.sampling import BaseSamplerRequest, split_sampling_section
+
             unknown -= set(BaseSamplerRequest.model_fields)
             split_sampling_section(fields, "the sampling config")
         if unknown:
@@ -50,12 +58,18 @@ def main():
         raise RuntimeError("Image pins differ from checkout; rebuild the recipe image")
     for section in ("model", "draft_model") if args.draft == "on" else ("model",):
         prefix = "draft_" if section == "draft_model" else ""
-        folder = Path(config[section][prefix + "model_dir"]) / config[section][prefix + "model_name"]
+        folder = (
+            Path(config[section][prefix + "model_dir"]) / config[section][prefix + "model_name"]
+        )
         for filename in ("config.json", "prepared.json"):
             if not (folder / filename).is_file():
                 raise RuntimeError(f"Missing prepared model file: {folder / filename}")
     # Probe in a child process so visibility is set before the server initializes HIP.
-    probe = 'import torch,json; print(json.dumps([i for i in range(torch.cuda.device_count()) if "RX 9070 XT" in torch.cuda.get_device_name(i)]))'
+    probe = (
+        "import torch,json; "
+        "print(json.dumps([i for i in range(torch.cuda.device_count()) "
+        'if "RX 9070 XT" in torch.cuda.get_device_name(i)]))'
+    )
     devices = json.loads(subprocess.check_output([sys.executable, "-c", probe], text=True))
     if len(devices) != 1:
         raise RuntimeError(f"Expected one RX 9070 XT, found {devices}")
@@ -66,7 +80,9 @@ def main():
     destination = runtime / "config.yml"
     destination.write_text(yaml_dump(config))
     os.chdir(runtime)
-    os.execv(sys.executable, [sys.executable, "/opt/src/tabbyAPI/main.py", "--config", str(destination)])
+    os.execv(
+        sys.executable, [sys.executable, "/opt/src/tabbyAPI/main.py", "--config", str(destination)]
+    )
 
 
 def prepare_runtime(source):
@@ -79,6 +95,7 @@ def prepare_runtime(source):
 
 def yaml_dump(config):
     from io import StringIO
+
     stream = StringIO()
     YAML().dump(config, stream)
     return stream.getvalue()
