@@ -27,7 +27,7 @@ Document the recipe's context, drafting, and vision defaults from `config/launch
 
 ## Connect the client
 
-Provide the client installation and connection settings, including API URL, served model identifier, and supported reasoning, tool-use, and image options.
+Link to the shared [Pi setup guide](../../docs/clients/pi.md) when using Pi. Provide recipe-specific connection settings, including API URL, served model identifier, and supported reasoning, tool-use, and image options.
 
 ## Manage the server
 
@@ -38,11 +38,7 @@ python3 scripts/launch.py logs coding --follow
 python3 scripts/launch.py stop coding
 ```
 
-`--detach` runs in the background. Without it, startup stays attached and Ctrl+C stops the server. Ctrl+C while following logs exits the log viewer and leaves the server running.
-
-The instance name defaults to the recipe directory name. Use `--name` to choose another name and `--port` to select an available host port. Update the client's API address when changing the port. `status` reports container state; use the server readiness check to confirm the model is ready.
-
-Logs default to `${XDG_STATE_HOME:-$HOME/.local/state}/llm-recipes/coding` for this named instance. Use `--logs DIRECTORY` to select another directory. The container is removed on exit; mounted file logs remain on the host. Describe this server's log filenames and retention settings.
+Link to the [launcher guide](../../docs/launcher.md) for shared commands, instance naming, ports, log locations, and Ctrl+C behavior. Describe this server's file-log names and retention settings.
 
 Edit the native server configuration and restart to change server defaults. Document when the image needs rebuilding.
 

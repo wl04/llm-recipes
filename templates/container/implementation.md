@@ -12,11 +12,9 @@ Identify the model lock and conversion settings. List the expected prepared mode
 
 ## Serving and storage
 
-`config/launch.json` identifies the API-server adapter, inference engine, image, and launch defaults. The recipe directory supplies its identifier. The shared launcher discovers these manifests, validates options, and manages named Docker instances. Native server configuration stays in `config/`.
+Identify the API-server adapter and inference engine selected by `config/launch.json`. Link to the [launcher guide](../../docs/launcher.md) for common lifecycle behavior.
 
-Document the serving entry point, native configuration file, GPU selection, host/container paths, and read-only or writable mounts. Describe persistent logs and runtime caches.
-
-`scripts/launcher.py` in the repository root provides discovery, command planning, and process operations. `scripts/launch.py` provides the CLI. Instances carry Docker labels recording the recipe, API-server adapter, engine, and instance name.
+Document the recipe's serving entry point, native configuration file, GPU selection, host/container paths, and read-only or writable mounts. Describe server-specific logging and runtime caches.
 
 ## Measurement helpers
 

@@ -1,4 +1,4 @@
-# Using the templates
+# Adding recipes and results
 
 Copy `templates/recipe/` to `recipes/<model-format-hardware-memory>/`. Choose a descriptive lowercase folder name, such as `qwen3.8-27b-gguf-rx-9070-xt-16-gb-vram`.
 
@@ -52,34 +52,11 @@ Use an optional recipe-level `implementation.md` for current build mechanics, de
 
 Link `setup.md` from `recipe.md` and from the configuration and summary footers.
 
-## Repository checks
+## Shared guides
 
-From the repository root, create a virtual environment and install the pinned development dependencies:
+Use the [launcher guide](launcher.md) for container commands, instance naming, and launch-manifest fields. Follow [Pi setup](clients/pi.md) for client installation and the recipe's setup page for its provider configuration.
 
-```bash
-uv venv .venv
-uv pip install -p .venv -r dev-requirements.txt
-```
-
-Run the CPU-only checks (ruff lint and format, mypy, pytest, shellcheck):
-
-```bash
-bash scripts/check.sh
-```
-
-The same command runs in CI (`.github/workflows/check.yml`). If `shellcheck` is not installed, `check.sh` skips the shell step with a warning. GPU and Docker verification is documented per recipe in `setup.md` and is not part of this check suite.
-
-## Shared launcher
-
-[`scripts/launch.py`](../scripts/launch.py) provides `list`, `start`, `ps`, `status`, `logs`, and `stop` commands for discovered container recipes. Run `python3 scripts/launch.py start <recipe> --help` for launch options. It uses the host Python 3 standard library and `sudo docker`.
-
-Native engine configuration stays in the recipe. The launcher owns Docker lifecycle and host mounts; the recipe entry point validates native settings and starts its server. Launchable recipes contain `config/launch.json`; the parent recipe directory supplies the recipe identifier. The manifest declares `adapter`, `engine`, `image`, `port`, `context`, `draft`, and `vision`. All fields are required and checked. `adapter` identifies the API server integration; `engine` identifies its inference engine. `port` is the container API port and the default host port; `--port` changes only the host mapping. Launch defaults are overridden by explicit CLI options. The current adapter accepts `draft` and `vision` as `on`/`off` (vision runs on the GPU), and context capacities of at least 1,024 tokens in multiples of 256, up to nine digits. Instance names are limited to 160 characters. The current supported combination is `tabbyapi` / `exllamav3`; copy the existing manifest for another prepared recipe using that combination. Native server settings remain in their own configuration file. Result profiles remain dated observations.
-
-`start <recipe> --name <instance>` chooses a recipe and an optional instance name. The default instance name is the recipe directory name. `status`, `logs`, and `stop` take instance names; `ps` lists running instances through Docker labels. Logs default to `$XDG_STATE_HOME/llm-recipes/<instance>` (or `~/.local/state/llm-recipes/<instance>`). Distinct instances need distinct names and available host ports; use `--port` to select a port. Names use lowercase letters, digits, dots, dashes, and underscores and start with a letter or digit.
-
-Implement a serving adapter before registering a new API server. Desktop recipes use their application's launch flow.
-
-`start` runs attached by default; Ctrl+C stops the server. Add `--detach` to return to the shell while the server runs. `logs <instance> --follow` follows console output; Ctrl+C ends log following while the server continues. `stop <instance>` stops the server. Containers are removed on exit; persistent file logs remain in the selected host directory. `status` reports container state; check the server’s readiness endpoint or status page for model readiness. `--dry-run` prints the launch command without creating directories or accessing GPU devices.
+Install the pinned development dependencies using [development setup](project-instructions.md#development-dependencies-and-checks) before running the generator. Run the repository checks described there after changing code or templates.
 
 ## Generate configuration guides
 
@@ -128,3 +105,7 @@ All results in a recipe use the same `id`. The generator checks the folder name 
 Use GB for hardware capacities in captions and display labels. YAML `_gib` keys retain binary capacity values; GB is the hardware display convention, not a numeric conversion. Keep the units reported by measurement tools, such as MiB, in result statistics.
 
 The generated guide omits null values, blank strings, empty lists/mappings, and sections containing only empty values. Numeric zero and boolean false remain visible.
+
+---
+
+[All recipes](../README.md) · [Launcher](launcher.md) · [Development](project-instructions.md)

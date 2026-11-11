@@ -67,20 +67,7 @@ The check prints generated text and timings. Run it again to check warm performa
 
 Run [Pi](https://github.com/badlogic/pi-mono) on the Ubuntu host, in the project you want it to work on. It connects to TabbyAPI at `http://127.0.0.1:5000/v1`; Pi handles files, shell commands, and conversation history on the host.
 
-### Install
-
-Install [nvm using its official instructions](https://github.com/nvm-sh/nvm#installing-and-updating), then open a new terminal. Use Node.js LTS and the latest stable Pi release:
-
-```bash
-nvm install --lts
-nvm alias default 'lts/*'
-nvm use default
-npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest
-node --version
-pi --version
-```
-
-Run npm as your regular user. Repeat the install command to update Pi or after switching Node versions. Record Pi and Node versions with experiment results.
+Install Pi using the shared [Pi setup guide](../../docs/clients/pi.md), then configure this recipe below.
 
 ### Configure the local model
 
@@ -135,65 +122,28 @@ This optional instruction has not been measured on the recipe’s coding workloa
 
 ### Start a session
 
-Once the server is ready, launch Pi from your working project in another terminal:
-
-```bash
-cd /path/to/your/project
-pi
-```
+Once the server is ready, [start Pi in your working project](../../docs/clients/pi.md#start-a-session).
 
 The model's `contextWindow` must match the serving allocation. For text-only serving, use `--vision off` and set `input` to `["text"]` in `models.json`. Open `/model` to reload model configuration and select the local model; `/thinking` changes the thinking setting.
 
 ## Manage the server
 
-Stop the container, then rerun the launch command to restart it:
-
 ```bash
+python3 scripts/launch.py logs coding --follow
 python3 scripts/launch.py stop coding
 ```
 
-List available recipes, inspect container state, or preview a launch:
+See the [launcher guide](../../docs/launcher.md) for detached startup, Ctrl+C behavior, instance names, ports, and persistent log paths. Add `--detach` to the startup command to run in the background.
 
-```bash
-python3 scripts/launch.py list
-python3 scripts/launch.py ps
-python3 scripts/launch.py status coding
-python3 scripts/launch.py start qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram --name coding --draft on --vision on --context 131072 --dry-run
-```
+The [launch manifest](config/launch.json) defaults to DFlash2 on, GPU vision off, and a 4,096-token context. The startup command above enables vision and sets 131,072 tokens. Pass the model directory selected during preparation with `--models`; use `--logs` to select an existing log directory.
 
-`status` reports Docker container state. Use the browser status page to check model readiness. `--dry-run` prints the command without creating directories or requiring GPU devices; device group IDs are resolved at actual launch. Add `--detach` to run in the background. A stopped container is removed automatically; file logs remain in the selected host directory.
+Edit [config/tabby.yml](config/tabby.yml) for sampling and other native server settings, then restart. Clients can override sampling defaults and set `reasoning_budget_tokens` per request. Pi's `/thinking` selects reasoning effort.
 
-The examples name the instance `coding`. Without `--name`, the recipe directory name identifies the instance. Use a distinct name and host port for another instance. Docker reports an error if the name or port is already in use.
-
-Launcher options can appear in any order:
-
-| Option | Default | Purpose |
-| --- | --- | --- |
-| `--name NAME` | Recipe directory name | Select a running instance and its default log directory |
-| `--detach` | off | Run in the background |
-| `--port PORT` | `5000` | Host loopback port; update the Pi endpoint if changed |
-| `--dry-run` | off | Preview the launch command |
-| `--draft on\|off` | `on` | Enable DFlash2 |
-| `--vision on\|off` | `off` | Enable GPU-resident vision |
-| `--context TOKENS` | `4096` | Set sequence length and cache capacity; a multiple of 256, at least 1024 |
-| `--models DIRECTORY` | `~/Models/llm-recipes` | Select the prepared model directory |
-| `--logs DIRECTORY` | `~/.local/state/llm-recipes/<instance>` | Select the persistent log directory |
-
-Edit [config/tabby.yml](config/tabby.yml) for sampling and other native server settings, then restart. Clients can override sampling defaults and set `reasoning_budget_tokens` per request. Pi’s `/thinking` selects reasoning effort.
-
-The earlier `llm-recipes-exl3` container can be stopped with `python3 scripts/launch.py stop exl3`. To keep using an existing log directory, pass its path with `--logs`.
-
-File logs survive container removal. The default location follows `$XDG_STATE_HOME` when set. TabbyAPI rotates logs at 20 MB, compresses rotated files, and retains them for one week. View them with:
+TabbyAPI rotates file logs at 20 MB, compresses rotated files, and retains them for one week. For the `coding` instance's default directory:
 
 ```bash
 ls "${XDG_STATE_HOME:-$HOME/.local/state}/llm-recipes/coding"
 less /path/to/selected.log
-```
-
-While the container exists, stream its console output with:
-
-```bash
-python3 scripts/launch.py logs coding --follow
 ```
 
 Changes to mounted scripts or serving settings take effect on the next launch. Rebuild the image after changing build inputs or dependency pins.

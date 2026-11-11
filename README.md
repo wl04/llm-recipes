@@ -37,6 +37,7 @@ recipes/<model-format-hardware-memory>/
   setup.md             # Build, model preparation, and run instructions
   implementation.md    # Optional current implementation details
   config/
+    launch.json        # API-server adapter, image, and launch defaults
     <server-config>    # Native serving settings
     models.lock.json   # Model revisions, files, and draft conversion options
   container/           # Dockerfile, pinned dependencies, and build helpers
@@ -46,4 +47,4 @@ recipes/<model-format-hardware-memory>/
 
 ---
 
-[Adding or updating experiments](templates/usage.md)
+[Adding recipes and results](docs/authoring.md) · [Launcher guide](docs/launcher.md) · [Pi setup](docs/clients/pi.md) · [Development](docs/project-instructions.md)
