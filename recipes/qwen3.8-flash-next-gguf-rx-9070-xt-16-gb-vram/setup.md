@@ -45,6 +45,10 @@ python3 scripts/launch.py start \
 
 Use `--draft off` for the baseline and `--vision off` to disable image processing. Missing prepared artifacts are reported before engine startup. API address: `http://127.0.0.1:8080/v1`; readiness: `curl -f http://127.0.0.1:8080/health`.
 
+## Sampling
+
+Server defaults in `config/strata.json` are temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, and presence penalty 0. Requests can override each value. Strata uses a flat `sampling` object with numeric values.
+
 ## Logs
 
 `server.log` retains API console output; `engine.log` retains engine and vision output. Both append under the selected host log directory and remain after the container exits. Rotate or archive these files while the server is stopped.

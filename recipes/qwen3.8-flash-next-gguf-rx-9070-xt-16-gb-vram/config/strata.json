@@ -37,5 +37,13 @@
     "mmproj": "/models/strata/models/mmproj-Qwen3.8-Flash-Next-BF16.gguf",
     "model": "/models/strata/models/IQ3_XXS/Qwen3.8-Flash-Next-GSQ-RCO-IQ3_XXS-00001-of-00002.gguf",
     "gpu": false
+  },
+  "sampling": {
+    "temperature": 1.0,
+    "top_k": 20,
+    "top_p": 0.95,
+    "min_p": 0,
+    "repetition_penalty": 1,
+    "presence_penalty": 0
   }
 }
