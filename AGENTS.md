@@ -1,133 +1,113 @@
-# Правила разработки для агента
+# Agent development rules
 
-## Применение правил
+## Applying these rules
 
-- Общие правила задают смысл требований; языковые разделы уточняют реализацию. Явные соглашения проекта имеют приоритет над рекомендациями по умолчанию.
-- Применяй особенности только языков затронутого кода. Если раздела для языка нет, следуй его стандартным соглашениям и настройкам проекта; это не блокирует работу.
-- Новые языковые разделы добавляй по необходимости: именование, ошибки и ресурсы, асинхронность, документация и проверки. Не повторяй общие правила.
+- General rules define the intent of the requirements; language-specific sections clarify implementation. Explicit project conventions take precedence over default recommendations.
+- Apply language-specific guidance only to languages used in the affected code. If a language has no section, follow its standard conventions and the project configuration; this does not block work.
+- Add language-specific sections as needed: naming, errors and resources, asynchronous code, documentation, and checks. Do not repeat general rules.
 
-## Общие принципы
+## General principles
 
-- Сохраняй публичные контракты, если задача не требует их изменения; учитывай язык, фреймворк и соглашения проекта.
-- KISS, YAGNI: выбирай простое решение текущей задачи; добавляй слои и зависимости только при конкретной потребности. DRY: объединяй повторяющиеся правила, а не похожие доменные понятия.
-- Применяй SOLID по смыслу: разделяй ответственность, сохраняй контракты, используй узкие интерфейсы на реальных границах. Не создавай абстракции для каждого типа автоматически; учитывай модель программирования языка.
-- Рефакторинг сохраняет поведение; оптимизация требует подтвержденной необходимости. На ревью аргументируй замечания и учитывай обратную связь.
+- Preserve public contracts unless the task requires changing them; consider the language, framework, and project conventions.
+- KISS, YAGNI: choose a simple solution for the current task; add layers and dependencies only for a concrete need. DRY: consolidate repeated rules, not merely similar domain concepts.
+- Apply SOLID according to its intent: separate responsibilities, preserve contracts, and use narrow interfaces at real boundaries. Do not automatically create abstractions for every type; consider the language's programming model.
+- Refactoring preserves behavior; optimization requires a demonstrated need. Explain review feedback and take responses into account.
 
-## Основной код
+## Production code
 
-### Команды и запросы
+### Commands and queries
 
-- Применяй CQS к доменным операциям; оно не требует отдельных хранилищ или шины сообщений.
-- **Команды:** меняют состояние и именуются глаголом действия. Обычно не возвращают полезных данных, но могут сообщать завершение или ошибку принятым в языке способом.
-- **Запросы:** возвращают данные без наблюдаемых побочных эффектов. Явно определяй поведение при отсутствии данных; логические проверки возвращают boolean. Имена и форму доступа выбирай по соглашениям языка.
-- Не добавляй скрытые изменения и уведомления в запросы. Не раскрывай изменяемое внутреннее состояние в обход доменных операций: используй безопасное заимствование, копию или представление только для чтения.
-- Команда сама проверяет предусловия: между предварительной проверкой и выполнением состояние может измениться.
-- Допускай обоснованное совмещение изменения и возврата данных для атомарных операций (извлечение из очереди, создание с возвратом ID), итераторов и внешних контрактов. Сохраняй атомарность; объясняй неочевидные исключения. Не создавай лишние чтения и адаптеры только ради CQS.
+- Apply CQS to domain operations; it does not require separate stores or a message bus.
+- **Commands:** change state and use action verbs in their names. They usually return no useful data, but may report completion or failure through the language's established mechanisms.
+- **Queries:** return data without observable side effects. Explicitly define behavior when data is absent; logical checks return a boolean. Choose names and access patterns according to language conventions.
+- Do not add hidden mutations or notifications to queries. Do not expose mutable internal state in ways that bypass domain operations: use safe borrowing, a copy, or a read-only view.
+- Commands must check their own preconditions: state may change between an earlier check and execution.
+- Allow justified combinations of mutation and returned data for atomic operations (dequeueing, creation that returns an ID), iterators, and external contracts. Preserve atomicity and explain non-obvious exceptions. Do not introduce unnecessary reads or adapters solely to satisfy CQS.
 
-### Границы, ошибки и состояние
+### Boundaries, errors, and state
 
-- Отделяй бизнес-правила от HTTP, БД, файлов и UI; передавай внешние зависимости явно.
-- Проверяй входы на границах системы и инварианты внутри операций. Сохраняй согласованность при сбоях; используй транзакции для связанных изменений.
-- Различай отсутствие данных и ошибку; не маскируй сбой пустым или нулевым результатом. Не игнорируй ошибки; добавляй контекст без секретов и персональных данных.
+- Separate business rules from HTTP, databases, files, and UI; pass external dependencies explicitly.
+- Validate inputs at system boundaries and invariants within operations. Preserve consistency on failure; use transactions for related changes.
+- Distinguish missing data from failure; do not disguise failures as empty or zero results. Do not ignore errors; add context without secrets or personal data.
 
-## Тесты
+## Tests
 
-### Именование
+### Naming
 
-Используй смысловой порядок `Operation_Behavior_Context`: операция, наблюдаемое ожидаемое поведение, условия. Части — на английском, разделитель `_`; регистр соответствует языку. Избегай неопределенных `Works` / `Correctly`.
+Use the semantic order `Operation_Behavior_Context`: operation, expected observable behavior, conditions. Use English words separated by `_`, with casing appropriate to the language. Avoid vague names such as `Works` / `Correctly`.
 
-Шаблон действует и для строковых названий сценариев. Обязательный префикс фреймворка добавляй перед шаблоном; автоматически именуемые тесты документации исключаются.
+This pattern also applies to scenario names expressed as strings. Add any mandatory framework prefix before the pattern; automatically named documentation tests are exempt.
 
-### Поведение и устойчивость
+### Behavior and robustness
 
-- Один тест — одно поведение; несколько связанных проверок допустимы. Для команд проверяй наблюдаемые эффекты и ошибки, для запросов — данные; отсутствие побочных эффектов — при соответствующем риске.
-- Проверяй контракт, а не приватные методы или внутренний порядок вызовов. Не дублируй реализацию тестами и не тестируй несущественное форматирование.
-- Выбирай сценарии по рискам: обычные, граничные, неверный ввод, отказ зависимости, нарушенные предусловия. Исправление ошибки сопровождай воспроизводящим ее тестом.
-- Изолируй данные и порядок запуска; контролируй значимые время, случайность и ID. Подменяй внешние сервисы в модульных тестах, реальные связи проверяй интеграционными.
-- Для асинхронности ожидай конкретное условие с тайм-аутом вместо произвольной задержки.
+- One test covers one behavior; several related assertions are acceptable. For commands, check observable effects and errors; for queries, check returned data and, where relevant to the risk, the absence of side effects.
+- Test the contract, not private methods or internal call order. Do not duplicate the implementation in tests or test insignificant formatting.
+- Choose scenarios based on risk: normal cases, boundaries, invalid input, dependency failures, and violated preconditions. Accompany bug fixes with a test that reproduces the bug.
+- Isolate data and execution order; control time, randomness, and IDs where they matter. Substitute external services in unit tests and verify real connections through integration tests.
+- For asynchronous behavior, wait for a specific condition with a timeout instead of an arbitrary delay.
 
-## Стиль кода
+## Code style
 
-### Основной код
+### Production code
 
-- Выбирай PascalCase, camelCase или snake_case по соглашениям языка и вида идентификатора; соблюдай единый стиль проекта, включая тесты.
-- Используй форматтер и линтер проекта; иначе — соглашения языка с фиксацией оформления в конфигурации. Не смешивай массовое форматирование с изменением поведения без необходимости.
-- Английские имена отражают смысл, единые доменные термины и единицы измерения; избегай неясных `data`, `tmp` и двойных отрицаний.
-- Упрощай вложенность ранними выходами; выделяй доменные константы. Разделяй методы по ответственности и уровням детализации, а не лимиту строк.
-- Документация API описывает контракт: назначение, ограничения, результат, ошибки и побочные эффекты. Комментарии объясняют неочевидные причины и ограничения. Не пересказывай код и историю обсуждений или изменений; сохраняй актуальное обоснование. Удаляй устаревшие комментарии и закомментированный код.
+- Choose PascalCase, camelCase, or snake_case according to the language and identifier type; maintain a consistent project style, including tests.
+- Use the project's formatter and linter; otherwise follow language conventions and record formatting choices in configuration. Avoid mixing broad formatting changes with behavior changes unless necessary.
+- English names should convey meaning, consistent domain terminology, and units; avoid vague names such as `data`, `tmp`, and double negatives.
+- Reduce nesting with early exits; extract domain constants. Split methods by responsibility and level of detail, not by line-count limits.
+- API documentation describes the contract: purpose, constraints, results, errors, and side effects. Comments explain non-obvious reasons and constraints. Do not restate code or discussion/change history; retain the current rationale. Remove outdated comments and commented-out code.
 
-### Тесты
+### Tests
 
-- Arrange → Act → Assert; разделяй этапы пустыми строками, подписи добавляй по необходимости.
-- Используй осмысленные имена. Важные данные оставляй рядом со сценарием; фабрики скрывают только несущественные детали.
-- Задавай явные ожидания, не вычисляй их проверяемой функцией. Параметризуй наборы данных одного правила; разное поведение проверяй отдельно.
+- Arrange → Act → Assert; separate stages with blank lines and add labels when useful.
+- Use meaningful names. Keep important data close to the scenario; factories should hide only incidental details.
+- Specify explicit expectations rather than computing them with the function under test. Parameterize datasets for the same rule; test different behaviors separately.
 
-## Особенности языков
+## Language-specific guidance
 
 ### C#
 
-- Тесты: `ApplyDiscount_ReducesTotal_WhenCustomerIsEligible`.
-- Типы, методы и свойства — PascalCase; параметры и локальные переменные — camelCase; приватные поля — по соглашению проекта (обычно `_camelCase`).
-- Простое чтение состояния оформляй свойством (`Balance`); операции чтения — методом (`GetBalanceAsync()`). Для логических проверок используй `Is*`, `Has*`, `Can*`, где это естественно.
-- Асинхронные методы именуй с суффиксом `Async`; для завершения без данных используй `Task` (или обоснованно `ValueTask`), не `async void`, кроме обработчиков событий. Передавай `CancellationToken` в поддерживающие отмену длительные операции.
-- Соблюдай nullable-контракты; не подавляй предупреждения через `!` без обоснования. Освобождай принадлежащие текущему коду ресурсы через `using` / `await using`.
-- Документацию API оформляй XML-комментариями `///`.
-- Проверки по умолчанию: `dotnet build`, `dotnet test` и настроенные анализаторы.
+- Tests: `ApplyDiscount_ReducesTotal_WhenCustomerIsEligible`.
+- Types, methods, and properties use PascalCase; parameters and local variables use camelCase; private fields follow project conventions (usually `_camelCase`).
+- Represent simple state reads as properties (`Balance`); use methods for read operations (`GetBalanceAsync()`). Use `Is*`, `Has*`, and `Can*` for logical checks where natural.
+- Name asynchronous methods with the `Async` suffix; use `Task` (or a justified `ValueTask`) for completion without data, not `async void`, except for event handlers. Pass `CancellationToken` to long-running operations that support cancellation.
+- Respect nullable contracts; do not suppress warnings with `!` without justification. Release resources owned by the current code through `using` / `await using`.
+- Write API documentation as XML comments using `///`.
+- Default checks: `dotnet build`, `dotnet test`, and configured analyzers.
 
 ### Rust
 
-- Тесты: `apply_discount_reduces_total_when_customer_is_eligible`; `_` разделяет и слова внутри смысловых частей.
-- Не переноси классовую архитектуру механически; вводи traits для реальных границ и нужной абстракции поведения.
-- Функции, методы и переменные — snake_case; типы и traits — UpperCamelCase; константы — SCREAMING_SNAKE_CASE. Обычные getters — без `get_` (`balance()`); преобразования именуй по смыслу `as_*`, `to_*`, `into_*`.
-- Ожидаемые ошибки выражай через `Result` (для команды без данных — `Result<(), E>`), отсутствие значения — через `Option`; распространяй ошибки через `?`, где уместно. Не используй `unwrap()` / `expect()` в рабочем коде без обоснованного инварианта; в тестах они допустимы.
-- Выбирай владение и заимствование по контракту; не добавляй `clone()` только для обхода ошибки владения без оценки необходимости и стоимости копирования.
-- Предпочитай безопасный Rust. Для необходимого `unsafe` документируй условия безопасности API и объясняй, почему конкретный блок их соблюдает.
-- Документацию оформляй через rustdoc (`///`, `//!`); по необходимости добавляй `Errors`, `Panics`, `Safety` и проверяемые примеры.
-- Проверки по умолчанию: `cargo fmt --check`, `cargo clippy`, `cargo test`, включая применимые doctests.
+- Tests: `apply_discount_reduces_total_when_customer_is_eligible`; `_` also separates words within the semantic parts.
+- Do not mechanically transfer class-based architecture; introduce traits for real boundaries and necessary behavioral abstractions.
+- Functions, methods, and variables use snake_case; types and traits use UpperCamelCase; constants use SCREAMING_SNAKE_CASE. Ordinary getters omit `get_` (`balance()`); name conversions according to their meaning: `as_*`, `to_*`, `into_*`.
+- Represent expected errors through `Result` (`Result<(), E>` for commands without data), and missing values through `Option`; propagate errors with `?` where appropriate. Do not use `unwrap()` / `expect()` in production code without a justified invariant; they are acceptable in tests.
+- Choose ownership and borrowing according to the contract; do not add `clone()` merely to bypass an ownership error without assessing the need and copying cost.
+- Prefer safe Rust. For necessary `unsafe` code, document the API's safety requirements and explain why the particular block satisfies them.
+- Document code with rustdoc (`///`, `//!`); add `Errors`, `Panics`, `Safety`, and testable examples as needed.
+- Default checks: `cargo fmt --check`, `cargo clippy`, and `cargo test`, including applicable doctests.
 
 ### Python
 
-- Тесты: `test_apply_discount_reduces_total_when_customer_is_eligible`; сохраняй префикс `test_` (конвенция обнаружения, общая для pytest и stdlib `unittest`) и порядок `Operation_Behavior_Context`.
-- Функции, методы, переменные и модули — `snake_case`; классы — `PascalCase`; константы — `UPPER_SNAKE_CASE`. Соблюдай PEP 8 и соглашения проекта.
-- Аннотируй типами публичные контракты и нетривиальные границы; предпочитай точные типы, избегай необоснованного `Any`. Не усложняй код аннотациями ради полноты.
-- Для ожидаемых ошибок используй осмысленные исключения; перехватывай конкретные типы и сохраняй причину через `raise ... from ...`, когда преобразуешь ошибку. Не подавляй исключения без обоснования.
-- Управляй ресурсами через `with` / `async with`; избегай изменяемых значений аргументов по умолчанию. Для отсутствующих значений используй `None` с явной семантикой.
-- В `asyncio` не блокируй event loop; обеспечивай завершение созданных задач и корректную отмену. Используй `TaskGroup` для связанных задач, если поддерживается версией Python.
-- Публичные API документируй docstrings по PEP 257, описывая контракт, а не реализацию. Проверки по умолчанию: настроенный тест-раннер проекта (pytest или stdlib `unittest`), настроенные formatter, linter и type checker.
+- Tests: `test_apply_discount_reduces_total_when_customer_is_eligible`; retain the `test_` prefix (the discovery convention shared by pytest and stdlib `unittest`) and the `Operation_Behavior_Context` order.
+- Functions, methods, variables, and modules use `snake_case`; classes use `PascalCase`; constants use `UPPER_SNAKE_CASE`. Follow PEP 8 and project conventions.
+- Add type annotations to public contracts and nontrivial boundaries; prefer precise types and avoid unjustified `Any`. Do not complicate code with annotations solely for completeness.
+- Use meaningful exceptions for expected errors; catch specific types and preserve the cause with `raise ... from ...` when translating errors. Do not suppress exceptions without justification.
+- Manage resources through `with` / `async with`; avoid mutable default argument values. Use `None` for absent values with explicit semantics.
+- In `asyncio`, do not block the event loop; ensure created tasks finish and cancellation is handled correctly. Use `TaskGroup` for related tasks when supported by the Python version.
+- Document public APIs with PEP 257 docstrings describing the contract rather than the implementation. Default checks: the project's configured test runner (pytest or stdlib `unittest`), formatter, linter, and type checker.
 
-## Правила конкретного проекта
+## Project-specific rules
 
-- Версии инструментов, команды проверок и архитектурные ограничения определяй по локальным инструкциям, конфигурации и CI. Учитывай целевые платформы и включенные возможности.
-- Языковые команды выше — ориентиры при отсутствии настроек проекта; не запускай проверки неприменимых языков. Недостающие сведения фиксируй в инструкциях соответствующего проекта, не в общих правилах.
+- Determine tool versions, check commands, and architectural constraints from local instructions, configuration, and CI. Account for target platforms and enabled capabilities.
+- The language commands above are guidance when project configuration is absent; do not run checks for unrelated languages. Record missing information in the relevant project's instructions, not in the general rules.
 
-## Порядок работы
+## Workflow
 
-1. Изучи затронутый код, тесты и правила проекта; определи применимые языковые рекомендации и проверки.
-2. При изменении поведения следуй TDD: падающий по ожидаемой причине тест → реализация → рефакторинг.
-3. Запусти относящиеся к изменению и обязательные проверки проекта; просмотри итоговый diff на ошибки и лишние правки.
-4. Сообщи изменения, выполненные проверки и ограничения; не заявляй об успешном тестировании без запуска.
-5. Если нужны коммиты, делай их небольшими и связными, соблюдая соглашения о сообщениях и ветках.
+1. Study the affected code, tests, and project rules; identify applicable language guidance and checks.
+2. When changing behavior, follow TDD: a test that fails for the expected reason → implementation → refactoring.
+3. Run checks relevant to the change and mandatory project checks; review the final diff for errors and unrelated edits.
+4. Report changes, checks performed, and limitations; do not claim successful testing without running it.
+5. When commits are needed, keep them small and cohesive, following commit-message and branch conventions.
 
-## Проект llm-recipes
+## Repository instructions
 
-Структура:
-- `scripts/generate_configurations.py` — генератор configuration guides и индексов экспериментов из `recipes/*/*/profile.yaml`; `--check` не пишет файлы и завершается с кодом 1 при устаревших данных.
-- `recipes/<recipe>/` — Markdown-эксперименты. У container-рецептов: `container/` (сборка образа), `scripts/` (подготовка моделей, сервер, проверки), `config/` (конфиги сервера и lock моделей).
-- `templates/recipe/` — шаблоны экспериментов.
-- `tests/` — pytest-тесты репозитория; проверяют только CPU-код, без Docker, GPU и скачивания весов.
-
-Проверки (CPU-only, одна и та же команда локально и в CI):
-
-```bash
-bash scripts/check.sh
-```
-
-Ruff (lint + формат), mypy, pytest и ShellCheck. Workflow: `.github/workflows/check.yml`.
-Зависимости разработки — `dev-requirements.txt` в `.venv` (`uv venv .venv && uv pip install -p .venv -r dev-requirements.txt`); они отдельно от рантайм-зависимостей контейнера в `container/requirements.lock`.
-Если `shellcheck` не установлен, скрипт пропускает shell-проверки с предупреждением; в CI он установлен.
-
-Ограничения:
-- GPU/Docker-проверки выполняются только явно на рабочей станции (сборка образа, `check_image.py`, `serve.sh`, generation checks — см. `setup.md` рецепта).
-- mypy строгом режимом проверяет только тестуемые модули: генератор, выделенные помощники и тесты; операционные Docker/GPU-скрипты проверяются минимально, аннотации — на выделенных границах.
-- Профили (`profile.yaml`) и сгенерированный Markdown коммитятся вместе; перед коммитом — `python scripts/generate_configurations.py --check`.
-- Клиентские опции, дефолты, монтировки и формат вывода операционных скриптов сохраняются стабильными; изменения оформления делаются отдельным коммитом от изменений поведения.
+Read and follow [project instructions](docs/project-instructions.md). Project-specific instructions take precedence over these general guidelines.
