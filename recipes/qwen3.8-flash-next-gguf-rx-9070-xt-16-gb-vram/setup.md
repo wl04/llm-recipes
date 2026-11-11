@@ -74,6 +74,30 @@ Use `--draft off` for the baseline and `--vision off` to disable image processin
 
 Server defaults in `config/strata.json` are temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, and presence penalty 0. Requests can override each value. Strata uses a flat `sampling` object with numeric values.
 
+## Generation checks
+
+After model preparation and startup, run these checks from the repository root:
+
+```bash
+check=recipes/qwen3.8-flash-next-gguf-rx-9070-xt-16-gb-vram/scripts/check_generation.py
+python3 "$check" text
+python3 "$check" tools
+python3 "$check" vision --image /path/to/screenshot.png
+python3 "$check" long --input-tokens 120000
+```
+
+`text` checks streamed chat output. `tools` checks a function call and a follow-up using a fixed tool result; it executes no model-generated commands. `vision` submits an embedded PNG/JPEG; inspect the answer against the image. `long` uses Strata's Anthropic token-count and generation endpoints to send up to the requested input size, with 128 output tokens. Keep the input target plus output allowance below the server's context capacity. Watch memory during the long check.
+
+Checks use temperature 0 and disable thinking to keep them short. They print API responses and timings; these settings apply only to the checks. The checks are ready for workstation validation after preparation completes.
+
+## Pi
+
+Follow the shared [Pi installation guide](../../docs/clients/pi.md). Merge the `strata-local` provider from [`config/pi.models.json`](config/pi.models.json) into `~/.pi/agent/models.json`, preserving existing providers. Start Pi in your working project and select the model through `/model`.
+
+The example uses `http://127.0.0.1:8080/v1`, a 131,072-token context, and text/image input. Match the context and port to the running server; use `input: ["text"]` when serving with vision off.
+
+Use `/thinking` to choose the effort. Strata maps `low` and `medium` directly, and both `high` and `xhigh` to the model's `xhigh`. `off` sends `reasoning_effort: none`; `minimal` also disables thinking in this Strata revision. Sampling remains controlled by the server defaults, with Pi's normal output and compaction behavior.
+
 ## Logs
 
 `server.log` retains API console output; `engine.log` retains engine and vision output. Both append under the selected host log directory and remain after the container exits. Rotate or archive these files while the server is stopped.

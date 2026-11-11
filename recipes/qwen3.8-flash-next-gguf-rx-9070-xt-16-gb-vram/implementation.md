@@ -24,6 +24,12 @@ The launcher mounts model and recipe directories read-only, and cache/log direct
 
 The wrapper relays output to Docker and `server.log`, forwards interrupt/termination signals, and preserves the server exit status. Engine and vision messages share `engine.log`.
 
+## Pi compatibility
+
+The Pi provider example uses its default OpenAI chat-completions behavior. The pinned Strata frontend accepts `max_completion_tokens`, streamed chat, tool calls/results, embedded images, and `reasoning_effort`. The explicit `off: none` mapping disables thinking, and `xhigh: xhigh` exposes that selection in Pi. Strata reads the thinking toggle from `chat_template_kwargs`; Pi's top-level `qwen` thinking format is therefore not selected.
+
+References: [Strata frontend](https://github.com/Niko1221/Strata/blob/dbb2d168cffa8cf793d9325358809d5263c7c6b0/serve/frontend.py), [Pi adapter inspected](https://github.com/badlogic/pi-mono/blob/63ea042ce5bfe5c0eabcebaf084a9e24989e83c7/packages/ai/src/api/openai-completions.ts). End-to-end Pi behavior is pending workstation validation.
+
 ## Validation
 
 Repository tests cover adapter selection, native options, missing artifacts, log forwarding, and archive verification. The workstation image check exercises binary startup and a HIP kernel. Model loading, generation, and image requests require prepared model artifacts and subsequent workstation checks.
