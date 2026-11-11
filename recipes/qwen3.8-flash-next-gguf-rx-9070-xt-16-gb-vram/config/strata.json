@@ -37,7 +37,9 @@
     "exe": "/opt/strata/bin/strata-vision",
     "mmproj": "/models/strata/models/mmproj-Qwen3.8-Flash-Next-BF16.gguf",
     "model": "/models/strata/models/IQ3_XXS/Qwen3.8-Flash-Next-GSQ-RCO-IQ3_XXS-00001-of-00002.gguf",
-    "gpu": false
+    "gpu": false,
+    "min_tokens": 1024,
+    "max_tokens": 1024
   },
   "sampling": {
     "temperature": 1.0,

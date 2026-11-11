@@ -74,6 +74,10 @@ Use `--draft off` for the baseline and `--vision off` to disable image processin
 
 Server defaults in `config/strata.json` are temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, and presence penalty 0. Requests can override each value. Strata uses a flat `sampling` object with numeric values.
 
+## Vision detail
+
+CPU vision uses `vision.min_tokens: 1024` and `vision.max_tokens: 1024` in `config/strata.json`. These control image encoding, separately from the response-token limit. Restart the serving instance after changing them. The initial results used Strata’s default CPU image-token maximum of 300; the 1,024-token setting is awaiting a comparison on the same screenshot.
+
 ## Generation checks
 
 After model preparation and startup, run these checks from the repository root:

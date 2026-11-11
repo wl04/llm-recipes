@@ -91,6 +91,7 @@
 | Maximum output tokens | 256 for text/tools/vision; 128 for long context |
 | Concurrency | 1 |
 | Endpoints | Streamed /v1/chat/completions for text; non-streamed chat for tools/vision; /v1/messages for long context |
+| Maximum image tokens (CPU default) | 300 |
 
 ---
 

@@ -63,6 +63,7 @@ settings:
     Concurrency: 1
     Endpoints: Streamed /v1/chat/completions for text; non-streamed chat for tools/vision;
       /v1/messages for long context
+  Vision maximum image tokens: 300
 labels:
   hardware: Hardware
   hardware.gpu: GPU
@@ -127,3 +128,4 @@ labels:
   settings.Check requests.Concurrency: Concurrency
   settings.Check requests.Endpoints: Endpoints
   software.host_python: Host Python
+  settings.Vision maximum image tokens: Maximum image tokens (CPU default)
