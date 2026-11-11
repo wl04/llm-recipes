@@ -4,7 +4,7 @@ Run commands from the repository root using host Python 3 and `sudo docker`. Bui
 
 ## Recipes and instances
 
-A recipe defines a prepared model/server setup. An instance is one launch of that recipe. The API-server adapter controls startup; the inference engine performs inference. The current supported combination is `tabbyapi` / `exllamav3`.
+A recipe defines a prepared model/server setup. An instance is one launch of that recipe. The API-server adapter controls startup; the inference engine performs inference. Supported combinations are `tabbyapi` / `exllamav3` and `strata` / `strata`.
 
 ```bash
 python3 scripts/launch.py list
@@ -42,11 +42,11 @@ Explicit CLI options override the recipe's launch defaults.
 | `--port PORT` | Manifest port | Host loopback port; update the client's API address when changed |
 | `--context TOKENS` | Manifest context | Context capacity |
 | `--draft on\|off` | Manifest drafting setting | Configured speculative decoding |
-| `--vision on\|off` | Manifest vision setting | GPU vision for the TabbyAPI adapter |
+| `--vision on\|off\|cpu` | Manifest vision setting | TabbyAPI: `on/off` GPU vision; Strata: `cpu/off` CPU vision |
 | `--detach` | Off | Background execution |
 | `--dry-run` | Off | Print the command without creating directories or accessing GPU devices |
 
-The current adapter accepts contexts of at least 1,024 tokens in multiples of 256, up to nine digits. Model and memory limits still determine usable context. GPU device group IDs are resolved at actual startup; dry runs omit them.
+Both adapters accept contexts of at least 1,024 tokens in multiples of 256, up to nine digits. Model and memory limits still determine usable context. GPU device group IDs are resolved at actual startup; dry runs omit them.
 
 Run `python3 scripts/launch.py start --help` for CLI help.
 
@@ -62,15 +62,15 @@ The launcher discovers `recipes/*/config/launch.json`. The recipe directory supp
 
 | Field | Meaning |
 | --- | --- |
-| `adapter` | API-server integration, currently `tabbyapi` |
-| `engine` | Inference engine, currently `exllamav3` |
+| `adapter` | API-server integration: `tabbyapi` or `strata` |
+| `engine` | Inference engine: `exllamav3` or `strata` |
 | `image` | Prepared Docker image reference |
 | `port` | Container API port and default host port |
 | `context` | Default context capacity |
 | `draft` | Default `on` or `off` |
-| `vision` | Default `on` or `off` |
+| `vision` | TabbyAPI: `on/off`; Strata: `cpu/off` |
 
-Use the [container manifest template](../templates/container/config/launch.json) for the supported adapter. Native server settings stay in their own file, such as `config/tabby.yml`. Dated `profile.yaml` files record settings used for measured results. Desktop recipes use their application's launch flow.
+Use the [container manifest template](../templates/container/config/launch.json) as the TabbyAPI example; for Strata, set both `adapter` and `engine` to `strata`, select its image and port, and use `cpu` or `off` for vision. Native server settings stay in their own file, such as `config/tabby.yml`. Dated `profile.yaml` files record settings used for measured results. Desktop recipes use their application's launch flow.
 
 ## Implementation boundaries
 

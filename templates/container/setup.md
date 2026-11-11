@@ -23,7 +23,7 @@ python3 scripts/launch.py start <recipe> --name coding --detach \
   --models "$HOME/Models/llm-recipes"
 ```
 
-Document the recipe's context, drafting, and vision defaults from `config/launch.json`, supported overrides, and API address. Include the server readiness check and a generation command.
+Document the recipe's context, drafting, and vision defaults from `config/launch.json`, supported overrides, and API address. Vision options depend on the adapter: TabbyAPI uses `on/off`; Strata uses `cpu/off`. Include the server readiness check and a generation command.
 
 ## Connect the client
 

@@ -30,7 +30,9 @@ def parser() -> argparse.ArgumentParser:
     start.add_argument("recipe", help="recipe directory name; see list")
     start.add_argument("--name", help="instance name (default: recipe directory name)")
     start.add_argument("--draft", choices=("on", "off"))
-    start.add_argument("--vision", choices=("on", "off"), help="TabbyAPI GPU vision")
+    start.add_argument(
+        "--vision", choices=("on", "off", "cpu"), help="TabbyAPI: on/off; Strata: cpu/off"
+    )
     start.add_argument("--context", type=int)
     start.add_argument("--port", type=int)
     start.add_argument("--models", type=Path, default=Path.home() / "Models/llm-recipes")

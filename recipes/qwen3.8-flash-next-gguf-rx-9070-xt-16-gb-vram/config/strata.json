@@ -1,0 +1,41 @@
+{
+  "exe": "/opt/strata/bin/strata",
+  "args": [
+    "--pack",
+    "/models/strata/packs/iq3_xxs",
+    "--native",
+    "/models/strata/models/IQ3_XXS/Qwen3.8-Flash-Next-GSQ-RCO-IQ3_XXS-00001-of-00002.gguf",
+    "--ple-gguf",
+    "/models/strata/models/IQ3_XXS/Qwen3.8-Flash-Next-GSQ-RCO-IQ3_XXS-00002-of-00002.gguf",
+    "--expert-profile",
+    "/opt/src/strata/data/expert-profile.bin",
+    "--expert-cache",
+    "auto",
+    "--prefill",
+    "auto",
+    "--spec",
+    "4",
+    "--spec-min-p",
+    "0.5",
+    "--mtp",
+    "/models/strata/mtp/rt",
+    "--max-context",
+    "131072",
+    "--kv",
+    "int8",
+    "--kv-resident",
+    "32768"
+  ],
+  "cwd": "/opt/src/strata",
+  "tokenizer": "/models/strata/packs/iq3_xxs/tokenizer",
+  "model_name": "qwen3.8-flash-next-iq3_xxs",
+  "log": "/logs/engine.log",
+  "port": 8080,
+  "backend": "hip",
+  "vision": {
+    "exe": "/opt/strata/bin/strata-vision",
+    "mmproj": "/models/strata/models/mmproj-Qwen3.8-Flash-Next-BF16.gguf",
+    "model": "/models/strata/models/IQ3_XXS/Qwen3.8-Flash-Next-GSQ-RCO-IQ3_XXS-00001-of-00002.gguf",
+    "gpu": false
+  }
+}

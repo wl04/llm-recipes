@@ -43,15 +43,18 @@ def instance_name(value: str) -> str:
     return value
 
 
-def validate_options(options: LaunchOptions) -> None:
-    """Validate the current TabbyAPI adapter's launch capabilities."""
+def validate_options(options: LaunchOptions, adapter: str = "tabbyapi") -> None:
+    """Validate common options and the selected adapter's capabilities."""
     instance_name(options.name)
     if options.context < 1024 or options.context > 999999999 or options.context % 256:
         raise ValueError("context must be at least 1024 and a multiple of 256 (at most 9 digits)")
     if not 1 <= options.port <= 65535:
         raise ValueError("port must be between 1 and 65535")
-    if options.draft not in ("on", "off") or options.vision not in ("on", "off"):
-        raise ValueError("tabbyapi draft and vision must be on or off")
+    visions = {"tabbyapi": ("on", "off"), "strata": ("cpu", "off")}
+    if adapter not in visions:
+        raise ValueError(f"Unsupported adapter: {adapter}")
+    if options.draft not in ("on", "off") or options.vision not in visions[adapter]:
+        raise ValueError(f"{adapter}: draft must be on/off; vision must be {visions[adapter]}")
 
 
 def discover_recipes(directory: Path) -> dict[str, Recipe]:
@@ -69,8 +72,11 @@ def discover_recipes(directory: Path) -> dict[str, Recipe]:
             for key in ("port", "context"):
                 if type(data[key]) is not int:
                     raise ValueError(f"{key} must be an integer")
-            if data["adapter"] != "tabbyapi" or data["engine"] != "exllamav3":
-                raise ValueError("supported adapter/engine combination: tabbyapi/exllamav3")
+            if (data["adapter"], data["engine"]) not in {
+                ("tabbyapi", "exllamav3"),
+                ("strata", "strata"),
+            }:
+                raise ValueError("supported adapter/engine: tabbyapi/exllamav3 or strata/strata")
             if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_./:@-]*", data["image"]):
                 raise ValueError("invalid image reference")
             folder = manifest.parent.parent.resolve()
@@ -84,7 +90,8 @@ def discover_recipes(directory: Path) -> dict[str, Recipe]:
                     recipe.draft,
                     recipe.vision,
                     recipe.port,
-                )
+                ),
+                recipe.adapter,
             )
             recipes[recipe.name] = recipe
         except (ValueError, TypeError) as error:
@@ -102,7 +109,7 @@ def mount(source: Path, destination: str, readonly: bool = False) -> list[str]:
 
 def engine_command(recipe: Recipe, context: int, draft: str, vision: str) -> list[str]:
     """Translate launch options into the recipe's native entry point."""
-    if recipe.adapter != "tabbyapi":
+    if recipe.adapter not in ("tabbyapi", "strata"):
         raise ValueError(f"No serving adapter for {recipe.name}")
     return [
         "python3",
@@ -125,7 +132,7 @@ def start_command(
     gid: int,
 ) -> list[str]:
     """Validate options and build Docker argv without side effects."""
-    validate_options(options)
+    validate_options(options, recipe.adapter)
     models, logs = options.models, options.logs
     context, draft, vision = options.context, options.draft, options.vision
     port, detached = options.port, options.detached
@@ -148,6 +155,8 @@ def start_command(
         command += ["--label", f"io.llm-recipes.{key}={value}"]
     if detached:
         command.append("--detach")
+    if recipe.adapter == "strata":
+        command += ["--ulimit", "memlock=-1:-1", "--shm-size", "2g", "--stop-timeout", "120"]
     command += ["--user", f"{uid}:{gid}"]
     for group in sorted(set(groups)):
         command += ["--group-add", str(group)]
@@ -182,7 +191,7 @@ def gpu_groups() -> list[int]:
 
 def prepare_start(recipe: Recipe, options: LaunchOptions) -> None:
     """Validate writable mount inputs and create runtime directories on the host."""
-    validate_options(options)
+    validate_options(options, recipe.adapter)
     if not options.models.is_dir():
         raise ValueError(f"Model directory does not exist: {options.models}")
     if not (recipe.directory / "scripts/serve.py").is_file():

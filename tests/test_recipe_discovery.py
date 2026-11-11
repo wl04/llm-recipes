@@ -100,3 +100,20 @@ def test_start_keeps_instances_distinct_for_same_recipe(tmp_path: Path) -> None:
     assert "127.0.0.1:5001:5000" in second_command
     assert f"type=bind,src={tmp_path}/coding,dst=/logs" in first_command
     assert f"type=bind,src={tmp_path}/review,dst=/logs" in second_command
+
+
+def test_discover_accepts_cpu_vision_for_strata(tmp_path: Path) -> None:
+    write_recipe(tmp_path, "strata-model")
+    path = tmp_path / "strata-model/config/launch.json"
+    config = json.loads(path.read_text())
+    config.update(adapter="strata", engine="strata", vision="cpu", port=8080)
+    path.write_text(json.dumps(config))
+
+    recipe = discover_recipes(tmp_path)["strata-model"]
+    options = LaunchOptions("coding", tmp_path, tmp_path / "logs", 131072, "on", "cpu", 8081)
+    command = start_command(recipe, options, groups=[109], uid=1000, gid=1000)
+
+    assert "127.0.0.1:8081:8080" in command
+    assert "memlock=-1:-1" in command
+    assert "cpu" in command
+    assert "io.llm-recipes.adapter=strata" in command
