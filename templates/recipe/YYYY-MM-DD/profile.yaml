@@ -15,6 +15,8 @@ os:
 software:
   harness: null
   harness_version: null
+  server: null
+  server_version: null
   engine: null
   engine_version: null
   engine_version_note: null
@@ -48,6 +50,8 @@ labels:
   software: Software
   software.harness: Agent / harness
   software.harness_version: Harness version
+  software.server: API server
+  software.server_version: API server version / revision
   software.engine: Inference engine
   software.engine_version: Engine version
   software.engine_version_note: Engine version notes

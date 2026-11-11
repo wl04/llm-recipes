@@ -13,7 +13,7 @@ recipes/<model-format-hardware-memory>/
 
 1. Set `id` in `profile.yaml` using the naming rule below; the configuration title is generated from it. An overview in `configuration.md` is optional. Keep the generated-section markers in place.
 2. Rename `YYYY-MM-DD` to the result date. For multiple configurations on one date, add a suffix such as `2026-11-02-mtp-on`.
-3. Fill in `profile.yaml` with the hardware, software, model, and effective settings used for that result. Use `null` for unknown values.
+3. Fill in `profile.yaml` with the hardware, software, model, and effective settings used for that result. Use `null` for unknown values. Record the client in `software.harness`, the API server in `software.server`, and the inference engine in `software.engine`, with their versions or revisions.
 4. Fill in `summary.md` with the workload, statistics, memory measurements, and observations. Keep one date in the title and number sessions #1, #2, and so on. Remove unused sections.
 5. Generate the configuration section using the commands below, and regenerate the experiment table in `recipe.md`. Add one root catalog row per recipe, linking to `recipe.md`.
 
@@ -22,6 +22,27 @@ For another result, copy the three files from `templates/recipe/YYYY-MM-DD/` int
 Write a brief current-state description in `recipe.md` and keep its experiment markers. The generator builds its experiment table from dated report titles and links to each configuration and summary. For container recipes, add a prominent setup link and an implementation footer link when available.
 
 ## Container recipes
+
+Copy the optional files from `templates/container/` into the recipe directory alongside the base recipe template. Fill in the setup and implementation sections, and replace the example image reference in `config/launch.json`. The supplied manifest uses the supported TabbyAPI/ExLlamaV3 adapter.
+
+```text
+recipes/<model-format-hardware-memory>/
+  recipe.md
+  setup.md
+  implementation.md
+  config/
+    launch.json
+    <native-server-config>
+    models.lock.json
+  container/
+    <image-build-inputs>
+  scripts/
+    <preparation-and-serving-scripts>
+  YYYY-MM-DD/
+    configuration.md
+    summary.md
+    profile.yaml
+```
 
 Keep `setup.md` at the recipe level, alongside the dated experiment folders. Put native serving settings and model revision locks in `config/`, image-build inputs in `container/`, and preparation/serving scripts in `scripts/`. Structure `setup.md` as a practical guide: prerequisites, image build, model preparation, launch, client setup, and daily operation (including stopping and reading logs). Lead with the working launch configuration and keep installation checks short. Pin the base image digest, upstream revisions, and build dependencies used by the recipe.
 
@@ -52,17 +73,13 @@ The same command runs in CI (`.github/workflows/check.yml`). If `shellcheck` is 
 
 [`scripts/launch.py`](../scripts/launch.py) provides `list`, `start`, `ps`, `status`, `logs`, and `stop` commands for discovered container recipes. Run `python3 scripts/launch.py start <recipe> --help` for launch options. It uses the host Python 3 standard library and `sudo docker`.
 
-Native engine configuration stays in the recipe. The launcher owns Docker lifecycle and host mounts; the recipe entry point validates native settings and starts its server. Launchable recipes contain `config/launch.json`; the parent recipe directory supplies the recipe identifier. The manifest declares `adapter`, `engine`, `image`, `port`, `context`, `draft`, and `vision`. All fields are required and checked. The current supported combination is `tabbyapi` / `exllamav3`; copy the existing manifest for another prepared recipe using that combination. Native server settings remain in their own configuration file. Result profiles remain dated observations.
+Native engine configuration stays in the recipe. The launcher owns Docker lifecycle and host mounts; the recipe entry point validates native settings and starts its server. Launchable recipes contain `config/launch.json`; the parent recipe directory supplies the recipe identifier. The manifest declares `adapter`, `engine`, `image`, `port`, `context`, `draft`, and `vision`. All fields are required and checked. `adapter` identifies the API server integration; `engine` identifies its inference engine. `port` is the container API port and the default host port; `--port` changes only the host mapping. Launch defaults are overridden by explicit CLI options. The current adapter accepts `draft` and `vision` as `on`/`off` (vision runs on the GPU), and context capacities of at least 1,024 tokens in multiples of 256, up to nine digits. Instance names are limited to 160 characters. The current supported combination is `tabbyapi` / `exllamav3`; copy the existing manifest for another prepared recipe using that combination. Native server settings remain in their own configuration file. Result profiles remain dated observations.
 
 `start <recipe> --name <instance>` chooses a recipe and an optional instance name. The default instance name is the recipe directory name. `status`, `logs`, and `stop` take instance names; `ps` lists running instances through Docker labels. Logs default to `$XDG_STATE_HOME/llm-recipes/<instance>` (or `~/.local/state/llm-recipes/<instance>`). Distinct instances need distinct names and available host ports; use `--port` to select a port. Names use lowercase letters, digits, dots, dashes, and underscores and start with a letter or digit.
 
 Implement a serving adapter before registering a new API server. Desktop recipes use their application's launch flow.
 
-Changes to the launcher can be checked without a GPU:
-
-```bash
-bash scripts/check.sh
-```
+`start` runs attached by default; Ctrl+C stops the server. Add `--detach` to return to the shell while the server runs. `logs <instance> --follow` follows console output; Ctrl+C ends log following while the server continues. `stop <instance>` stops the server. Containers are removed on exit; persistent file logs remain in the selected host directory. `status` reports container state; check the server’s readiness endpoint or status page for model readiness. `--dry-run` prints the launch command without creating directories or accessing GPU devices.
 
 ## Generate configuration guides
 

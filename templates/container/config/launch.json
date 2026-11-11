@@ -1,0 +1,9 @@
+{
+  "adapter": "tabbyapi",
+  "engine": "exllamav3",
+  "image": "local/recipe:version",
+  "port": 5000,
+  "context": 4096,
+  "draft": "on",
+  "vision": "off"
+}

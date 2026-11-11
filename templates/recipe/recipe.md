@@ -9,4 +9,5 @@ Describe the current recipe briefly.
 
 ---
 
+<!-- When implementation.md exists, append: · [Implementation](implementation.md) -->
 [All recipes](../../README.md)
