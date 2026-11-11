@@ -48,6 +48,18 @@ bash scripts/check.sh
 
 The same command runs in CI (`.github/workflows/check.yml`). If `shellcheck` is not installed, `check.sh` skips the shell step with a warning. GPU and Docker verification is documented per recipe in `setup.md` and is not part of this check suite.
 
+## Shared launcher
+
+[`scripts/launch.py`](../scripts/launch.py) provides `list`, `start`, `status`, `logs`, and `stop` commands for registered container recipes. Run `python3 scripts/launch.py start <recipe> --help` for launch options. It uses the host Python 3 standard library and `sudo docker`.
+
+Native engine configuration stays in the recipe. The launcher owns Docker lifecycle and host mounts; the recipe entry point validates native settings and starts its server. Register a container recipe only when its serving adapter is implemented. Desktop recipes use their application's launch flow.
+
+Changes to the launcher can be checked without a GPU:
+
+```bash
+bash scripts/check.sh
+```
+
 ## Generate configuration guides
 
 Shared experiment templates live in `templates/recipe/`. The [generator](../scripts/generate_configurations.py) turns their completed profiles into configuration guides and updates recipe experiment tables.

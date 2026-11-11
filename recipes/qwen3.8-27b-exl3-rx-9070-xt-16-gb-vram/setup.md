@@ -46,9 +46,11 @@ Interrupted downloads can be rerun. Conversion requires fresh output and working
 
 ```bash
 cd ~/Dev/llm-recipes
-bash recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/serve.sh \
+python3 scripts/launch.py start exl3 \
   --draft on --vision on --context 131072
 ```
+
+The shared launcher uses Python 3 and `sudo docker`. The image and prepared models from the preceding steps are required. The existing `scripts/serve.sh` accepts the same launch options and forwards them to the shared launcher.
 
 Wait for the model to load and the API to start. The API is available at `http://127.0.0.1:5000/v1`, with a browser chat at `http://127.0.0.1:5000/ui/` and status at `http://127.0.0.1:5000/ui/status`. Local API authentication is disabled.
 
@@ -147,13 +149,26 @@ The model's `contextWindow` must match the serving allocation. For text-only ser
 Stop the container, then rerun the launch command to restart it:
 
 ```bash
-sudo docker stop llm-recipes-exl3
+python3 scripts/launch.py stop exl3
 ```
+
+List available recipes, inspect container state, or preview a launch:
+
+```bash
+python3 scripts/launch.py list
+python3 scripts/launch.py status exl3
+python3 scripts/launch.py start exl3 --draft on --vision on --context 131072 --dry-run
+```
+
+`status` reports Docker container state. Use the browser status page to check model readiness. `--dry-run` prints the command without creating directories or requiring GPU devices; device group IDs are resolved at actual launch. Add `--detach` to run in the background. A stopped container is removed automatically; file logs remain in the selected host directory.
 
 Launcher options can appear in any order:
 
 | Option | Default | Purpose |
 | --- | --- | --- |
+| `--detach` | off | Run in the background |
+| `--port PORT` | `5000` | Host loopback port; update the Pi endpoint if changed |
+| `--dry-run` | off | Preview the launch command |
 | `--draft on\|off` | `on` | Enable DFlash2 |
 | `--vision on\|off` | `off` | Enable GPU-resident vision |
 | `--context TOKENS` | `4096` | Set sequence length and cache capacity; a multiple of 256, at least 1024 |
@@ -172,7 +187,7 @@ less /path/to/selected.log
 While the container exists, stream its console output with:
 
 ```bash
-sudo docker logs --follow llm-recipes-exl3
+python3 scripts/launch.py logs exl3 --follow
 ```
 
 Changes to mounted scripts or serving settings take effect on the next launch. Rebuild the image after changing build inputs or dependency pins.

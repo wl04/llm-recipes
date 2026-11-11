@@ -21,6 +21,7 @@ select = ["E", "F", "I", "UP", "B", "RUF"]
 [tool.mypy]
 files = [
     "scripts/generate_configurations.py",
+    "scripts/launch.py",
     "recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/gpu.py",
     "recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/serve.py",
     "recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/prepare_models.py",
