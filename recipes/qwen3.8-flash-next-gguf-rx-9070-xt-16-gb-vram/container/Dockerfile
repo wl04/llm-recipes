@@ -28,22 +28,39 @@ RUN python3 -m venv /opt/venv \
     && python3 -m pip check \
     && python3 /opt/build/fetch_sources.py
 
-RUN cmake -S /opt/src/strata -B /opt/build/engine -G Ninja \
+# CMake can link ROCm libraries by absolute path; relocated executables also
+# need those directories registered with the runtime loader.
+RUN set -eux; \
+    printf '%s\n' /opt/rocm/lib /opt/rocm/lib64 > /etc/ld.so.conf.d/strata-rocm.conf; \
+    find -L /opt/rocm -name 'libhipblas.so.3' -printf '%h\n' \
+      >> /etc/ld.so.conf.d/strata-rocm.conf; \
+    ldconfig; \
+    ldconfig -p | grep -F 'libhipblas.so.3'
+
+RUN set -eux; command -v hipcc; hipcc --version
+
+RUN set -eux; cmake -S /opt/src/strata -B /opt/build/engine -G Ninja \
        -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/rocm \
        -DSTRATA_ENABLE_HIP=ON -DSTRATA_ENABLE_CUDA=OFF \
        -DCMAKE_HIP_ARCHITECTURES=gfx1201 -DSTRATA_BUILD_TESTS=OFF \
        -DSTRATA_PREFILL_MMQ=ON -DSTRATA_PORTABLE=ON \
-    && cmake --build /opt/build/engine --target strata --parallel "$MAX_JOBS" \
-    && cmake -S /opt/src/strata/tools/vision -B /opt/build/vision -G Ninja \
+    && cmake --build /opt/build/engine --target strata --parallel "$MAX_JOBS"
+
+RUN set -eux; cmake -S /opt/src/strata/tools/vision -B /opt/build/vision -G Ninja \
        -DCMAKE_BUILD_TYPE=Release -DLLAMA_DIR=/opt/src/llama_cpp \
        -DSTRATA_VISION_CUDA=OFF -DSTRATA_VISION_HIP=OFF -DSTRATA_PORTABLE=ON \
-    && cmake --build /opt/build/vision --target strata-vision --parallel "$MAX_JOBS" \
-    && mkdir -p /opt/strata/bin \
-    && cp /opt/build/engine/strata /opt/build/vision/bin/strata-vision /opt/strata/bin/ \
-    && hipcc --offload-arch=gfx1201 /opt/build/check_hip.cpp -o /opt/strata/bin/check_hip \
-    && python3 -c 'import serve.server' \
-    && /opt/strata/bin/strata --help \
-    && /opt/strata/bin/strata-vision --version
+    && cmake --build /opt/build/vision --target strata-vision --parallel "$MAX_JOBS"
+
+RUN set -eux; mkdir -p /opt/strata/bin \
+    && cp /opt/build/engine/strata /opt/build/vision/bin/strata-vision /opt/strata/bin/
+
+RUN set -eux; hipcc --offload-arch=gfx1201 /opt/build/check_hip.cpp -o /opt/strata/bin/check_hip
+
+RUN python3 -c 'import serve.server'
+
+RUN set -eux; ldd /opt/strata/bin/strata; /opt/strata/bin/strata --help
+
+RUN set -eux; ldd /opt/strata/bin/strata-vision; /opt/strata/bin/strata-vision --version
 
 WORKDIR /opt/src/strata
 CMD ["python3", "/opt/build/check_image.py"]
