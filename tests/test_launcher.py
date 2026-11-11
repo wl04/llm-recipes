@@ -10,50 +10,47 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import launch  # noqa: E402
+import launcher  # noqa: E402
+
+RECIPE = launcher.discover_recipes(ROOT / "recipes")["qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram"]
 
 
 class LauncherTests(unittest.TestCase):
     def test_stop_propagates_docker_invocation(self) -> None:
         with (
             patch.object(sys, "argv", ["launch.py", "stop", "exl3"]),
-            patch("launch.os.execvp") as execute,
+            patch("launch.run_command", return_value=0) as execute,
         ):
             launch.main()
 
         execute.assert_called_once_with(
-            "sudo",
             ["sudo", "docker", "stop", "llm-recipes-exl3"],
         )
 
     def test_logs_follows_console_when_requested(self) -> None:
         with (
             patch.object(sys, "argv", ["launch.py", "logs", "exl3", "--follow"]),
-            patch("launch.os.execvp") as execute,
+            patch("launch.run_command", return_value=0) as execute,
         ):
             launch.main()
 
         execute.assert_called_once_with(
-            "sudo",
             ["sudo", "docker", "logs", "--follow", "llm-recipes-exl3"],
         )
 
     def test_mount_rejects_delimiters_in_paths(self) -> None:
         with self.assertRaisesRegex(ValueError, "comma or newline"):
-            launch.mount(Path("/models,readonly"), "/models")
+            launcher.mount(Path("/models,readonly"), "/models")
 
     def test_start_preserves_mount_boundaries_with_spaces(self) -> None:
-        command = launch.start_command(
-            launch.EXL3,
-            Path("/models with spaces"),
-            Path("/logs"),
-            context=131072,
-            draft="on",
-            vision="on",
-            port=5001,
+        command = launcher.start_command(
+            RECIPE,
+            launcher.LaunchOptions(
+                "coding", Path("/models with spaces"), Path("/logs"), 131072, "on", "on", 5001
+            ),
             groups=[109],
             uid=1000,
             gid=1000,
-            detached=False,
         )
         self.assertIn("type=bind,src=/models with spaces,dst=/models,readonly", command)
         self.assertIn("type=bind,src=/logs,dst=/logs", command)
@@ -62,7 +59,14 @@ class LauncherTests(unittest.TestCase):
 
     def test_start_rejects_invalid_context_before_execution(self) -> None:
         result = subprocess.run(
-            [sys.executable, str(ROOT / "scripts/launch.py"), "start", "exl3", "--context", "1025"],
+            [
+                sys.executable,
+                str(ROOT / "scripts/launch.py"),
+                "start",
+                RECIPE.name,
+                "--context",
+                "1025",
+            ],
             capture_output=True,
             text=True,
         )
@@ -78,7 +82,7 @@ class LauncherTests(unittest.TestCase):
                     sys.executable,
                     str(ROOT / "scripts/launch.py"),
                     "start",
-                    "exl3",
+                    RECIPE.name,
                     "--models",
                     str(models),
                     "--logs",
@@ -95,7 +99,14 @@ class LauncherTests(unittest.TestCase):
 
     def test_start_rejects_unsupported_vision_before_execution(self) -> None:
         result = subprocess.run(
-            [sys.executable, str(ROOT / "scripts/launch.py"), "start", "exl3", "--vision", "cpu"],
+            [
+                sys.executable,
+                str(ROOT / "scripts/launch.py"),
+                "start",
+                RECIPE.name,
+                "--vision",
+                "cpu",
+            ],
             capture_output=True,
             text=True,
         )
@@ -105,7 +116,7 @@ class LauncherTests(unittest.TestCase):
         result = subprocess.run(
             [
                 "bash",
-                str(launch.EXL3.directory / "scripts/serve.sh"),
+                str(RECIPE.directory / "scripts/serve.sh"),
                 "--draft",
                 "off",
                 "--vision",

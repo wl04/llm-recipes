@@ -50,9 +50,13 @@ The same command runs in CI (`.github/workflows/check.yml`). If `shellcheck` is 
 
 ## Shared launcher
 
-[`scripts/launch.py`](../scripts/launch.py) provides `list`, `start`, `status`, `logs`, and `stop` commands for registered container recipes. Run `python3 scripts/launch.py start <recipe> --help` for launch options. It uses the host Python 3 standard library and `sudo docker`.
+[`scripts/launch.py`](../scripts/launch.py) provides `list`, `start`, `ps`, `status`, `logs`, and `stop` commands for discovered container recipes. Run `python3 scripts/launch.py start <recipe> --help` for launch options. It uses the host Python 3 standard library and `sudo docker`.
 
-Native engine configuration stays in the recipe. The launcher owns Docker lifecycle and host mounts; the recipe entry point validates native settings and starts its server. Register a container recipe only when its serving adapter is implemented. Desktop recipes use their application's launch flow.
+Native engine configuration stays in the recipe. The launcher owns Docker lifecycle and host mounts; the recipe entry point validates native settings and starts its server. Launchable recipes contain `config/launch.json`; the parent recipe directory supplies the recipe identifier. The manifest declares `adapter`, `engine`, `image`, `port`, `context`, `draft`, and `vision`. All fields are required and checked. The current supported combination is `tabbyapi` / `exllamav3`; copy the existing manifest for another prepared recipe using that combination. Native server settings remain in their own configuration file. Result profiles remain dated observations.
+
+`start <recipe> --name <instance>` chooses a recipe and an optional instance name. The default instance name is the recipe directory name. `status`, `logs`, and `stop` take instance names; `ps` lists running instances through Docker labels. Logs default to `$XDG_STATE_HOME/llm-recipes/<instance>` (or `~/.local/state/llm-recipes/<instance>`). Distinct instances need distinct names and available host ports; use `--port` to select a port. Names use lowercase letters, digits, dots, dashes, and underscores and start with a letter or digit.
+
+Implement a serving adapter before registering a new API server. Desktop recipes use their application's launch flow.
 
 Changes to the launcher can be checked without a GPU:
 

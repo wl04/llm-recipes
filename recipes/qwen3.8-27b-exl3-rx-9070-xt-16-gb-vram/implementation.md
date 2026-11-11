@@ -20,7 +20,7 @@ The base image supplies Torch, the ROCm SDK, and Triton. The Dockerfile compiles
 
 ## Serving and storage
 
-The shared [`scripts/launch.py`](../../scripts/launch.py) handles Docker startup, status, console logs, and stopping. The recipe’s `serve.sh` forwards options to its `exl3` adapter. The launcher creates a container running as the host user's UID/GID with access to the GPU devices. It publishes port 5000 on host loopback. `serve.py` validates the native settings against the pinned TabbyAPI schema, selects the RX 9070 XT by name, checks preparation metadata and image pins, and starts TabbyAPI in a writable temporary directory.
+The shared [`scripts/launch.py`](../../scripts/launch.py) handles Docker startup, status, console logs, and stopping. The recipe’s `serve.sh` forwards options to the recipe selected by its directory name. `config/launch.json` declares the API-server adapter (`tabbyapi`), inference engine (`exllamav3`), image, and launch defaults. `scripts/launcher.py` handles discovery, validated command planning, and process execution; `scripts/launch.py` provides the command-line interface. Docker labels identify each instance, recipe, adapter, and engine. The launcher creates a container running as the host user's UID/GID with access to the GPU devices. It publishes port 5000 on host loopback. `serve.py` validates the native settings against the pinned TabbyAPI schema, selects the RX 9070 XT by name, checks preparation metadata and image pins, and starts TabbyAPI in a writable temporary directory.
 
 | Host data | Container path | Access |
 | --- | --- | --- |
