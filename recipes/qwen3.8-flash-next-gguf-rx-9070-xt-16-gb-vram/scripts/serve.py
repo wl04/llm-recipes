@@ -29,6 +29,8 @@ def configure(source: dict[str, Any], context: int, draft: str, vision: str) -> 
         del args[index : index + 2]
     if vision == "off":
         config.pop("vision", None)
+        if "--vision" in args:
+            args.remove("--vision")
     return config
 
 

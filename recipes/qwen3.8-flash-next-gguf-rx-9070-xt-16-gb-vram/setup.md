@@ -88,7 +88,7 @@ python3 "$check" long --input-tokens 120000
 
 `text` checks streamed chat output. `tools` checks a function call and a follow-up using a fixed tool result; it executes no model-generated commands. `vision` submits an embedded PNG/JPEG; inspect the answer against the image. `long` uses Strata's Anthropic token-count and generation endpoints to send up to the requested input size, with 128 output tokens. Keep the input target plus output allowance below the server's context capacity. Watch memory during the long check.
 
-Checks use temperature 0 and disable thinking to keep them short. They print API responses and timings; these settings apply only to the checks. The checks are ready for workstation validation after preparation completes.
+Checks use temperature 0 and disable thinking to keep them short. They print API responses and timings; these settings apply only to the checks. The [initial results](2026-11-12/summary.md) record these checks on the RX 9070 XT.
 
 ## Pi
 

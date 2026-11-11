@@ -36,6 +36,7 @@ def test_configure_disables_optional_models_without_mutating_defaults() -> None:
 
     result = serve.configure(original, 4096, "off", "off")
 
+    assert "--vision" not in result["args"]
     assert "vision" not in result
     assert "--mtp" not in result["args"]
     assert result["args"][result["args"].index("--spec") + 1] == "0"
@@ -48,6 +49,7 @@ def test_configure_preserves_cpu_vision_and_resident_cap_for_long_context() -> N
 
     result = serve.configure(original, 131072, "on", "cpu")
 
+    assert result["args"].count("--vision") == 1
     assert result["vision"]["gpu"] is False
     assert result["args"][result["args"].index("--kv-resident") + 1] == "32768"
     assert result["args"][result["args"].index("--spec") + 1] == "4"
