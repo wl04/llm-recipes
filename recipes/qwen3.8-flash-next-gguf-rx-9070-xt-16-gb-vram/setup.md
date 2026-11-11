@@ -28,11 +28,36 @@ The check prints the source revisions, checks both binaries and API imports, sel
 Strata binaries, API imports, and HIP kernel: PASS
 ```
 
-This is the current workstation checkpoint. Model artifact locking and preparation follow successful image validation.
+The image check has passed on the RX 9070 XT workstation. Continue with model preparation.
+
+## Download and prepare the model
+
+Allow at least 100 GB of free disk space for approximately 82 GB of downloads and preparation outputs. Stop any Strata instance using these files before preparing them.
+
+From the repository root, as your regular user:
+
+```bash
+python3 recipes/qwen3.8-flash-next-gguf-rx-9070-xt-16-gb-vram/scripts/prepare_models.py \
+  --models "$HOME/Models/llm-recipes"
+```
+
+The command runs CPU preparation inside the existing image using your host UID. It downloads the two IQ3_XXS shards and BF16 vision projector at the revision in `config/models.lock.json`, checks their SHA-256 hashes, and extracts the native pack and tokenizer. It then downloads only the pinned checkpoint's MTP tensors, verifies them, and creates the Q2_0 draft runtime with Strata's default draft vocabulary.
+
+All files are stored under `$HOME/Models/llm-recipes/strata`:
+
+```text
+models/IQ3_XXS/       # Original model shards
+models/mmproj-*.gguf  # CPU vision projector
+packs/iq3_xxs/        # Native pack and tokenizer
+mtp/                 # Verified source tensors, converted GGUF, and rt/ runtime
+prepared.json        # Completion record matching the model and image locks
+```
+
+Rerun the same command after a connection failure. Completed downloads are verified and reused; partial GGUF downloads resume when the server honors byte ranges. Preparation tools rerun, and a completion record is written after all stages succeed. A checksum failure reports the affected file; move that file aside before retrying.
 
 ## Serving configuration
 
-[`config/strata.json`](config/strata.json) defines native Strata settings and the prepared file layout under the external model mount. Once those artifacts exist, the shared launcher supports:
+[`config/strata.json`](config/strata.json) defines native Strata settings and the prepared file layout under the external model mount. After preparation succeeds, start the server:
 
 ```bash
 python3 scripts/launch.py start \

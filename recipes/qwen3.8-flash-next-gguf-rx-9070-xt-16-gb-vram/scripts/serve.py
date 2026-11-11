@@ -107,6 +107,10 @@ def main() -> int:
             options.draft,
             options.vision,
         )
+        receipt = json.loads(Path("/models/strata/prepared.json").read_text())
+        models = json.loads((recipe / "config/models.lock.json").read_text())
+        if receipt != {"models": models, "image": expected}:
+            raise ValueError("Prepared model lock differs; rerun prepare_models.py")
         validate_files(config)
         device = json.loads(subprocess.check_output(["/opt/strata/bin/check_hip"], text=True))
         environment = dict(os.environ, HIP_VISIBLE_DEVICES=str(device["device"]))

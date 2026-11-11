@@ -6,6 +6,14 @@
 
 The engine uses Strata's vendored GGML and HIP kernels compiled for `gfx1201`, with MMQ prefill enabled. The separate CPU vision executable uses llama.cpp's mtmd code at the revision selected by Strata. Portable CPU builds use an AVX2 baseline.
 
+## Model preparation
+
+[`config/models.lock.json`](config/models.lock.json) pins the ISTA-DASLab model shards and BF16 projector by revision, byte size, and SHA-256, using the metadata shipped in the pinned Strata source. MTP uses the original Qwen checkpoint revision and per-tensor hashes enforced by that source's `mtp_fetch.py`.
+
+[`scripts/prepare_models.py`](scripts/prepare_models.py) runs inside the prepared image with a writable external model mount and the host user's UID. It calls upstream `iq_pack.py`, `mtp_fetch.py`, `mtp_pack.py`, and `mtp_rt.py`; the target experts retain their native IQ3_XXS representation, and MTP experts are converted to Q2_0. The default `draft_vocab.bin` is copied from the pinned source.
+
+Downloads use partial files and verify full hashes before publication. A filesystem lock prevents simultaneous preparation commands. Serving requires a completion record matching the model and image locks. Preparation runs while the serving instance is stopped.
+
 ## Serving
 
 [`config/launch.json`](config/launch.json) selects the `strata` API-server adapter and `strata` engine. [`scripts/serve.py`](scripts/serve.py) derives a temporary native configuration from [`config/strata.json`](config/strata.json), validates prepared paths, checks the GPU, and starts `serve.server`.
