@@ -17,6 +17,32 @@ pi --version
 
 Run npm as your regular user. Repeat the install command to update Pi or after switching Node versions. Record Pi and Node versions with experiment results.
 
+## Shared extensions
+
+The author's shared Pi setup uses these extensions across recipes and projects:
+
+| Extension | Purpose |
+|---|---|
+| [pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter) | Connect MCP servers and discover their tools on demand. |
+| [pi-web-access](https://github.com/nicobailon/pi-web-access) | Search the web and fetch page content. |
+| [context-mode](https://github.com/mksglu/context-mode) | Process and index large tool outputs, then retrieve relevant portions into the conversation. |
+| [rpiv-ask-user-question](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-ask-user-question) | Ask structured questions with selectable answers. |
+| [rpiv-todo](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo) | Track tasks in a live overlay that survives reload and compaction. |
+
+Install the upstream packages into Pi's shared user configuration:
+
+```bash
+pi install npm:pi-mcp-adapter
+pi install npm:pi-web-access
+pi install npm:context-mode
+pi install npm:@juicesharp/rpiv-ask-user-question
+pi install npm:@juicesharp/rpiv-todo
+```
+
+Restart Pi after installation. Use `pi list` to inspect installed packages. Follow each extension's linked documentation to configure MCP servers, search providers, and other preferences.
+
+When extension versions or settings materially affect an experiment, record them with its results. Context management and tool-output filtering can change prompt sizes, cache reuse, and compaction behavior.
+
 ## Configure a recipe
 
 Use Pi's standard `~/.pi/agent/` directory. Follow the recipe's `setup.md` for the provider and model configuration, preserving existing entries in `models.json` and `settings.json`.
