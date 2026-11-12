@@ -88,6 +88,31 @@ model:
 
 Add the corresponding display labels, such as `software.revision: Strata revision` and `model.revision: Model revision`. The generator renders HTTP(S) values as clickable links and displays commit URLs using the first eight characters of the hash. The link retains the complete revision. Release version strings remain plain text. Build and model lock files retain the raw revisions consumed by preparation scripts.
 
+### Releases and container image tags
+
+When an upstream release tag points to the recorded commit, store its release URL in the version field and keep the commit URL separately. For annotated tags, compare the peeled commit (`refs/tags/<tag>^{}`). Verify the release page exists. For example, ExLlamaV3's recorded commit matches `v1.6.6`:
+
+```yaml
+software:
+  engine_version: https://github.com/turboderp-org/exllamav3/releases/tag/v1.6.6
+  engine_version_note: https://github.com/turboderp-org/exllamav3/commit/bd1f519172406a9560bd5c90e61000691bb69a07
+```
+
+The generator displays the release tag as link text. A version reported by the application remains a version string until an exact release match is verified. Record links during profile preparation; generation works offline.
+
+For container profiles, record the tag used at preparation alongside the pinned image reference:
+
+```yaml
+software:
+  base_image_tag: https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags?name=10.1.0-full
+  base_image: rocm/dev-ubuntu-24.04@sha256:5ed1362ea542a928651e4c710b44024ebe98870f74159cb70f0265aec8ef0abe
+labels:
+  software.base_image_tag: Base image tag at preparation
+  software.base_image: Pinned base image
+```
+
+Docker Hub tag links display as `repository:tag`. Tags can move; the full digest identifies the image used. Tag pages provide image metadata, while the profile and build lock retain the recorded digest. These fields apply to container recipes.
+
 ## Display labels
 
 Each profile has a `labels` mapping for readable field names and section headings. Keys are dotted YAML paths, for example `hardware.memory.dedicated_vram_gib: Dedicated VRAM (GB)`. Labels affect the generated guide; values stay in their existing fields.

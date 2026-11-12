@@ -8,7 +8,7 @@ import re
 import sys
 from collections.abc import Generator, Mapping
 from pathlib import Path
-from urllib.parse import quote, urlsplit
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 import yaml
 
@@ -32,6 +32,14 @@ def value_cell(value: object) -> str:
         if url.netloc and not any(char.isspace() for char in value):
             commit = re.search(r"/commit/([0-9a-fA-F]{7,40})$", url.path)
             label = commit.group(1)[:8] if commit else value
+            release = re.fullmatch(r"/[^/]+/[^/]+/releases/tag/(.+)", url.path)
+            image = re.fullmatch(r"/r/([^/]+/[^/]+)/tags", url.path)
+            if url.hostname == "github.com" and release:
+                label = unquote(release.group(1))
+            elif url.hostname == "hub.docker.com" and image:
+                tags = parse_qs(url.query).get("name", [])
+                if len(tags) == 1 and re.fullmatch(r"[\w][\w.-]{0,127}", tags[0]):
+                    label = f"{image.group(1)}:{tags[0]}"
             target = quote(value, safe=":/?#@!$&'*+,;=%~.-_")
             text = cell(label).replace("[", "&#91;").replace("]", "&#93;")
             return f"[{text}]({target})"

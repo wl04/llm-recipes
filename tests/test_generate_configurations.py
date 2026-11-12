@@ -281,3 +281,26 @@ def test_rows_links_list_values_and_preserves_plain_values() -> None:
     assert list(
         gen.rows({"versions": ["https://example.com/v1", "unknown"]}, {"versions": "Versions"})
     ) == ["| Versions | [https://example.com/v1](https://example.com/v1)<br>unknown |"]
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (
+            "https://github.com/turboderp-org/exllamav3/releases/tag/v1.6.6",
+            "[v1.6.6](https://github.com/turboderp-org/exllamav3/releases/tag/v1.6.6)",
+        ),
+        (
+            "https://hub.docker.com/r/rocm/pytorch/tags?name=latest",
+            "[rocm/pytorch:latest](https://hub.docker.com/r/rocm/pytorch/tags?name=latest)",
+        ),
+        (
+            "https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags?name=10.1.0-full",
+            "[rocm/dev-ubuntu-24.04:10.1.0-full](https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags?name=10.1.0-full)",
+        ),
+    ],
+)
+def test_rows_displays_release_and_image_tag_names(value: str, expected: str) -> None:
+    assert list(gen.rows({"version": value}, {"version": "Version"})) == [
+        f"| Version | {expected} |"
+    ]

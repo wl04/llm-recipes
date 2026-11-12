@@ -18,7 +18,7 @@ software:
   server: null
   server_version: null
   engine: null
-  engine_version: null
+  engine_version: null # Version string or verified exact-match release URL
   engine_version_note: null # Use a full commit URL when recording a source revision
   backend: null
   backend_api_version: null

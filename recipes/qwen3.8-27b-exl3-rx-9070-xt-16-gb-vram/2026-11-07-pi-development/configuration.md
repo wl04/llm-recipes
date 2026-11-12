@@ -34,15 +34,16 @@
 | Agent / harness | Pi |
 | Harness version | 1.5.0 (reported workstation version) |
 | Inference engine | ExLlamaV3 |
-| Engine version | 1.6.6 |
-| Engine version notes | [bd1f5191](https://github.com/turboderp-org/exllamav3/commit/bd1f519172406a9560bd5c90e61000691bb69a07) |
+| Engine version | [v1.6.6](https://github.com/turboderp-org/exllamav3/releases/tag/v1.6.6) |
+| Engine commit | [bd1f5191](https://github.com/turboderp-org/exllamav3/commit/bd1f519172406a9560bd5c90e61000691bb69a07) |
 | Compute backend | ROCm / HIP |
 | Backend API version | HIP 7.16.26385 |
 | GPU driver | amdgpu |
 | PyTorch | 2.14.0+rocm10.1.0 |
 | Python | 3.12.3 |
 | Docker Engine | 29.9.3 |
-| Base image | rocm/pytorch@sha256:099f59a3bee9c436f5cc57db6bc6076fdeda579c57e9e22ae40f856d5905b3e4 |
+| Base image tag at preparation | [rocm/pytorch:latest](https://hub.docker.com/r/rocm/pytorch/tags?name=latest) |
+| Pinned base image | rocm/pytorch@sha256:099f59a3bee9c436f5cc57db6bc6076fdeda579c57e9e22ae40f856d5905b3e4 |
 | API server | TabbyAPI |
 | API server revision | [8f92fac5](https://github.com/theroyallab/tabbyAPI/commit/8f92fac5d9307bf1e09668c3715b32ff46ad0333) |
 

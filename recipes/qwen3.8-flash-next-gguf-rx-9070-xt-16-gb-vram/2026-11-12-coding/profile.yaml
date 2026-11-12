@@ -18,9 +18,10 @@ software:
   engine_version: 0.1.59.1
   revision: https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0
   backend: ROCm / HIP
-  rocm_image_release: 10.1.0-full
+  rocm_image_release: https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags?name=10.1.0-full
   base_image: rocm/dev-ubuntu-24.04@sha256:5ed1362ea542a928651e4c710b44024ebe98870f74159cb70f0265aec8ef0abe
   vision_engine: llama.cpp mtmd (CPU)
+  vision_version: https://github.com/ggml-org/llama.cpp/releases/tag/b11062
   vision_revision: https://github.com/ggml-org/llama.cpp/commit/3cf03257f219afbe7334045ff7c6a06ac68c627d
   host_python: 3.14.8
 model:
@@ -83,9 +84,10 @@ labels:
   software.engine_version: Engine version
   software.revision: Strata revision
   software.backend: Compute backend
-  software.rocm_image_release: ROCm image release
-  software.base_image: Base image
+  software.rocm_image_release: Base image tag at preparation
+  software.base_image: Pinned base image
   software.vision_engine: Vision engine
+  software.vision_version: Vision engine release
   software.vision_revision: Vision revision
   model: Model
   model.name: Model name

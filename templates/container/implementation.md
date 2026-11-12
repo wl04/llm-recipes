@@ -4,7 +4,7 @@
 
 ## Image and dependencies
 
-Identify the image-build inputs, base image digest, upstream revisions, and dependency locks. Describe the build command and architecture selection.
+Identify the image-build inputs, base image tag and digest, upstream revisions, and dependency locks. Link verified matching releases and image tags using the [profile reference conventions](../../docs/authoring.md#releases-and-container-image-tags). Describe the build command and architecture selection.
 
 ## Model preparation
 

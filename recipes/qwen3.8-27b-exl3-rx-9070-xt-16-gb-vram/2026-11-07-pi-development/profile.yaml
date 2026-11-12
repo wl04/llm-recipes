@@ -16,7 +16,7 @@ software:
   harness: Pi
   harness_version: 1.5.0 (reported workstation version)
   engine: ExLlamaV3
-  engine_version: 1.6.6
+  engine_version: https://github.com/turboderp-org/exllamav3/releases/tag/v1.6.6
   engine_version_note: https://github.com/turboderp-org/exllamav3/commit/bd1f519172406a9560bd5c90e61000691bb69a07
   backend: ROCm / HIP
   backend_api_version: HIP 7.16.26385
@@ -25,6 +25,7 @@ software:
   pytorch: 2.14.0+rocm10.1.0
   python: 3.12.3
   docker: 29.9.3
+  base_image_tag: https://hub.docker.com/r/rocm/pytorch/tags?name=latest
   base_image: rocm/pytorch@sha256:099f59a3bee9c436f5cc57db6bc6076fdeda579c57e9e22ae40f856d5905b3e4
   server: TabbyAPI
   server_version: https://github.com/theroyallab/tabbyAPI/commit/8f92fac5d9307bf1e09668c3715b32ff46ad0333
@@ -85,7 +86,7 @@ labels:
   software.harness_version: Harness version
   software.engine: Inference engine
   software.engine_version: Engine version
-  software.engine_version_note: Engine version notes
+  software.engine_version_note: Engine commit
   software.backend: Compute backend
   software.backend_api_version: Backend API version
   software.gpu_driver: GPU driver
@@ -101,7 +102,8 @@ labels:
   software.pytorch: PyTorch
   software.python: Python
   software.docker: Docker Engine
-  software.base_image: Base image
+  software.base_image_tag: Base image tag at preparation
+  software.base_image: Pinned base image
   model.revision: Target revision
   model.draft_repository: Draft repository
   model.draft_revision: Draft source revision
