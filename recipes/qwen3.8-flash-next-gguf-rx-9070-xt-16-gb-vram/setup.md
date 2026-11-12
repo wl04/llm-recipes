@@ -76,7 +76,7 @@ Server defaults in `config/strata.json` are temperature 1, top-k 20, top-p 0.95,
 
 ## Vision detail
 
-CPU vision uses `vision.min_tokens: 1024` and `vision.max_tokens: 1024` in `config/strata.json`. These control image encoding, separately from the response-token limit. Restart the serving instance after changing them. The initial results used Strata’s default CPU image-token maximum of 300; the 1,024-token setting is awaiting a comparison on the same screenshot.
+CPU vision uses `vision.min_tokens: 1024` and `vision.max_tokens: 1024` in `config/strata.json`. These control image encoding, separately from the response-token limit. Restart the serving instance after changing them. The initial results used Strata’s default CPU image-token maximum of 300; the [1,024-token comparison](2026-11-12-vision-1024/summary.md) records improved reading of several labels and increased end-to-end latency on the same screenshot.
 
 ## Generation checks
 

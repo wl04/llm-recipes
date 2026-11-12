@@ -12,6 +12,7 @@ The RX 9070 XT workstation completed image validation, model preparation, stream
 
 | Experiment | Configuration | Results |
 |---|---|---|
+| 2026-11-12 — CPU vision with 1,024 image tokens | [Configuration](2026-11-12-vision-1024/configuration.md) | [Results](2026-11-12-vision-1024/summary.md) |
 | 2026-11-12 — Initial text, tool, vision, and long-context checks | [Configuration](2026-11-12/configuration.md) | [Results](2026-11-12/summary.md) |
 
 <!-- END GENERATED EXPERIMENTS -->
