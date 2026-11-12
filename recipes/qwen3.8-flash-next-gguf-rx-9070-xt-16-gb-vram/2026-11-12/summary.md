@@ -36,7 +36,9 @@ The vision request took 4.75 seconds end to end. Its engine prefill and generati
 | KV backing in pinned RAM | 1.55 GiB | 32,768 of 131,072 KV cells per QSA layer resident in VRAM |
 | MTP draft layer | 835 MiB VRAM | Engine startup; draft head subsequently reported another 178.4 MiB |
 
-Snapshot readings are point-in-time observations. The engine selected 8,192-token prompt chunks after evaluating the RAM cost of larger chunks. During the long request, 94.74% of KV block reads hit VRAM and 202.5 MiB was read from RAM. Decode expert-cache hit rate was 78.0%, with another 8.6% of routed experts read over PCIe.
+The RAM and VRAM readings come from separate snapshots taken alongside the initial checks. They are point-in-time observations, not peak measurements or readings from the later coding session. System RAM and device VRAM include other applications; the Strata process row isolates its reported VRAM allocation. Swap occupancy does not establish whether swapping occurred during inference.
+
+Strata keeps the expert arena in system RAM and a subset of experts in its GPU cache, with KV backing also in RAM. Both memory pools contribute to this configuration. The engine selected 8,192-token prompt chunks after evaluating the RAM cost of larger chunks. During the long request, 94.74% of KV block reads hit VRAM and 202.5 MiB was read from RAM. Decode expert-cache hit rate was 78.0%, with another 8.6% of routed experts read over PCIe.
 
 ## Observations
 
