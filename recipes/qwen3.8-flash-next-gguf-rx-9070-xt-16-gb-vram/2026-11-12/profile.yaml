@@ -13,25 +13,25 @@ os:
   kernel_driver: amdgpu
 software:
   harness: Recipe check_generation.py (text, tools, vision, long)
-  harness_version: 4464f6c
+  harness_version: https://github.com/wl04/llm-recipes/commit/4464f6c
   api_server: Strata serve.server
   engine: Strata
   engine_version: 0.1.59.1
-  revision: dbb2d168cffa8cf793d9325358809d5263c7c6b0
+  revision: https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0
   backend: ROCm / HIP
   rocm_image_release: 10.1.0-full
   base_image: rocm/dev-ubuntu-24.04@sha256:5ed1362ea542a928651e4c710b44024ebe98870f74159cb70f0265aec8ef0abe
   vision_engine: llama.cpp mtmd (CPU)
-  vision_revision: 3cf03257f219afbe7334045ff7c6a06ac68c627d
+  vision_revision: https://github.com/ggml-org/llama.cpp/commit/3cf03257f219afbe7334045ff7c6a06ac68c627d
   host_python: 3.14.8
 model:
   name: Qwen3.8-Flash-Next
   format: GGUF
   quantization: GSQ-RCO IQ3_XXS
   repository: ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF
-  revision: ed59f92082b1e93c0e96d60a8b11aab089b52f09
+  revision: https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF/commit/ed59f92082b1e93c0e96d60a8b11aab089b52f09
   draft_repository: Qwen/Qwen3.8-Flash-Next
-  draft_revision: de4b8e4d43b917e7706784d8bb445c9af86a3540
+  draft_revision: https://huggingface.co/Qwen/Qwen3.8-Flash-Next/commit/de4b8e4d43b917e7706784d8bb445c9af86a3540
   draft_quantization: Q2_0 experts; Q8_0, BF16 and FP32 dense weights
   vision_projector: mmproj-Qwen3.8-Flash-Next-BF16.gguf
 settings:

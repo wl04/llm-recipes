@@ -14,10 +14,10 @@ os:
   kernel_driver: amdgpu
 software:
   harness: TabbyAPI
-  harness_version: 8f92fac5d9307bf1e09668c3715b32ff46ad0333
+  harness_version: https://github.com/theroyallab/tabbyAPI/commit/8f92fac5d9307bf1e09668c3715b32ff46ad0333
   engine: ExLlamaV3
   engine_version: 1.6.6
-  engine_version_note: bd1f519172406a9560bd5c90e61000691bb69a07
+  engine_version_note: https://github.com/turboderp-org/exllamav3/commit/bd1f519172406a9560bd5c90e61000691bb69a07
   backend: ROCm / HIP
   backend_api_version: HIP 7.16.26385
   gpu_driver: amdgpu
@@ -32,9 +32,9 @@ model:
   quantization: SC_3.00bpw_H4
   repository: turboderp/Qwen3.8-27B-exl3
   artifacts: []
-  revision: 86b95530f9d365d90dd24d01a997a8de0cdf6c55
+  revision: https://huggingface.co/turboderp/Qwen3.8-27B-exl3/commit/86b95530f9d365d90dd24d01a997a8de0cdf6c55
   draft_repository: z-lab/Qwen3.8-27B-DFlash2
-  draft_revision: 50307d4c4cde6860d4eee73e2547cd786fe8e8a4
+  draft_revision: https://huggingface.co/z-lab/Qwen3.8-27B-DFlash2/commit/50307d4c4cde6860d4eee73e2547cd786fe8e8a4
   draft_quantization: 3.0 bpw, mul1 codebook, --out_scales always
   draft_size: 0.932 GB (decimal, converted weights)
 settings:

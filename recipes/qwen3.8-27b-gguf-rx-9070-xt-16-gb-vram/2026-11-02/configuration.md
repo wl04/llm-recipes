@@ -50,7 +50,7 @@
 | Model name | Qwen3.8-27B |
 | Model format | GGUF |
 | Weight quantization | IQ3_XXS |
-| Model repository | https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF |
+| Model repository | [https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF](https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF) |
 | Model files | Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf<br>mmproj-Qwen3.8-27B-BF16.gguf |
 
 

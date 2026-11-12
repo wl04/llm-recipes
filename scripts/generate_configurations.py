@@ -8,6 +8,7 @@ import re
 import sys
 from collections.abc import Generator, Mapping
 from pathlib import Path
+from urllib.parse import quote, urlsplit
 
 import yaml
 
@@ -22,6 +23,19 @@ def cell(value: object) -> str:
     if value is None:
         return "—"
     return html.escape(str(value)).replace("|", "&#124;").replace("\n", "<br>")
+
+
+def value_cell(value: object) -> str:
+    """Render URL values as links, abbreviating commit IDs only in display text."""
+    if isinstance(value, str) and value.startswith(("https://", "http://")):
+        url = urlsplit(value)
+        if url.netloc and not any(char.isspace() for char in value):
+            commit = re.search(r"/commit/([0-9a-fA-F]{7,40})$", url.path)
+            label = commit.group(1)[:8] if commit else value
+            target = quote(value, safe=":/?#@!$&'*+,;=%~.-_")
+            text = cell(label).replace("[", "&#91;").replace("]", "&#93;")
+            return f"[{text}]({target})"
+    return cell(value)
 
 
 def empty(value: object) -> bool:
@@ -49,11 +63,11 @@ def rows(
         if isinstance(value, list):
             yield (
                 f"| {cell(label)} | "
-                + "<br>".join(cell(item) for item in value if not empty(item))
+                + "<br>".join(value_cell(item) for item in value if not empty(item))
                 + " |"
             )
         else:
-            yield f"| {cell(label)} | {cell(value)} |"
+            yield f"| {cell(label)} | {value_cell(value)} |"
 
 
 def profile_identity(data: Mapping[str, object]) -> tuple[str, str]:

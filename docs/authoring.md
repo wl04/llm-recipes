@@ -75,6 +75,19 @@ Run generation after editing a profile or adding a result. Commit the YAML and g
 
 On Windows, use `.venv\Scripts\python.exe` in place of `.venv/bin/python`.
 
+## Revision links
+
+Use full commit URLs for source revisions in profiles, for example:
+
+```yaml
+software:
+  revision: https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0
+model:
+  revision: https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF/commit/ed59f92082b1e93c0e96d60a8b11aab089b52f09
+```
+
+Add the corresponding display labels, such as `software.revision: Strata revision` and `model.revision: Model revision`. The generator renders HTTP(S) values as clickable links and displays commit URLs using the first eight characters of the hash. The link retains the complete revision. Release version strings remain plain text. Build and model lock files retain the raw revisions consumed by preparation scripts.
+
 ## Display labels
 
 Each profile has a `labels` mapping for readable field names and section headings. Keys are dotted YAML paths, for example `hardware.memory.dedicated_vram_gib: Dedicated VRAM (GB)`. Labels affect the generated guide; values stay in their existing fields.

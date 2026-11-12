@@ -251,3 +251,33 @@ def test_write_atomic_cleans_up_temporary_file_when_replace_fails(
 
     assert path.read_text() == "old"
     assert not path.with_name(path.name + ".tmp").exists()
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (
+            "https://github.com/owner/engine/commit/" + "a" * 40,
+            "[aaaaaaaa](https://github.com/owner/engine/commit/" + "a" * 40 + ")",
+        ),
+        (
+            "https://huggingface.co/owner/model/commit/" + "b" * 40,
+            "[bbbbbbbb](https://huggingface.co/owner/model/commit/" + "b" * 40 + ")",
+        ),
+        (
+            "https://example.com/releases/v1",
+            "[https://example.com/releases/v1](https://example.com/releases/v1)",
+        ),
+        ("1.6.6", "1.6.6"),
+    ],
+)
+def test_rows_renders_reference_links_with_readable_text(value: str, expected: str) -> None:
+    assert list(gen.rows({"revision": value}, {"revision": "Revision"})) == [
+        f"| Revision | {expected} |"
+    ]
+
+
+def test_rows_links_list_values_and_preserves_plain_values() -> None:
+    assert list(
+        gen.rows({"versions": ["https://example.com/v1", "unknown"]}, {"versions": "Versions"})
+    ) == ["| Versions | [https://example.com/v1](https://example.com/v1)<br>unknown |"]

@@ -32,16 +32,16 @@
 | Setting | Value |
 |---|---|
 | Check client | Recipe check_generation.py (vision) |
-| Check client revision | 4464f6c |
+| Check client revision | [4464f6c](https://github.com/wl04/llm-recipes/commit/4464f6c) |
 | API server | Strata serve.server |
 | Engine | Strata |
 | Engine version | 0.1.59.1 |
-| Strata revision | dbb2d168cffa8cf793d9325358809d5263c7c6b0 |
+| Strata revision | [dbb2d168](https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0) |
 | Compute backend | ROCm / HIP |
 | ROCm image release | 10.1.0-full |
 | Base image | rocm/dev-ubuntu-24.04@sha256:5ed1362ea542a928651e4c710b44024ebe98870f74159cb70f0265aec8ef0abe |
 | Vision engine | llama.cpp mtmd (CPU) |
-| Vision revision | 3cf03257f219afbe7334045ff7c6a06ac68c627d |
+| Vision revision | [3cf03257](https://github.com/ggml-org/llama.cpp/commit/3cf03257f219afbe7334045ff7c6a06ac68c627d) |
 | Host Python | 3.14.8 |
 
 
@@ -54,9 +54,9 @@
 | Format | GGUF |
 | Weight quantization | GSQ-RCO IQ3_XXS |
 | Model repository | ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF |
-| Model revision | ed59f92082b1e93c0e96d60a8b11aab089b52f09 |
+| Model revision | [ed59f920](https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF/commit/ed59f92082b1e93c0e96d60a8b11aab089b52f09) |
 | Draft repository | Qwen/Qwen3.8-Flash-Next |
-| Draft revision | de4b8e4d43b917e7706784d8bb445c9af86a3540 |
+| Draft revision | [de4b8e4d](https://huggingface.co/Qwen/Qwen3.8-Flash-Next/commit/de4b8e4d43b917e7706784d8bb445c9af86a3540) |
 | Draft quantization | Q2_0 experts; Q8_0, BF16 and FP32 dense weights |
 | Vision projector | mmproj-Qwen3.8-Flash-Next-BF16.gguf |
 

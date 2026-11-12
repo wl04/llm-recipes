@@ -19,7 +19,7 @@ software:
   server_version: null
   engine: null
   engine_version: null
-  engine_version_note: null
+  engine_version_note: null # Use a full commit URL when recording a source revision
   backend: null
   backend_api_version: null
   gpu_driver: null
@@ -28,7 +28,8 @@ model:
   name: null
   format: null
   quantization: null
-  repository: null
+  repository: null # Repository URL
+  revision: null # Full GitHub or Hugging Face commit URL
   artifacts: []
 settings:
   Speculative decoding: null # Effective settings used for this result
@@ -63,6 +64,7 @@ labels:
   model.name: Model name
   model.format: Model format
   model.quantization: Weight quantization
+  model.revision: Model revision
   model.repository: Model repository
   model.artifacts: Model files
   settings: Inference settings
