@@ -10,9 +10,9 @@ Run Qwen3.8-27B with TabbyAPI and ExLlamaV3 on ROCm, using a 3 bpw target, DFlas
 
 | Experiment | Configuration | Results |
 |---|---|---|
-| 2026-11-07 — Pi software development: gpu-switcher | [Configuration](2026-11-07-pi-development/configuration.md) | [Results](2026-11-07-pi-development/summary.md) |
-| 2026-11-05 — Screenshot reading with GPU-resident vision | [Configuration](2026-11-05-vision/configuration.md) | [Results](2026-11-05-vision/summary.md) |
-| 2026-11-05 — Coding generation and near-128K context | [Configuration](2026-11-05/configuration.md) | [Results](2026-11-05/summary.md) |
+| 003 · 2026-11-07 — Pi software development: gpu-switcher | [Configuration](003-2026-11-07-coding-gpu-switcher/configuration.md) | [Results](003-2026-11-07-coding-gpu-switcher/summary.md) |
+| 002 · 2026-11-05 — Screenshot reading with GPU-resident vision | [Configuration](002-2026-11-05-vision/configuration.md) | [Results](002-2026-11-05-vision/summary.md) |
+| 001 · 2026-11-05 — Coding generation and near-128K context | [Configuration](001-2026-11-05-initial-checks/configuration.md) | [Results](001-2026-11-05-initial-checks/summary.md) |
 
 <!-- END GENERATED EXPERIMENTS -->
 

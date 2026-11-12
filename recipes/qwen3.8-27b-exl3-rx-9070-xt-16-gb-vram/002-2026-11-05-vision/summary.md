@@ -1,4 +1,4 @@
-# 2026-11-05 — Screenshot reading with GPU-resident vision
+# 002 · 2026-11-05 — Screenshot reading with GPU-resident vision
 
 Qwen3.8-27B EXL3 correctly read the GPU model and VRAM usage from an `amdgpu_top` screenshot with vision and DFlash2 enabled at a 131,072-token context allocation. Vision weight offload to system RAM was disabled (`vision_offload: false`).
 
@@ -6,7 +6,7 @@ Qwen3.8-27B EXL3 correctly read the GPU model and VRAM usage from an `amdgpu_top
 
 One non-streaming chat completion contained a text instruction and a PNG screenshot embedded as a base64 image URL. The instruction asked for the GPU model, used VRAM, and total VRAM. The request used temperature 0, a 256-token output limit, and `enable_thinking: false` in the chat template arguments.
 
-The input was the [GPU snapshot](../2026-11-05/assets/amdgpu-top-dflash2-128k.png) from the earlier text-only DFlash2 run. Its displayed memory figures describe that earlier run. Memory for this vision request is recorded separately below.
+The input was the [GPU snapshot](../001-2026-11-05-initial-checks/assets/amdgpu-top-dflash2-128k.png) from the earlier text-only DFlash2 run. Its displayed memory figures describe that earlier run. Memory for this vision request is recorded separately below.
 
 ## Statistics
 
@@ -39,7 +39,7 @@ The model correctly returned all three requested values:
 - Used VRAM in the input screenshot: 14,822 MiB
 - Total VRAM in the input screenshot: 16,304 MiB
 
-The confirmed context allocation was 131,072 tokens; this request used 5,835 input tokens and 62 output tokens. The result establishes successful screenshot reading with GPU-resident vision and DFlash2 at that allocation. Near-full-context processing was measured separately in the [text-only results](../2026-11-05/summary.md), where vision was disabled.
+The confirmed context allocation was 131,072 tokens; this request used 5,835 input tokens and 62 output tokens. The result establishes successful screenshot reading with GPU-resident vision and DFlash2 at that allocation. Near-full-context processing was measured separately in the [text-only results](../001-2026-11-05-initial-checks/summary.md), where vision was disabled.
 
 ---
 

@@ -1,8 +1,8 @@
-# 2026-11-12 — CPU vision with 1,024 image tokens
+# 002 · 2026-11-12 — CPU vision with 1,024 image tokens
 
 ## Workload
 
-Repeated the vision check on the same `amdgpu_top` screenshot used in the [initial results](../2026-11-12/summary.md), after restarting Strata with `vision.min_tokens: 1024` and `vision.max_tokens: 1024`. The original configuration used the CPU default maximum of 300 image tokens and no explicit minimum.
+Repeated the vision check on the same `amdgpu_top` screenshot used in the [initial results](../001-2026-11-12-initial-checks/summary.md), after restarting Strata with `vision.min_tokens: 1024` and `vision.max_tokens: 1024`. The original configuration used the CPU default maximum of 300 image tokens and no explicit minimum.
 
 The prompt remained “Describe the image and read its visible text.” The request used temperature 0, thinking disabled, and a 256-output-token cap. MTP, CPU vision, and the 131,072-token context allocation remained enabled.
 

@@ -1,4 +1,4 @@
-# 2026-11-12 — Long coding session in Pi
+# 003 · 2026-11-12 — Long coding session in Pi
 
 ## Workload
 
@@ -47,7 +47,7 @@ The engine and server logs contain matching completion records for all 846 codin
 
 Several large context reductions followed prompts around 113,000–115,000 tokens. These are consistent with compaction or conversation resets; the logs do not identify the Pi action responsible for each reduction.
 
-The prefill aggregate includes many small additions to cached conversation history. The [initial long-context check](../2026-11-12/summary.md) instead processed a fresh synthetic prompt, so its prefill rate represents a different workload.
+The prefill aggregate includes many small additions to cached conversation history. The [initial long-context check](../001-2026-11-12-initial-checks/summary.md) instead processed a fresh synthetic prompt, so its prefill rate represents a different workload.
 
 ---
 

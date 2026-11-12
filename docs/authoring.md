@@ -5,21 +5,31 @@ Copy `templates/recipe/` to `recipes/<model-format-hardware-memory>/`. Choose a 
 ```text
 recipes/<model-format-hardware-memory>/
   recipe.md
-  YYYY-MM-DD/
+  NNN-YYYY-MM-DD-description/
     configuration.md
     summary.md
     profile.yaml
 ```
 
 1. Set `id` in `profile.yaml` using the naming rule below; the configuration title is generated from it. An overview in `configuration.md` is optional. Keep the generated-section markers in place.
-2. Rename `YYYY-MM-DD` to the result date. For multiple configurations on one date, add a suffix such as `2026-11-02-mtp-on`.
+2. Name the experiment folder `NNN-YYYY-MM-DD-description`: a three-digit sequence within the recipe, result date, and lowercase hyphen-separated workload or variant. Start at `001` and assign the next number for each new experiment, including those on the same day. Continue numbering across dates and keep assigned numbers fixed.
 3. Fill in `profile.yaml` with the hardware, software, model, and effective settings used for that result. Use `null` for unknown values. Record the client in `software.harness`, the API server in `software.server`, and the inference engine in `software.engine`, with their versions or revisions.
-4. Fill in `summary.md` with the workload, statistics, memory measurements, and observations. Keep one date in the title and number sessions #1, #2, and so on. Remove unused sections.
+4. Fill in `summary.md` with the workload, statistics, memory measurements, and observations. Use the title `# NNN · YYYY-MM-DD — Workload / variant`, matching the folder number and date. Within the report, number sessions #1, #2, and so on. Remove unused sections.
 5. Generate the configuration section using the commands below, and regenerate the experiment table in `recipe.md`. Add one root catalog row per recipe, linking to `recipe.md`.
 
-For another result, copy the three files from `templates/recipe/YYYY-MM-DD/` into a new dated result folder. The existing result remains a snapshot of its configuration.
+For another result, copy the three files from `templates/recipe/NNN-YYYY-MM-DD-description/` into a new numbered result folder. The existing result remains a snapshot of its configuration.
 
-Write a brief current-state description in `recipe.md` and keep its experiment markers. The generator builds its experiment table from dated report titles and links to each configuration and summary. For container recipes, add a prominent setup link and an implementation footer link when available.
+Write a brief current-state description in `recipe.md` and keep its experiment markers. The generator builds its experiment table from report titles, ordered by folder number descending, and links to each configuration and summary. For container recipes, add a prominent setup link and an implementation footer link when available.
+
+For example, three experiments in one recipe can be:
+
+```text
+001-2026-11-12-initial-checks/
+002-2026-11-12-vision-1024/
+003-2026-11-12-coding-medium/
+```
+
+Folders sort by sequence in GitHub and file browsers; the recipe index shows the highest number first. The suffix identifies the workload or configuration variant. Keep changing status such as “current” out of folder names.
 
 ## Container recipes
 
@@ -38,7 +48,7 @@ recipes/<model-format-hardware-memory>/
     <image-build-inputs>
   scripts/
     <preparation-and-serving-scripts>
-  YYYY-MM-DD/
+  NNN-YYYY-MM-DD-description/
     configuration.md
     summary.md
     profile.yaml

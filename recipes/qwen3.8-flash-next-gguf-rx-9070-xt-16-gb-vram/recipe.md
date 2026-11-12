@@ -12,9 +12,9 @@ The RX 9070 XT workstation completed image validation, model preparation, stream
 
 | Experiment | Configuration | Results |
 |---|---|---|
-| 2026-11-12 — CPU vision with 1,024 image tokens | [Configuration](2026-11-12-vision-1024/configuration.md) | [Results](2026-11-12-vision-1024/summary.md) |
-| 2026-11-12 — Long coding session in Pi | [Configuration](2026-11-12-coding/configuration.md) | [Results](2026-11-12-coding/summary.md) |
-| 2026-11-12 — Initial text, tool, vision, and long-context checks | [Configuration](2026-11-12/configuration.md) | [Results](2026-11-12/summary.md) |
+| 003 · 2026-11-12 — Long coding session in Pi | [Configuration](003-2026-11-12-coding-medium/configuration.md) | [Results](003-2026-11-12-coding-medium/summary.md) |
+| 002 · 2026-11-12 — CPU vision with 1,024 image tokens | [Configuration](002-2026-11-12-vision-1024/configuration.md) | [Results](002-2026-11-12-vision-1024/summary.md) |
+| 001 · 2026-11-12 — Initial text, tool, vision, and long-context checks | [Configuration](001-2026-11-12-initial-checks/configuration.md) | [Results](001-2026-11-12-initial-checks/summary.md) |
 
 <!-- END GENERATED EXPERIMENTS -->
 

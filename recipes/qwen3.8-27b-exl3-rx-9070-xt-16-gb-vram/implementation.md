@@ -50,4 +50,4 @@ Both helpers print generated output, token usage, server timings, and request du
 
 ---
 
-[Recipe](recipe.md) · [Setup](setup.md) · [Text results](2026-11-05/summary.md) · [Vision results](2026-11-05-vision/summary.md)
+[Recipe](recipe.md) · [Setup](setup.md) · [Text results](001-2026-11-05-initial-checks/summary.md) · [Vision results](002-2026-11-05-vision/summary.md)

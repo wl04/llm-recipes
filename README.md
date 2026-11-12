@@ -24,7 +24,7 @@ Each recipe groups dated experiments for a model, format, and hardware combinati
 ```text
 recipes/<model-format-hardware-memory>/
   recipe.md            # Overview and links to experiments
-  YYYY-MM-DD/
+  NNN-YYYY-MM-DD-description/
     profile.yaml       # Hardware, software, model, and settings
     configuration.md   # Generated from this experiment's profile
     summary.md         # Workload, statistics, and observations
@@ -43,7 +43,7 @@ recipes/<model-format-hardware-memory>/
     models.lock.json   # Model revisions, files, and draft conversion options
   container/           # Dockerfile, pinned dependencies, and build helpers
   scripts/             # Model preparation, serving, and generation checks
-  YYYY-MM-DD/          # Configuration snapshot and measured results
+  NNN-YYYY-MM-DD-description/          # Configuration snapshot and measured results
 ```
 
 ---

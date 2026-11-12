@@ -18,7 +18,7 @@ Downloads use partial files and verify full hashes before publication. A filesys
 
 [`config/launch.json`](config/launch.json) selects the `strata` API-server adapter and `strata` engine. [`scripts/serve.py`](scripts/serve.py) derives a temporary native configuration from [`config/strata.json`](config/strata.json), validates prepared paths, checks the GPU, and starts `serve.server`.
 
-The native configuration selects IQ3_XXS, automatic expert caching and prefill, INT8 K/V, 32,768 GPU-resident KV cells, and MTP with four draft tokens. CPU vision uses the BF16 multimodal projector. Model files and preparation outputs are external mounts. The [initial measurements](2026-11-12/summary.md) cover text, tools, CPU vision, and a 119,999-token prompt.
+The native configuration selects IQ3_XXS, automatic expert caching and prefill, INT8 K/V, 32,768 GPU-resident KV cells, and MTP with four draft tokens. CPU vision uses the BF16 multimodal projector. Model files and preparation outputs are external mounts. The [initial measurements](001-2026-11-12-initial-checks/summary.md) cover text, tools, CPU vision, and a 119,999-token prompt.
 
 The launcher mounts model and recipe directories read-only, and cache/log directories writable. Strata receives an unlimited memory-lock allowance, 2 GB shared memory, and a 120-second stop timeout. Its API binds inside the container, with Docker publishing only to host loopback. Offline mode disables external fetches; local API authentication is disabled.
 

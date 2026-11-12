@@ -2,7 +2,7 @@
 
 ## Repository structure
 
-- `recipes/<recipe>/` contains a recipe entry page (`recipe.md`) and dated experiment folders with `profile.yaml`, generated `configuration.md`, and authored `summary.md`.
+- `recipes/<recipe>/` contains a recipe entry page (`recipe.md`) and numbered experiment folders (`NNN-YYYY-MM-DD-description`) with `profile.yaml`, generated `configuration.md`, and authored `summary.md`.
 - Container recipes also include `setup.md`, optional `implementation.md`, `config/` (launch manifest, native server settings, model locks), `container/` (image-build inputs and dependency locks), and `scripts/` (model preparation, serving, and measurement helpers).
 - `scripts/launch.py` provides the launcher CLI. `scripts/launcher.py` provides recipe discovery, validation, command planning, and process operations shared by interfaces.
 - `scripts/generate_configurations.py` generates configuration guides and recipe experiment indexes from `recipes/*/*/profile.yaml`. Its `--check` mode leaves files untouched and exits with code 1 when generated content is outdated.

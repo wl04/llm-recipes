@@ -1,4 +1,4 @@
-# 2026-11-05 — Coding generation and near-128K context
+# 001 · 2026-11-05 — Coding generation and near-128K context
 
 Qwen3.8-27B EXL3 generated successfully on the RX 9070 XT with a 131,072-token allocation, processing approximately 130,000 fresh input tokens with DFlash2 enabled and disabled. The converted DFlash2 draft weighs 0.932 GB.
 

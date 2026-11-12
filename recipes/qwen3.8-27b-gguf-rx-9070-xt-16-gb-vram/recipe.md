@@ -8,7 +8,7 @@ Run Qwen3.8-27B IQ3_XXS GGUF in LM Studio Bionic with the Vulkan backend. Record
 
 | Experiment | Configuration | Results |
 |---|---|---|
-| 2026-11-02 — Coding workload | [Configuration](2026-11-02/configuration.md) | [Results](2026-11-02/summary.md) |
+| 001 · 2026-11-02 — Coding workload | [Configuration](001-2026-11-02-coding/configuration.md) | [Results](001-2026-11-02-coding/summary.md) |
 
 <!-- END GENERATED EXPERIMENTS -->
 

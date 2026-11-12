@@ -1,4 +1,4 @@
-# YYYY-MM-DD — configuration / workload
+# NNN · YYYY-MM-DD — Workload / variant
 
 Fill in the information available and remove unused sections.
 

@@ -1,4 +1,4 @@
-# 2026-11-12 — Initial text, tool, vision, and long-context checks
+# 001 · 2026-11-12 — Initial text, tool, vision, and long-context checks
 
 ## Workload
 
@@ -43,7 +43,7 @@ Strata keeps the expert arena in system RAM and a subset of experts in its GPU c
 ## Observations
 
 - Image build, API imports, HIP kernel execution, model preparation, streamed text, tool-call round trip, CPU vision, and the 119,999-token prompt completed successfully.
-- The vision response recognized `amdgpu_top` but misread panel names, including “GPU12” and “IdleGPU”. It reached its output cap during the description. The [1,024-token follow-up](../2026-11-12-vision-1024/summary.md) read several visible labels correctly, with end-to-end time increasing from 4.75 to 9.72 seconds. Both descriptions reached the 256-output-token cap.
+- The vision response recognized `amdgpu_top` but misread panel names, including “GPU12” and “IdleGPU”. It reached its output cap during the description. The [1,024-token follow-up](../002-2026-11-12-vision-1024/summary.md) read several visible labels correctly, with end-to-end time increasing from 4.75 to 9.72 seconds. Both descriptions reached the 256-output-token cap.
 - Strata's runtime defaults included Q8_0 hyper-connection projections, fused INT8 prompt experts, and route-tail skipping at rank 7. The engine reports that some enabled optimizations can change answers. These settings are part of this measurement.
 - The short synthetic outputs establish initial functionality and observed throughput. Sustained coding behavior and accuracy require a representative workload.
 
