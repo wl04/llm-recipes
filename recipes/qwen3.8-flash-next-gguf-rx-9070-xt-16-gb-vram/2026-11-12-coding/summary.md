@@ -4,7 +4,7 @@
 
 Interactive software development in Pi using Strata with IQ3_XXS weights, MTP drafting, CPU vision enabled, and a 131,072-token context allocation. The session contains 846 completed coding requests. The six preceding text, tool, vision, and synthetic long-context checks are excluded from these measurements.
 
-Thinking was active. The server usually reserved 12,288 tokens for reasoning within a 16,384-token output allowance, using its automatic answer-room behavior. Both allowances were smaller on some requests. The selected Pi effort level and Pi version were not recorded. Sampling values in the configuration snapshot are server defaults; requests can override them.
+Thinking was active, with Pi effort set to **Medium** throughout the session. The server usually reserved 12,288 tokens for reasoning within a 16,384-token output allowance, using its automatic answer-room behavior. Both allowances were smaller on some requests. The Pi version was not recorded. Sampling values in the configuration snapshot are server defaults; requests can override them.
 
 ## Results
 

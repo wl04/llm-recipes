@@ -58,7 +58,8 @@ settings:
   Vision maximum image tokens: 1024
   Vision minimum image tokens: 1024
   Coding requests:
-    Thinking: enabled; Pi effort not recorded
+    Thinking: enabled
+    Pi effort: medium
     Output allowance: Usually 16384 tokens; varies by request
     Reasoning allowance: Automatic answer room; usually 12288 tokens within the output
       allowance
@@ -123,5 +124,6 @@ labels:
   settings.Vision minimum image tokens: Minimum image tokens
   settings.Coding requests: Coding requests
   settings.Coding requests.Thinking: Thinking during coding session
+  settings.Coding requests.Pi effort: Pi reasoning effort
   settings.Coding requests.Output allowance: Output allowance
   settings.Coding requests.Reasoning allowance: Reasoning allowance
