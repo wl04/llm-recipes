@@ -123,7 +123,7 @@ labels:
   settings.Server sampling.Presence penalty: Presence penalty
   settings.Check requests: Check requests
   settings.Check requests.Temperature: Temperature
-  settings.Check requests.Thinking: Thinking
+  settings.Check requests.Thinking: Thinking during checks
   settings.Check requests.Maximum output tokens: Maximum output tokens
   settings.Check requests.Concurrency: Concurrency
   settings.Check requests.Endpoints: Endpoints

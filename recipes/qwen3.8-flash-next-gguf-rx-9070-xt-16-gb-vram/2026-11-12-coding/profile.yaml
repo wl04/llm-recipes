@@ -122,6 +122,6 @@ labels:
   settings.Vision maximum image tokens: Maximum image tokens
   settings.Vision minimum image tokens: Minimum image tokens
   settings.Coding requests: Coding requests
-  settings.Coding requests.Thinking: Thinking
+  settings.Coding requests.Thinking: Thinking during coding session
   settings.Coding requests.Output allowance: Output allowance
   settings.Coding requests.Reasoning allowance: Reasoning allowance

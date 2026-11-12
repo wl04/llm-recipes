@@ -87,7 +87,7 @@
 | Presence penalty | 0 |
 | Maximum image tokens | 1024 |
 | Minimum image tokens | 1024 |
-| Thinking | enabled; Pi effort not recorded |
+| Thinking during coding session | enabled; Pi effort not recorded |
 | Output allowance | Usually 16384 tokens; varies by request |
 | Reasoning allowance | Automatic answer room; usually 12288 tokens within the output allowance |
 
