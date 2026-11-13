@@ -9,5 +9,5 @@ Describe the current recipe briefly.
 
 ---
 
-<!-- When implementation.md exists, append: · [Implementation](implementation.md) -->
+<!-- For container recipes, append: · [Runtime](../../docs/runtimes/<runtime>.md) -->
 [All recipes](../../README.md)

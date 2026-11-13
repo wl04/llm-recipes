@@ -21,8 +21,7 @@ tool mypy
 tool pytest
 
 if command -v shellcheck >/dev/null; then
-    shellcheck recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/prepare-models.sh \
-               recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/serve.sh
+    shellcheck runtimes/exllamav3-tabbyapi/scripts/prepare-models.sh
 else
     echo "shellcheck not installed; skipping shell checks" >&2
 fi

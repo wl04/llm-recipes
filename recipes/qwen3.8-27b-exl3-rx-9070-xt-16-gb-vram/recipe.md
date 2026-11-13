@@ -18,4 +18,4 @@ Run Qwen3.8-27B with TabbyAPI and ExLlamaV3 on ROCm, using a 3 bpw target, DFlas
 
 ---
 
-[All recipes](../../README.md) · [Implementation](implementation.md)
+[All recipes](../../README.md) · [Runtime](../../docs/runtimes/exllamav3-tabbyapi.md)

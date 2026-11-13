@@ -62,21 +62,22 @@ The launcher discovers `recipes/*/config/launch.json`. The recipe directory supp
 
 | Field | Meaning |
 | --- | --- |
-| `adapter` | API-server integration: `tabbyapi` or `strata` |
-| `engine` | Inference engine: `exllamav3` or `strata` |
-| `image` | Prepared Docker image reference |
+| `runtime` | Directory identifier under `runtimes/`, such as `strata` or `exllamav3-tabbyapi` |
+| `data_directory` | External data subdirectory under `--models`; `.` selects the mount root |
 | `port` | Container API port and default host port |
 | `context` | Default context capacity |
 | `draft` | Default `on` or `off` |
 | `vision` | TabbyAPI: `on/off`; Strata: `cpu/off` |
 
-Use the [container manifest template](../templates/container/config/launch.json) as the TabbyAPI example; for Strata, set both `adapter` and `engine` to `strata`, select its image and port, and use `cpu` or `off` for vision. Native server settings stay in their own file, such as `config/tabby.yml`. Dated `profile.yaml` files record settings used for measured results. Desktop recipes use their application's launch flow.
+The selected runtime's `runtime.json` defines `adapter`, `engine`, and `image`. Supported pairs are `tabbyapi` / `exllamav3` and `strata` / `strata`. The launcher validates the runtime identifier and serving entry point before constructing a command. Native server settings remain recipe-local. The [container recipe template](../templates/container/config/launch.json) selects the shared ExLlamaV3/TabbyAPI runtime.
 
-## Implementation boundaries
+## Shared runtimes
 
-[`scripts/launch.py`](../scripts/launch.py) handles CLI input and presentation. [`scripts/launcher.py`](../scripts/launcher.py) handles discovery, validation, command planning, and process execution. Docker labels record instance, recipe, API-server adapter, and engine; `ps` uses these labels without a separate state database.
+[ExLlamaV3 / TabbyAPI](runtimes/exllamav3-tabbyapi.md) and [Strata](runtimes/strata.md) each own a container build, dependency locks, preparation helpers, serving integration, and API checks. Multiple recipes can select one runtime while keeping their model locks, native configuration, data directories, and results independent. Select a recipe directly; model variants use separate recipe identifiers.
 
-Recipe entry points validate native settings and start the server. Recipe-specific preparation, GPU selection, mounts, and image checks are described in each implementation guide.
+The launcher mounts the selected recipe at `/recipe` and runtime at `/runtime`, both read-only, then calls `/runtime/scripts/serve.py --recipe /recipe`. Preparation helpers also take an explicit recipe directory. Existing prepared files remain usable when model and build locks match.
+
+[`scripts/launch.py`](../scripts/launch.py) handles CLI presentation. [`scripts/launcher.py`](../scripts/launcher.py) handles discovery, validation, command planning, and lifecycle operations. Docker labels record instance, recipe, runtime, API-server adapter, and engine. API-server integrations remain distinct from inference engines.
 
 ---
 

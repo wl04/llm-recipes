@@ -1,9 +1,0 @@
-{
-  "adapter": "strata",
-  "engine": "strata",
-  "image": "llm-recipes/strata-rdna4:probe",
-  "port": 8080,
-  "context": 131072,
-  "draft": "on",
-  "vision": "cpu"
-}

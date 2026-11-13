@@ -16,16 +16,16 @@ select = ["E", "F", "I", "UP", "B", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
 # Container build scripts import and validate after runtime lock checks by design.
-"recipes/*/container/*.py" = ["E402", "I001"]
+"runtimes/*/container/*.py" = ["E402", "I001"]
 
 [tool.mypy]
 files = [
     "scripts/generate_configurations.py",
     "scripts/launch.py",
     "scripts/launcher.py",
-    "recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/gpu.py",
-    "recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/serve.py",
-    "recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/scripts/prepare_models.py",
+    "runtimes/exllamav3-tabbyapi/scripts/gpu.py",
+    "runtimes/exllamav3-tabbyapi/scripts/serve.py",
+    "runtimes/exllamav3-tabbyapi/scripts/prepare_models.py",
     "tests",
 ]
 strict = true

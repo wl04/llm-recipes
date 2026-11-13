@@ -1,0 +1,5 @@
+{
+  "adapter": "tabbyapi",
+  "engine": "exllamav3",
+  "image": "local/runtime:version"
+}

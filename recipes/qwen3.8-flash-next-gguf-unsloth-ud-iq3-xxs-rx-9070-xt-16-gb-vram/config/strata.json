@@ -1,0 +1,52 @@
+{
+  "exe": "/opt/strata/bin/strata",
+  "args": [
+    "--pack",
+    "/models/strata-unsloth/packs/iq3_xxs",
+    "--native",
+    "/models/strata-unsloth/models/UD-IQ3_XXS/Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00004.gguf",
+    "--ple-gguf",
+    "/models/strata-unsloth/models/UD-IQ3_XXS/Qwen3.8-Flash-Next-UD-IQ3_XXS-00004-of-00004.gguf",
+    "--expert-profile",
+    "/opt/src/strata/data/expert-profile.bin",
+    "--expert-cache",
+    "auto",
+    "--prefill",
+    "auto",
+    "--spec",
+    "4",
+    "--spec-min-p",
+    "0.5",
+    "--mtp",
+    "/models/strata-unsloth/mtp/rt",
+    "--max-context",
+    "131072",
+    "--kv",
+    "int8",
+    "--kv-resident",
+    "32768",
+    "--vision"
+  ],
+  "cwd": "/opt/src/strata",
+  "tokenizer": "/models/strata-unsloth/packs/iq3_xxs/tokenizer",
+  "model_name": "qwen3.8-flash-next-ud-iq3_xxs",
+  "log": "/logs/engine.log",
+  "port": 8080,
+  "backend": "hip",
+  "vision": {
+    "exe": "/opt/strata/bin/strata-vision",
+    "mmproj": "/models/strata-unsloth/models/mmproj-Qwen3.8-Flash-Next-BF16.gguf",
+    "model": "/models/strata-unsloth/models/UD-IQ3_XXS/Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00004.gguf",
+    "gpu": false,
+    "min_tokens": 1024,
+    "max_tokens": 1024
+  },
+  "sampling": {
+    "temperature": 1.0,
+    "top_k": 20,
+    "top_p": 0.95,
+    "min_p": 0,
+    "repetition_penalty": 1,
+    "presence_penalty": 0
+  }
+}

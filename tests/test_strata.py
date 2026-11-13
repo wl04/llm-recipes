@@ -15,8 +15,11 @@ import pytest
 RECIPE = (
     Path(__file__).resolve().parents[1]
     / "recipes"
-    / "qwen3.8-flash-next-gguf-rx-9070-xt-16-gb-vram"
+    / "qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram"
 )
+
+RUNTIME = Path(__file__).resolve().parents[1] / "runtimes/strata"
+UNSLOTH = RECIPE.with_name("qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram")
 
 
 def load_module(name: str, path: Path) -> ModuleType:
@@ -27,8 +30,10 @@ def load_module(name: str, path: Path) -> ModuleType:
     return module
 
 
-serve = load_module("strata_serve", RECIPE / "scripts/serve.py")
-sources = load_module("strata_sources", RECIPE / "container/fetch_sources.py")
+sys.path.insert(0, str(RUNTIME / "scripts"))
+
+serve = load_module("strata_serve", RUNTIME / "scripts/serve.py")
+sources = load_module("strata_sources", RUNTIME / "container/fetch_sources.py")
 
 
 def test_configure_disables_optional_models_without_mutating_defaults() -> None:
@@ -113,3 +118,19 @@ def test_extract_unpacks_verified_single_root_archive(tmp_path: Path) -> None:
     sources.extract_verified(archive, tmp_path / "source", digest)
 
     assert (tmp_path / "source/source.txt").read_text() == "hello"
+
+
+def test_recipe_paths_keeps_model_data_separate() -> None:
+    recipe_paths = load_module("paths_test", RUNTIME / "scripts/recipe_config.py").recipe_paths
+    assert recipe_paths(RECIPE) == (RECIPE / "config", "strata")
+    assert recipe_paths(UNSLOTH) == (UNSLOTH / "config", "strata-unsloth")
+
+
+def test_validate_model_files_rejects_missing_middle_shard(tmp_path: Path) -> None:
+    files = [{"path": f"model-{i:05d}-of-00004.gguf", "size_bytes": 1} for i in range(1, 5)]
+    (tmp_path / "models").mkdir()
+    for item in files:
+        if item["path"] != "model-00002-of-00004.gguf":
+            (tmp_path / "models" / str(item["path"])).write_bytes(b"x")
+    with pytest.raises(ValueError, match="00002"):
+        serve.validate_model_files(tmp_path, {"files": files})

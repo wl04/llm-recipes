@@ -3,17 +3,17 @@
 ## Repository structure
 
 - `recipes/<recipe>/` contains a recipe entry page (`recipe.md`) and numbered experiment folders (`NNN-YYYY-MM-DD-description`) with `profile.yaml`, generated `configuration.md`, and authored `summary.md`.
-- Container recipes also include `setup.md`, optional `implementation.md`, `config/` (launch manifest, native server settings, model locks), `container/` (image-build inputs and dependency locks), and `scripts/` (model preparation, serving, and measurement helpers).
+- Container recipes include `setup.md` and `config/` (runtime selection, native settings, model locks, Pi metadata). Shared `runtimes/<runtime>/` directories own `runtime.json`, `container/` build inputs, and `scripts/` for preparation, serving, and checks. Runtime guides live under `docs/runtimes/`.
 - `scripts/launch.py` provides the launcher CLI. `scripts/launcher.py` provides recipe discovery, validation, command planning, and process operations shared by interfaces.
 - `scripts/generate_configurations.py` generates configuration guides and recipe experiment indexes from `recipes/*/*/profile.yaml`. Its `--check` mode leaves files untouched and exits with code 1 when generated content is outdated.
-- `templates/recipe/` contains recipe and experiment templates. `templates/container/` contains optional container setup, implementation, and launch-manifest templates. [Authoring guide](authoring.md) describes how to use them.
+- `templates/recipe/` contains recipe and experiment templates. `templates/container/` contains container recipe setup and launch-manifest templates; `templates/runtime/` and `templates/runtime-guide.md` describe shared runtimes. [Authoring guide](authoring.md) describes how to use them.
 - `tests/` contains CPU-only pytest tests that run without Docker, GPUs, or model-weight downloads.
 
 ## Launcher conventions
 
 - Discover launchable recipes through `recipes/*/config/launch.json`. The recipe directory name supplies the recipe identifier.
 - Keep API-server adapters and inference engines distinct. Supported adapter/engine combinations are `tabbyapi` / `exllamav3` and `strata` / `strata`.
-- The launch manifest declares the adapter, engine, image, port, context, drafting, and vision defaults. Native server settings remain in their own configuration file; dated profiles record the settings used for an experiment.
+- The launch manifest selects the runtime, data directory, port, context, drafting, and vision defaults. The runtime descriptor declares the adapter, engine, and image. Native server settings remain in their own configuration file; dated profiles record the settings used for an experiment.
 - Keep recipe discovery, validation, and command planning separate from argument parsing and presentation. Process execution returns an exit status so another interface can reuse the same operations.
 - Follow the public behavior documented in the [launcher guide](launcher.md), including instance identity, mounts, persistent logs, and process lifecycle.
 - Keep client options, defaults, mounts, and operational-script output formats stable unless the task changes their contract. Commit formatting changes separately from behavior changes.
@@ -27,7 +27,7 @@ uv venv .venv
 uv pip install -p .venv -r dev-requirements.txt
 ```
 
-Development dependencies are separate from container runtime dependencies in each recipe's `container/requirements.lock`.
+Development dependencies are separate from container runtime dependencies in `runtimes/<runtime>/container/requirements.lock`.
 
 Run the same CPU-only checks locally and in CI:
 

@@ -8,11 +8,11 @@ Describe the supported OS, GPU architecture, memory and storage needs, and requi
 
 ## Build the image
 
-Provide the recipe's image-build command. Its image tag must match `config/launch.json`.
+Link to `docs/runtimes/<runtime>.md` for the build and image check. `config/launch.json` selects a shared runtime whose `runtime.json` supplies the image reference.
 
 ## Prepare the models
 
-Provide explicit download and conversion commands using the locked artifacts. State the external model directory and required disk space.
+Provide explicit commands invoking the runtime preparation helper with this recipe directory. State the model lock, conversion options, external data directory, required disk space, and memory requirements.
 
 ## Start the server
 
@@ -40,8 +40,8 @@ python3 scripts/launch.py stop coding
 
 Link to the [launcher guide](../../docs/launcher.md) for shared commands, instance naming, ports, log locations, and Ctrl+C behavior. Describe this server's file-log names and retention settings.
 
-Edit the native server configuration and restart to change server defaults. Document when the image needs rebuilding.
+Edit the native server configuration and restart to change server defaults. Link to the runtime guide for image rebuild requirements.
 
 ---
 
-[Recipe](recipe.md) · [Implementation](implementation.md)
+[Recipe](recipe.md) · [Runtime](../../docs/runtimes/<runtime>.md)

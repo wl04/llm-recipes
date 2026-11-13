@@ -1,0 +1,27 @@
+{
+  "providers": {
+    "tabby-local": {
+      "baseUrl": "http://127.0.0.1:5000/v1",
+      "api": "openai-completions",
+      "apiKey": "local",
+      "models": [
+        {
+          "id": "qwen3.8-27b-exl3-3bpw",
+          "name": "Qwen3.8-27B EXL3",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 131072,
+          "thinkingLevelMap": {
+            "xhigh": "xhigh"
+          },
+          "compat": {
+            "thinkingFormat": "qwen"
+          }
+        }
+      ]
+    }
+  }
+}

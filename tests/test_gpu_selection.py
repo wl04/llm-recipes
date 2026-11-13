@@ -5,12 +5,7 @@ from pathlib import Path
 
 import pytest
 
-RECIPE_SCRIPTS = (
-    Path(__file__).resolve().parents[1]
-    / "recipes"
-    / "qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram"
-    / "scripts"
-)
+RECIPE_SCRIPTS = Path(__file__).resolve().parents[1] / "runtimes" / "exllamav3-tabbyapi" / "scripts"
 sys.path.insert(0, str(RECIPE_SCRIPTS))
 
 from gpu import GPU_NAME, select_device  # noqa: E402

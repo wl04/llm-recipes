@@ -55,7 +55,10 @@ class LauncherTests(unittest.TestCase):
         self.assertIn("type=bind,src=/models with spaces,dst=/models,readonly", command)
         self.assertIn("type=bind,src=/logs,dst=/logs", command)
         self.assertIn("127.0.0.1:5001:5000", command)
-        self.assertEqual(command[-6:], ["--draft", "on", "--vision", "on", "--context", "131072"])
+        self.assertEqual(
+            command[-8:],
+            ["--draft", "on", "--vision", "on", "--context", "131072", "--recipe", "/recipe"],
+        )
 
     def test_start_rejects_invalid_context_before_execution(self) -> None:
         result = subprocess.run(
@@ -111,26 +114,6 @@ class LauncherTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual(result.returncode, 2)
-
-    def test_wrapper_preserves_options_outside_repository(self) -> None:
-        result = subprocess.run(
-            [
-                "bash",
-                str(RECIPE.directory / "scripts/serve.sh"),
-                "--draft",
-                "off",
-                "--vision",
-                "on",
-                "--context",
-                "131072",
-                "--dry-run",
-            ],
-            cwd="/tmp",
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("--draft off --vision on --context 131072", result.stdout)
 
 
 if __name__ == "__main__":

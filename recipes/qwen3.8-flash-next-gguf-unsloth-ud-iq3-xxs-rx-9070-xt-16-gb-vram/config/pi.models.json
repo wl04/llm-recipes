@@ -1,0 +1,25 @@
+{
+  "providers": {
+    "strata-unsloth": {
+      "baseUrl": "http://127.0.0.1:8080/v1",
+      "api": "openai-completions",
+      "apiKey": "local",
+      "models": [
+        {
+          "id": "qwen3.8-flash-next-ud-iq3_xxs",
+          "name": "Qwen3.8-Flash-Next UD-IQ3_XXS · Strata",
+          "reasoning": true,
+          "input": [
+            "text",
+            "image"
+          ],
+          "contextWindow": 131072,
+          "thinkingLevelMap": {
+            "off": "none",
+            "xhigh": "xhigh"
+          }
+        }
+      ]
+    }
+  }
+}

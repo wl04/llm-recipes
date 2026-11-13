@@ -19,7 +19,7 @@ recipes/<model-format-hardware-memory>/
 
 For another result, copy the three files from `templates/recipe/NNN-YYYY-MM-DD-description/` into a new numbered result folder. The existing result remains a snapshot of its configuration.
 
-Write a brief current-state description in `recipe.md` and keep its experiment markers. The generator builds its experiment table from report titles, ordered by folder number descending, and links to each configuration and summary. For container recipes, add a prominent setup link and an implementation footer link when available.
+Write a brief current-state description in `recipe.md` and keep its experiment markers. The generator builds its experiment table from report titles, ordered by folder number descending, and links to each configuration and summary. For container recipes, add a prominent setup link and a footer link to the shared runtime guide.
 
 For example, three experiments in one recipe can be:
 
@@ -33,34 +33,37 @@ Folders sort by sequence in GitHub and file browsers; the recipe index shows the
 
 ## Container recipes
 
-Copy the optional files from `templates/container/` into the recipe directory alongside the base recipe template. Fill in the setup and implementation sections, and replace the example image reference in `config/launch.json`. The supplied manifest uses the supported TabbyAPI/ExLlamaV3 adapter.
+Copy `templates/container/` into the recipe alongside the base template. Select an existing shared runtime in `config/launch.json` and provide model locks, native server settings, and Pi metadata.
 
 ```text
 recipes/<model-format-hardware-memory>/
   recipe.md
   setup.md
-  implementation.md
   config/
     launch.json
-    <native-server-config>
     models.lock.json
-  container/
-    <image-build-inputs>
-  scripts/
-    <preparation-and-serving-scripts>
+    <native-server-config>
+    pi.models.json
   NNN-YYYY-MM-DD-description/
+    profile.yaml
     configuration.md
     summary.md
-    profile.yaml
+
+runtimes/<runtime>/
+  runtime.json
+  container/
+  scripts/
+
+docs/runtimes/<runtime>.md
 ```
 
-Keep `setup.md` at the recipe level, alongside the dated experiment folders. Put native serving settings and model revision locks in `config/`, image-build inputs in `container/`, and preparation/serving scripts in `scripts/`. Structure `setup.md` as a practical guide: prerequisites, image build, model preparation, launch, client setup, and daily operation (including stopping and reading logs). Lead with the working launch configuration and keep installation checks short. Pin the base image digest, upstream revisions, and build dependencies used by the recipe.
+A runtime owns the image reference, API-server/engine pairing, build locks, and reusable scripts. A recipe selects the runtime and supplies model artifacts, preparation settings, native serving configuration, client metadata, and external data-directory names. Keep weights and conversion working files outside Git. Strata preparation uses the recipe's `data_directory`; ExLlamaV3 model locks define the target, draft, and work folders below that directory. Native serving paths must agree with the prepared paths.
 
-Store model weights and conversion working files outside the repository and mount them into the container. Include the external directory and mount commands in `setup.md`.
+Structure `setup.md` as prerequisites, a link to the shared build guide, explicit model preparation, launch, checks, and Pi configuration. Runtime guides describe common build mechanics, mounts, logs, and preparation behavior. Shared scripts take `--recipe` explicitly. Each API check accepts a model identifier; avoid model-specific defaults in shared code.
 
-Use an optional recipe-level `implementation.md` for current build mechanics, dependency locks, conversion settings, storage mounts, configuration flow, and measurement helpers. Describe the current implementation; keep measured observations in dated `summary.md` files. Link setup and implementation documents to each other in their footers.
+For a new runtime, use `templates/runtime/` for its descriptor and `templates/runtime-guide.md` for its guide. Pin the base image digest, source revisions, and build dependencies. Keep engine-specific preparation and native settings in that runtime's integration. Follow [launcher conventions](launcher.md#shared-runtimes).
 
-Link `setup.md` from `recipe.md` and from the configuration and summary footers.
+Link `setup.md` from `recipe.md` and from configuration and summary footers. Record exact engine/server revisions and image identity in each measured profile. A shared runtime update must not rewrite historical version fields. Repository commits preserve earlier build inputs; profiles retain the identities used for those results.
 
 ## Shared guides
 
@@ -144,15 +147,16 @@ Use four parts in `id`, separated by ` / `:
 id: Qwen3.8-27B / GGUF / RX 9070 XT / 16 GB VRAM
 ```
 
-The parts are model family and size, model format, graphics adapter or laptop/chip name, and memory capacity/type. Use `VRAM` for dedicated graphics memory and `unified memory` for shared CPU/GPU memory. Keep quantization and harness versions in their fields so results can compare those settings.
+The parts are model family and size, model format, graphics adapter or laptop/chip name, and memory capacity/type. Use `VRAM` for dedicated graphics memory and `unified memory` for shared CPU/GPU memory. Keep quantization and harness versions in their fields. For independently maintained quantizations, qualify the format part with provider and quantization, for example `GGUF ISTA IQ3_XXS` or `GGUF Unsloth UD-IQ3_XXS`, to give each recipe a distinct identity.
 
 The folder name is derived by lowercasing the parts, replacing runs of characters other than letters, digits, periods, and hyphens with a hyphen, trimming outer hyphens from each part, and joining the parts with hyphens. The example becomes `qwen3.8-27b-gguf-rx-9070-xt-16-gb-vram`.
 
-All results in a recipe use the same `id`. The generator checks the folder name and identifiers before writing. Different hardware or memory capacities belong in separate recipe folders.
+All results in a recipe use the same `id`. The generator checks the folder name and identifiers before writing. Different hardware or memory capacities belong in separate recipe folders. Different model families or independently maintained quantizations also receive separate recipes; sampling, context, and vision changes normally remain experiments.
 
 Use GB for hardware capacities in captions and display labels. YAML `_gib` keys retain binary capacity values; GB is the hardware display convention, not a numeric conversion. Keep the units reported by measurement tools, such as MiB, in result statistics.
 
 The generated guide omits null values, blank strings, empty lists/mappings, and sections containing only empty values. Numeric zero and boolean false remain visible.
+
 
 ---
 

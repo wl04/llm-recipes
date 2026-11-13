@@ -1,0 +1,5 @@
+{
+  "adapter": "strata",
+  "engine": "strata",
+  "image": "llm-recipes/strata-rdna4:probe"
+}

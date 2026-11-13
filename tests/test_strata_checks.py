@@ -3,9 +3,9 @@
 import json
 
 import pytest
-from test_strata import RECIPE, load_module
+from test_strata import RUNTIME, load_module
 
-checks = load_module("strata_checks", RECIPE / "scripts/check_generation.py")
+checks = load_module("strata_checks", RUNTIME / "scripts/check_generation.py")
 
 
 def test_read_stream_combines_text_and_requires_done() -> None:
@@ -31,3 +31,9 @@ def test_validate_call_rejects_wrong_arguments() -> None:
 
     with pytest.raises(ValueError, match="Belgrade"):
         checks.validate_call(message)
+
+
+def test_chat_payload_targets_explicit_model() -> None:
+    payload = checks.chat_payload("Hello", "qwen3.8-flash-next-ud-iq3_xxs")
+    assert payload["model"] == "qwen3.8-flash-next-ud-iq3_xxs"
+    assert checks.chat_payload("Hello", "another-model")["model"] == "another-model"

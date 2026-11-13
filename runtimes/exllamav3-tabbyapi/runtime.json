@@ -1,0 +1,5 @@
+{
+  "adapter": "tabbyapi",
+  "engine": "exllamav3",
+  "image": "llm-recipes/exl3-rdna4:probe"
+}
