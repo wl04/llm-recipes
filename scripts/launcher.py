@@ -92,6 +92,8 @@ def discover_recipes(directory: Path) -> dict[str, Recipe]:
                 ("strata", "strata"),
             }:
                 raise ValueError("supported adapter/engine: tabbyapi/exllamav3 or strata/strata")
+            if settings["adapter"] == "strata" and data["data_directory"] == ".":
+                raise ValueError("Strata data_directory must be a single directory name")
             if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_./:@-]*", settings["image"]):
                 raise ValueError("invalid image reference")
             if not (runtime / "scripts/serve.py").is_file():

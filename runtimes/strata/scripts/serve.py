@@ -116,7 +116,7 @@ def main() -> int:
         built = json.loads(Path("/opt/build/versions.lock.json").read_text())
         expected = json.loads((RUNTIME / "container/versions.lock.json").read_text())
         if built != expected:
-            raise ValueError("Image lock differs from the recipe; rebuild the image")
+            raise ValueError("Image lock differs from the runtime; rebuild the image")
         config = configure(
             json.loads((config_dir / "strata.json").read_text()),
             options.context,

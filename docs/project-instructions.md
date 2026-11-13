@@ -35,11 +35,11 @@ Run the same CPU-only checks locally and in CI:
 bash scripts/check.sh
 ```
 
-The script runs Ruff lint and formatting checks, mypy, pytest, and ShellCheck. The workflow is `.github/workflows/check.yml`. If ShellCheck is unavailable locally, the script skips shell checks with a warning; CI installs it.
+The script runs Ruff lint and formatting checks, mypy, pytest, generated-document checks, and ShellCheck. The workflow is `.github/workflows/check.yml`. If ShellCheck is unavailable locally, the script skips shell checks with a warning; CI installs it.
 
 `pyproject.toml` defines the exact mypy targets and external-import exceptions. Strict checking covers the generator, launcher modules, selected recipe preparation/serving helpers, and tests.
 
-Check generated documentation separately before committing:
+To check generated documentation separately:
 
 ```bash
 .venv/bin/python scripts/generate_configurations.py --check

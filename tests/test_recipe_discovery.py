@@ -178,3 +178,14 @@ def test_discover_rejects_paths_outside_shared_roots(
     path.write_text(json.dumps(config))
     with pytest.raises(ValueError, match=field):
         discover_recipes(tmp_path / "recipes")
+
+
+def test_discover_rejects_mount_root_for_strata(tmp_path: Path) -> None:
+    write_recipe(tmp_path / "recipes", "model")
+    path = tmp_path / "recipes/model/config/launch.json"
+    config = json.loads(path.read_text())
+    config.update(runtime="strata", vision="cpu", port=8080)
+    path.write_text(json.dumps(config))
+
+    with pytest.raises(ValueError, match="data_directory"):
+        discover_recipes(tmp_path / "recipes")

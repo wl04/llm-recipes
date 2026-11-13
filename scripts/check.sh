@@ -19,6 +19,7 @@ tool ruff check .
 tool ruff format --check .
 tool mypy
 tool pytest
+tool python scripts/generate_configurations.py --check
 
 if command -v shellcheck >/dev/null; then
     shellcheck runtimes/exllamav3-tabbyapi/scripts/prepare-models.sh

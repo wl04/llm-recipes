@@ -94,7 +94,7 @@ def prepare(recipe: Path, root: Path) -> None:
     lock = json.loads((config / "models.lock.json").read_text())
     versions = json.loads((RUNTIME / "container/versions.lock.json").read_text())
     if json.loads(Path("/opt/build/versions.lock.json").read_text()) != versions:
-        raise ValueError("Image lock differs from the recipe; rebuild the image")
+        raise ValueError("Image lock differs from the runtime; rebuild the image")
     tools = Path("/opt/src/strata/tools")
     if pinned_mtp_revision(tools / "mtp_fetch.py") != lock["mtp"]["revision"]:
         raise ValueError("MTP revision differs from the pinned upstream downloader")

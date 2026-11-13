@@ -63,13 +63,13 @@ The launcher discovers `recipes/*/config/launch.json`. The recipe directory supp
 | Field | Meaning |
 | --- | --- |
 | `runtime` | Directory identifier under `runtimes/`, such as `strata` or `exllamav3-tabbyapi` |
-| `data_directory` | External data subdirectory under `--models`; `.` selects the mount root |
+| `data_directory` | External data subdirectory under `--models`; ExLlamaV3 also accepts `.` for the mount root |
 | `port` | Container API port and default host port |
 | `context` | Default context capacity |
 | `draft` | Default `on` or `off` |
 | `vision` | TabbyAPI: `on/off`; Strata: `cpu/off` |
 
-The selected runtime's `runtime.json` defines `adapter`, `engine`, and `image`. Supported pairs are `tabbyapi` / `exllamav3` and `strata` / `strata`. The launcher validates the runtime identifier and serving entry point before constructing a command. Native server settings remain recipe-local. The [container recipe template](../templates/container/config/launch.json) selects the shared ExLlamaV3/TabbyAPI runtime.
+The selected runtime's `runtime.json` defines `adapter`, `engine`, and `image`. Supported pairs are `tabbyapi` / `exllamav3` and `strata` / `strata`. The launcher validates the runtime identifier and serving entry point before constructing a command. Native server settings remain recipe-local. Keep the native server port equal to the manifest port; `--port` changes only the host mapping. Strata requires a named `data_directory`, while ExLlamaV3 also accepts `.`. The [container recipe template](../templates/container/config/launch.json) selects the shared ExLlamaV3/TabbyAPI runtime.
 
 ## Shared runtimes
 
