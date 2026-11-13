@@ -54,7 +54,7 @@ Run `python3 scripts/launch.py start --help` for CLI help.
 
 The default directory is `${XDG_STATE_HOME:-$HOME/.local/state}/llm-recipes/<instance>`. Use `--logs` to choose another location, including an existing log directory.
 
-`logs --follow` reads console output while the container exists. After it exits, read the files in the host log directory. Server-specific filenames, rotation, and retention are documented in the recipe's setup guide.
+`logs --follow` reads console output while the container exists. After it exits, read the files in the host log directory. Server-specific filenames, rotation, and retention are documented in the [runtime guides](#shared-runtimes).
 
 ## Launch manifest
 
@@ -75,7 +75,7 @@ The selected runtime's `runtime.json` defines `adapter`, `engine`, and `image`. 
 
 [ExLlamaV3 / TabbyAPI](runtimes/exllamav3-tabbyapi.md) and [Strata](runtimes/strata.md) each own a container build, dependency locks, preparation helpers, serving integration, and API checks. Multiple recipes can select one runtime while keeping their model locks, native configuration, data directories, and results independent. Select a recipe directly; model variants use separate recipe identifiers.
 
-The launcher mounts the selected recipe at `/recipe` and runtime at `/runtime`, both read-only, then calls `/runtime/scripts/serve.py --recipe /recipe`. Preparation helpers also take an explicit recipe directory. Existing prepared files remain usable when model and build locks match.
+The launcher mounts the selected recipe at `/recipe` and runtime at `/runtime`, both read-only, plus prepared models at `/models` read-only and writable `/cache` and `/logs`. It then calls `/runtime/scripts/serve.py --recipe /recipe`. Preparation helpers also take an explicit recipe directory. Existing prepared files remain usable when model and build locks match.
 
 [`scripts/launch.py`](../scripts/launch.py) handles CLI presentation. [`scripts/launcher.py`](../scripts/launcher.py) handles discovery, validation, command planning, and lifecycle operations. Docker labels record instance, recipe, runtime, API-server adapter, and engine. API-server integrations remain distinct from inference engines.
 

@@ -45,9 +45,13 @@ When extension versions or settings materially affect an experiment, record them
 
 ## Configure a recipe
 
-Use Pi's standard `~/.pi/agent/` directory. Follow the recipe's `setup.md` for the provider and model configuration, preserving existing entries in `models.json` and `settings.json`.
+Merge the recipe's `config/pi.models.json` provider entries into `~/.pi/agent/models.json`, preserving existing providers. Match these fields to the running server:
 
-The recipe supplies the API address, model identifier, context window, and compatibility settings for reasoning, tool calls, and images. Match the context window and capabilities to the running server. If the launcher's host port changes, update the provider's API address.
+- `baseUrl`: API address, including the host port.
+- `contextWindow`: configured server context capacity.
+- `input`: use `["text"]` with vision off, or `["text", "image"]` with vision enabled.
+
+Keep the recipe's model identifier and compatibility settings. Optional startup defaults in `~/.pi/agent/settings.json` are `defaultProvider`, `defaultModel`, and `defaultThinkingLevel`.
 
 ## Start a session
 
@@ -58,7 +62,15 @@ cd /path/to/your/project
 pi
 ```
 
-Use `/model` to select the configured model and `/thinking` to change reasoning effort. Follow the recipe's instructions for supported thinking settings.
+Use `/model` to select the configured model and `/thinking` to change reasoning effort. The runtime guide describes supported thinking settings. Keep effort and workload consistent when comparing recipes.
+
+An optional instruction for focused reasoning:
+
+```bash
+pi --append-system-prompt "Reason carefully and avoid repeating analysis that has already been resolved. Revisit a conclusion when new evidence contradicts it. When uncertainty remains, prefer a targeted check or test over repeated speculation."
+```
+
+Its effect has not been measured in the recorded coding workloads.
 
 ---
 

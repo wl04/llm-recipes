@@ -39,20 +39,7 @@ The script runs Ruff lint and formatting checks, mypy, pytest, generated-documen
 
 `pyproject.toml` defines the exact mypy targets and external-import exceptions. Strict checking covers the generator, launcher modules, selected recipe preparation/serving helpers, and tests.
 
-To check generated documentation separately:
-
-```bash
-.venv/bin/python scripts/generate_configurations.py --check
-```
-
-After editing profiles or adding results, regenerate and check:
-
-```bash
-.venv/bin/python scripts/generate_configurations.py
-.venv/bin/python scripts/generate_configurations.py --check
-```
-
-Commit profiles and their generated Markdown together. Preserve generated-section markers and keep authored text outside those sections. Update templates and usage instructions when changing recipe structure or authoring conventions.
+After editing profiles or adding results, follow [generation instructions](authoring.md#generate-configuration-guides) and commit profiles with generated Markdown. Preserve generated-section markers. Update templates and the authoring guide when changing structure or conventions.
 
 ## Workstation validation
 
