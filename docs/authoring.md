@@ -26,9 +26,9 @@ Write a brief current-state description in `recipe.md` and keep its experiment m
 For example, three experiments in one recipe can be:
 
 ```text
-001-2026-11-12-initial-checks/
-002-2026-11-12-vision-1024/
-003-2026-11-12-coding-medium/
+001-2026-11-14-baseline/
+002-2026-11-15-baseline-draft-off/
+003-2026-11-16-coding-medium/
 ```
 
 Folders sort by sequence in GitHub and file browsers; the recipe index shows the highest number first. The suffix identifies the workload or configuration variant. Keep changing status such as “current” out of folder names.
