@@ -4,7 +4,7 @@
 
 ## Baseline results
 
-suite 1 · schema 1 · run complete · model `qwen3.8-flash-next-iq3_xxs` · context 131,072 tokens
+Suite v1 · run complete · model `qwen3.8-flash-next-iq3_xxs` · context 131,072 tokens
 
 ### Functional checks
 

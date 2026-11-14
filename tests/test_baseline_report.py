@@ -34,7 +34,8 @@ def test_render_results_block_shows_run_identity_and_status() -> None:
     assert text.startswith("## Baseline results")
     assert "test-model" in text
     assert "131,072" in text
-    assert "suite 1" in text
+    assert "Suite v1 · run complete" in text
+    assert "schema" not in text.splitlines()[2]
 
 
 def test_render_results_block_marks_interrupted_run() -> None:

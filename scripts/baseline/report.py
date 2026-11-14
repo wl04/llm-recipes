@@ -259,7 +259,7 @@ def render_results_block(document: dict[str, Any]) -> str:
     lines = [
         "## Baseline results",
         "",
-        f"suite {_cell(document['suite_version'])} · schema {document['schema_version']} · "
+        f"Suite v{_cell(document['suite_version'])} · "
         f"run {_cell(run['status'])} · model `{_cell(server['model'])}` · "
         f"context {server['context_tokens']:,} tokens",
     ]
