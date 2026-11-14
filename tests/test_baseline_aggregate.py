@@ -537,11 +537,11 @@ def test_engine_metrics_are_unavailable_without_an_engine_log() -> None:
 
 
 def test_engine_metrics_are_unavailable_for_servers_without_a_log_parser() -> None:
-    server = {"kind": "tabbyapi", "model": "m", "context_tokens": 4096}
+    server = {"kind": "lmstudio", "model": "m", "context_tokens": 4096}
 
     case = case_of(results(two_requests(), engine_log=ENGINE_LOG, server=server), "c")
 
-    assert "not parsed for tabbyapi" in case["metrics"]["engine_decode_tok_s"]["unavailable"]
+    assert "not parsed for lmstudio" in case["metrics"]["engine_decode_tok_s"]["unavailable"]
 
 
 def test_phase_too_short_to_sample_reports_only_its_duration() -> None:
@@ -566,3 +566,11 @@ def test_resources_report_peak_system_ram_in_use_inside_the_requests() -> None:
 
     assert metrics["ram_used_peak_gib"]["value"] == 14.0
     assert metrics["ram_used_peak_gib"]["unit"] == "GiB"
+
+
+def test_build_results_reports_counts_when_finish_reasons_differ() -> None:
+    raw = RawRun(
+        meta(), [request("case", finish_reason="length"), request("case", finish_reason="stop")], []
+    )
+    result = build_results(raw)
+    assert result["cases"][0]["finish_reason"] == "length (1), stop (1)"

@@ -102,6 +102,7 @@ def execute(
     server: FakeServer,
     *,
     model: str | None = "test-model",
+    kind: str = "strata",
     suite: SuiteConfig = SUITE,
     context_tokens: int = 2048,
     stop: threading.Event | None = None,
@@ -116,7 +117,7 @@ def execute(
     )
     config = RunConfig(
         recipe="test-recipe",
-        kind="strata",
+        kind=kind,
         base_url=server.base_url,
         model=model,
         context_tokens=context_tokens,
@@ -609,3 +610,12 @@ def test_run_does_not_repeat_a_largest_context_that_was_skipped(tmp_path: Path) 
     skipped = [r for r in raw.requests if r.get("case") == "context-big"]
     assert len(skipped) == 1
     assert skipped[0]["status"] == "skipped"
+
+
+def test_run_sizes_prompts_using_tabbyapi_chat_tokenizer(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        _, raw, _ = execute(tmp_path, server, kind="tabbyapi")
+    assert server.count_requests
+    assert all("text" in body and "template_vars" in body for body in server.count_requests)
+    probes = [r for r in raw.requests if r.get("case") == "context-8k"]
+    assert all(abs(r["counted_input_tokens"] - 200) <= 2 for r in probes)

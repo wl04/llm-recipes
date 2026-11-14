@@ -49,11 +49,13 @@ Run from the repository root:
 ```bash
 sudo -v
 python3 scripts/run_baseline.py run qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
+  --model qwen3.8-27b-exl3-3bpw \
   --context 131072 \
-  --vision on
+  --vision on \
+  --request-extra '{"chat_template_kwargs":{"enable_thinking":false}}'
 ```
 
-The options match the launch command above, because the manifest defaults to a 4,096-token context with vision off. Thinking is enabled by default on this server and the baseline does not yet know TabbyAPI's field for disabling it: the measured output then includes reasoning, and `--request-extra '<json>'` can supply the field. Results and the server logs go to `~/Models/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
+The options match the launch command above, because the manifest defaults to a 4,096-token context with vision off. The explicit model selects the target from TabbyAPI's available models. The request override disables thinking for the baseline. Results and the server logs go to `~/Models/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
 
 ## Pi
 

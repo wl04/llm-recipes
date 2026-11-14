@@ -114,3 +114,17 @@ def test_summarize_reports_no_draft_acceptance_without_draft_counts() -> None:
 
     assert summary.draft_acceptance is None
     assert summary.prefill_tok_s == pytest.approx(30 / 0.1)
+
+
+def test_parse_tabbyapi_reads_captured_completions() -> None:
+    from pathlib import Path
+
+    text = (Path(__file__).parent / "fixtures/tabbyapi/completions.log").read_text()
+    records = engine_log.parse_tabbyapi(text)
+    assert len(records) == 20
+    assert records[8].prompt_tokens == 9372
+    assert records[8].drafts_accepted == 674
+    assert records[8].drafts_proposed == 2450
+    assert records[2].reused_tokens == 256
+    assert records[-1].prefill_ms == 114900
+    assert engine_log.summarize(records[-2:]).draft_acceptance == pytest.approx(1374 / 4718)

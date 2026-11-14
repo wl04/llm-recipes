@@ -538,6 +538,13 @@ class Runner:
             "max_tokens": 1,
             "messages": [{"role": "user", "content": text}],
         }
+        count_key = "input_tokens"
+        if self._config.kind == "tabbyapi":
+            body = {
+                "text": body["messages"],
+                "template_vars": self._config.request_extra.get("chat_template_kwargs", {}),
+            }
+            count_key = "length"
         try:
             reply = api.post_json(
                 self._config.base_url,
@@ -546,9 +553,9 @@ class Runner:
                 timeout=self._config.suite.request_timeout_s,
                 opener=self._opener,
             )
-            count = reply["input_tokens"]
+            count = reply[count_key]
             if type(count) is not int or count < 1:
-                raise ValueError("input_tokens is not a positive integer")
+                raise ValueError(f"{count_key} is not a positive integer")
         except (api.ApiError, KeyError, TypeError, ValueError) as error:
             self._count_failed = True
             self._progress(f"Token counting is unavailable ({error}); calibrating from usage")

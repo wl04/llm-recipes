@@ -57,7 +57,7 @@ The suite runs at concurrency one, in this order:
 
 Output caps are 1,024 tokens for context cases and 2,048 for sustained coding tasks. Sustained replies shorter than 512 tokens are marked insufficient samples. Generated code is not executed.
 
-Long prompts use the running Python interpreter's standard-library source (PSF-licensed). Strata's `/v1/messages/count_tokens` sizes prompts before generation; other servers use a calibrated characters-per-token estimate. Results show actual reported token counts. Comparable runs should use the same Python version.
+Long prompts use the running Python interpreter's standard-library source (PSF-licensed). Strata uses `/v1/messages/count_tokens`; TabbyAPI uses `/v1/token/encode` with chat messages and template variables. TabbyAPI's count excludes the assistant generation prefix, so final usage can differ slightly. Other servers use a calibrated characters-per-token estimate. Results show actual reported token counts. Comparable runs should use the same Python version.
 
 ### Request policy
 
@@ -84,9 +84,9 @@ Resources are sampled every 500 ms and summarized over active request intervals,
 
 System, cgroup, and device memory are distinct scopes and must not be added together. The Markdown RAM column shows **system-used RAM**; server RAM and process VRAM are also retained in `results.json`. Sample counts and maximum gaps accompany the resource summaries.
 
-Client first-output latency and decode rate are separate from engine timings. Decode is estimated as `(completion_tokens - 1) / (last output - first output)` using reported token counts, not chunk counts. Repeated 8K and largest-context cases report medians and relative spread (range divided by median); other cases are single observations.
+Client first-output latency and decode rate are separate from engine timings. Decode is estimated as `(completion_tokens - 1) / (last output - first output)` using reported token counts, not chunk counts. Repeated 8K and largest-context cases report medians and relative spread (range divided by median); other cases are single observations. Mixed finish reasons show per-reason counts.
 
-Engine timings and draft acceptance currently come from Strata's engine log, matched to requests in order. A mismatch stops matching. TabbyAPI and LM Studio engine metrics remain unavailable. Warmup and quiet-system thresholds are provisional; monitoring overhead and those servers' real-response fixtures still need validation.
+Engine timings and draft acceptance come from Strata's `engine.log` or TabbyAPI's timestamped `.log` files in `server-logs/`, matched to requests in order. A mismatch stops matching. TabbyAPI durations/rates are rounded in the log; its aggregate decode rate is derived from reported token counts and rates. LM Studio engine metrics remain unavailable. Warmup and quiet-system thresholds are provisional; monitoring overhead and additional real-response fixtures still need validation.
 
 ## Saved results
 

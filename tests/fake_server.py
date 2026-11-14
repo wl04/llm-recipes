@@ -92,6 +92,13 @@ class FakeServer:
             def do_POST(self) -> None:
                 length = int(self.headers.get("Content-Length", 0))
                 payload = json.loads(self.rfile.read(length))
+                if self.path == "/v1/token/encode":
+                    outer.count_requests.append(payload)
+                    text = payload["text"][0]["content"]
+                    self._json(
+                        200, {"length": int(len(text) / outer.chars_per_token), "tokens": []}
+                    )
+                    return
                 if self.path == "/v1/messages/count_tokens":
                     self._count(payload)
                     return

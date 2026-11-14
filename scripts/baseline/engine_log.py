@@ -1,9 +1,8 @@
 """Engine-reported timings from the server's own log.
 
-Strata logs one line per completion with the prompt tokens read and generated, the time each
-took, and the draft tokens accepted. These are engine measurements, kept separate from the client
-timings. Lines are matched to the requests in order, and a mismatch stops the matching instead of
-guessing.
+Strata and TabbyAPI log per-completion prompt processing, generation, and draft counters.
+These are kept separate from client timings. Entries are matched to requests in order;
+a mismatch stops matching instead of guessing. TabbyAPI rates and durations are rounded.
 """
 
 import re
@@ -25,9 +24,9 @@ class EngineRequest:
     prompt_tokens: int
     reused_tokens: int
     read_tokens: int
-    prefill_ms: int
+    prefill_ms: float
     generated_tokens: int
-    decode_ms: int
+    decode_ms: float
     drafts_accepted: int | None
     drafts_proposed: int | None
 
@@ -48,6 +47,40 @@ def parse_strata(text: str) -> list[EngineRequest]:
                 int(values[5]),
                 None if accepted is None else int(accepted),
                 None if proposed is None else int(proposed),
+            )
+        )
+    return found
+
+
+TABBY_LINE = re.compile(
+    r"#\d+ chat/completions(?: \(stream\))?: ([\d,]+) tokens generated at "
+    r"([\d.]+) T/s · prompt ([\d,]+) tokens, .*?, ([\d,]+) new in "
+    r"([\d.]+) s.*? · first token .*?, total .*? s"
+    r"(?: · draft ([\d,]+)/([\d,]+) accepted \(\d+%\))?"
+)
+
+
+def parse_tabbyapi(text: str) -> list[EngineRequest]:
+    """Read TabbyAPI completion summaries; decode time derives from its rounded rate."""
+    found = []
+    for match in TABBY_LINE.finditer(text):
+        generated, rate, prompt, read, seconds, accepted, proposed = match.groups()
+
+        def count(value: str) -> int:
+            return int(value.replace(",", ""))
+
+        if float(rate) <= 0:
+            continue
+        found.append(
+            EngineRequest(
+                count(prompt),
+                count(prompt) - count(read),
+                count(read),
+                float(seconds) * 1000,
+                count(generated),
+                count(generated) / float(rate) * 1000,
+                count(accepted) if accepted is not None else None,
+                count(proposed) if proposed is not None else None,
             )
         )
     return found

@@ -5,6 +5,7 @@ changes never require repeating inference.
 """
 
 import statistics
+from collections import Counter
 from collections.abc import Callable
 from itertools import pairwise
 from typing import Any
@@ -61,7 +62,12 @@ def _engine_metrics(
         ("draft_acceptance", summary.draft_acceptance, "ratio"),
     ):
         if value is not None:
-            metrics[name] = _measured(value, unit, ENGINE_SOURCE)
+            source = (
+                ENGINE_SOURCE
+                if kind == "strata"
+                else "engine log (TabbyAPI; rounded timings/rates)"
+            )
+            metrics[name] = _measured(value, unit, source)
         else:
             metrics[name] = schema.unavailable("the engine log reports no such figure")
     return metrics
@@ -141,8 +147,13 @@ def _case_entry(
             status = "insufficient_sample"
             notes.append(f"Median output {output} tokens is below the {minimum}-token minimum")
     entry: dict[str, Any] = {"id": case_id, "status": status, "runs": len(attempts)}
-    if ok and ok[-1].get("finish_reason"):
-        entry["finish_reason"] = ok[-1]["finish_reason"]
+    if ok:
+        finishes = Counter(r.get("finish_reason") or "unknown" for r in ok)
+        entry["finish_reason"] = (
+            next(iter(finishes))
+            if len(finishes) == 1
+            else ", ".join(f"{reason} ({count})" for reason, count in sorted(finishes.items()))
+        )
     if notes:
         entry["note"] = "; ".join(notes)
     entry["metrics"] = metrics
@@ -416,13 +427,17 @@ def build_results(raw: RawRun) -> dict[str, Any]:
         if record.get("phase") == "case":
             grouped.setdefault(record["case"], []).append(record)
     aligned: engine_log.Alignment | None = None
-    if kind != "strata":
+    if kind not in {"strata", "tabbyapi"}:
         engine_reason = f"engine timings are not parsed for {kind}"
     elif raw.engine_log is None:
         engine_reason = "no engine log was recorded for this run"
     else:
         engine_reason = ""
-        parsed = engine_log.parse_strata(raw.engine_log)
+        parsed = (
+            engine_log.parse_tabbyapi(raw.engine_log)
+            if kind == "tabbyapi"
+            else engine_log.parse_strata(raw.engine_log)
+        )
         aligned = engine_log.align(raw.requests, parsed)
         if not parsed:
             aligned, engine_reason = None, "the engine log has no per-request lines"

@@ -20,7 +20,7 @@ FIT_ROUNDS = 8
 THINKING_OFF: dict[str, dict[str, Any]] = {"strata": {"reasoning_effort": "none"}}
 TOKEN_LIMIT_FIELD = {"strata": "max_completion_tokens"}
 # Servers with a tokenizer route that counts a prompt without running it.
-TOKEN_COUNT_ROUTE = {"strata": "/v1/messages/count_tokens"}
+TOKEN_COUNT_ROUTE = {"strata": "/v1/messages/count_tokens", "tabbyapi": "/v1/token/encode"}
 
 REVIEW_TASK = (
     "Summarize what each file above is responsible for, then list three potential bugs or "

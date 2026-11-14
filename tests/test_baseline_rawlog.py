@@ -97,3 +97,13 @@ def test_concurrent_appends_keep_every_line_intact(tmp_path: Path) -> None:
         thread.join()
 
     assert len(rawlog.read_run(tmp_path / "run").samples) == 200
+
+
+def test_read_run_reads_timestamped_tabbyapi_logs_in_order(tmp_path: Path) -> None:
+    writer = rawlog.RunWriter(tmp_path / "run")
+    writer.write_meta({"server": {"kind": "tabbyapi"}})
+    logs = writer.directory / "server-logs"
+    logs.mkdir()
+    (logs / "2026-11-14_02.log").write_text("second")
+    (logs / "2026-11-14_01.log").write_text("first")
+    assert rawlog.read_run(writer.directory).engine_log == "first\nsecond"

@@ -5,7 +5,8 @@ Each directory holds one server's responses for the baseline request handling te
 | Directory | Status |
 |---|---|
 | `synthetic-openai/` | Hand-built from the OpenAI chat-completions format. It exercises the parser; it is not a capture of any real server. |
-| `strata/`, `tabbyapi/`, `lmstudio/` | Not recorded yet. Record them during the workstation pilot (stage 3). |
+| `tabbyapi/` | Captured completion log summaries from ExLlamaV3 1.6.6 / TabbyAPI revision `8f92fac5d9307bf1e09668c3715b32ff46ad0333`. Startup paths and timestamps removed. HTTP response captures remain pending. |
+| `strata/`, `lmstudio/` | Not recorded yet. Record them during the workstation pilot (stage 3). |
 
 `test_baseline_fixtures.py` parses every `*/stream.sse`, so a recorded capture named `stream.sse` is tested without changing code. Keep recorded files small (a few output tokens) and remove anything personal.
 

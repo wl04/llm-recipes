@@ -88,9 +88,12 @@ def read_run(directory: Path) -> RawRun:
     except (OSError, json.JSONDecodeError) as error:
         raise ValueError(f"{directory} has no readable {META}") from error
     log = directory / ENGINE_LOG
+    logs = [log] if log.is_file() else []
+    if meta.get("server", {}).get("kind") == "tabbyapi":
+        logs = sorted((directory / "server-logs").glob("*.log"))
     return RawRun(
         meta=meta,
         requests=_read_lines(directory / REQUESTS),
         samples=_read_lines(directory / SAMPLES),
-        engine_log=log.read_text(errors="replace") if log.is_file() else None,
+        engine_log="\n".join(p.read_text(errors="replace") for p in logs) if logs else None,
     )
