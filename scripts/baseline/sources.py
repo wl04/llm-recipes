@@ -156,8 +156,17 @@ class ProcessTree:
         return reading
 
 
+def _cpu_ticks(path: Path) -> tuple[int, int]:
+    """Busy and total system CPU ticks; guest time is already part of user time."""
+    user, nice, system, idle, iowait, irq, softirq, steal = (
+        int(field) for field in path.read_text().splitlines()[0].split()[1:9]
+    )
+    total = user + nice + system + idle + iowait + irq + softirq + steal
+    return total - idle - iowait, total
+
+
 def read_system(proc: Path = Path("/proc")) -> Reading:
-    """System memory (available, used by formula total-available), swap occupancy and activity."""
+    """System memory (used = total - available), swap occupancy and activity, and CPU ticks."""
     reading = Reading()
     info: dict[str, int] = {}
     try:
@@ -169,6 +178,8 @@ def read_system(proc: Path = Path("/proc")) -> Reading:
         reading.take("sys_available_bytes", lambda: info["MemAvailable"] * 1024)
         reading.take("sys_used_bytes", lambda: (info["MemTotal"] - info["MemAvailable"]) * 1024)
         reading.take("sys_swap_used_bytes", lambda: (info["SwapTotal"] - info["SwapFree"]) * 1024)
+    reading.take("cpu_busy_ticks", lambda: _cpu_ticks(proc / "stat")[0])
+    reading.take("cpu_total_ticks", lambda: _cpu_ticks(proc / "stat")[1])
     reading.take("pswpin", lambda: _keyed(proc / "vmstat")["pswpin"])
     reading.take("pswpout", lambda: _keyed(proc / "vmstat")["pswpout"])
     return reading

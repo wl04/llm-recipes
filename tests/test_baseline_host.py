@@ -43,14 +43,23 @@ def test_boot_state_records_uptime_load_memory_and_idle_gpu(tmp_path: Path) -> N
     assert state["warnings"] == []
 
 
-def test_boot_state_warns_when_machine_is_not_quiet(tmp_path: Path) -> None:
-    proc = fake_proc(tmp_path / "proc", load="3.50 2.00 1.00 1/100 1")
+def test_boot_state_warns_when_the_gpu_is_busy_at_start(tmp_path: Path) -> None:
     gpu = fake_gpu(tmp_path / "gpu", busy="40")
 
-    state = host.boot_state(proc, gpu)
+    state = host.boot_state(fake_proc(tmp_path / "proc"), gpu)
 
-    assert any("load" in warning for warning in state["warnings"])
     assert any("GPU" in warning for warning in state["warnings"])
+
+
+def test_boot_state_records_but_does_not_warn_on_load_that_follows_a_server_start(
+    tmp_path: Path,
+) -> None:
+    proc = fake_proc(tmp_path / "proc", load="3.50 2.00 1.00 1/100 1")
+
+    state = host.boot_state(proc, fake_gpu(tmp_path / "gpu"))
+
+    assert state["metrics"]["load_1m"]["value"] == 3.5
+    assert state["warnings"] == []
 
 
 def test_boot_state_marks_unreadable_sensor_unavailable_without_failing(tmp_path: Path) -> None:

@@ -11,7 +11,6 @@ from baseline import schema, sources
 
 Run = Callable[[list[str]], "subprocess.CompletedProcess[str]"]
 GIB = 1024**3
-LOAD_WARNING = 1.0
 GPU_BUSY_WARNING = 5.0
 INSTANCE_LABEL = "io.llm-recipes.instance"
 MANAGED_LABEL = "io.llm-recipes.managed"
@@ -70,11 +69,6 @@ def boot_state(proc: Path, gpu_device: Path | None) -> dict[str, Any]:
                 if key in gpu.values
                 else schema.unavailable(gpu.errors.get(key, f"{key} was not reported"))
             )
-    load = metrics["load_1m"]["value"]
-    if load is not None and load > LOAD_WARNING:
-        warnings.append(
-            f"System load average {load:.2f} is above {LOAD_WARNING}; the machine may not be quiet"
-        )
     busy = metrics.get("gpu_busy_percent", {}).get("value")
     if busy is not None and busy > GPU_BUSY_WARNING:
         warnings.append(f"GPU is {busy:.0f}% busy at start")

@@ -25,7 +25,7 @@ python3 scripts/run_baseline.py run <recipe> --base-url http://127.0.0.1:<port>/
 
 The run directory holds `meta.json`, `requests.jsonl`, `samples.jsonl`, and the rendered `results.json` and draft `summary.md`. `python3 scripts/run_baseline.py render <run-dir>` rebuilds the rendered files from the raw ones, for example after an interrupted run, and keeps the text you wrote in `summary.md`. To publish, create the numbered experiment folder, copy `summary.md` and `results.json` into it, fill in `profile.yaml`, and run the generator.
 
-The suite runs in a fixed order: a 5-second idle reference, functional checks (text, forced tool call, vision), an adaptive warmup of up to four requests, the 8K case repeated five times, three sustained-generation tasks, then 32K, 64K, and 120K contexts. Each case after the 8K probe is a single observation. Cases whose input plus output cannot fit the context are recorded as skipped. Every request has distinct content. Prompts are sized with the server's tokenizer route before they are sent (Strata: `/v1/messages/count_tokens`), because characters per token varied from 2.5 to 4.5 across the corpus in the first pilot. Servers without a known route fall back to calibrating from the previous request's reported token count, which is less exact; the run records which method was used.
+On the Strata Unsloth recipe a full run takes about four to five minutes. The suite runs in a fixed order: a 5-second idle reference, functional checks (text, forced tool call, vision), an adaptive warmup of up to four requests, the 8K case repeated five times, three sustained-generation tasks, then 32K, 64K, and 120K contexts. Each case after the 8K probe is a single observation. Cases whose input plus output cannot fit the context are recorded as skipped. Every request has distinct content. Prompts are sized with the server's tokenizer route before they are sent (Strata: `/v1/messages/count_tokens`), because characters per token varied from 2.5 to 4.5 across the corpus in the first pilot. Servers without a known route fall back to calibrating from the previous request's reported token count, which is less exact; the run records which method was used.
 
 ### Current limits
 
@@ -33,7 +33,8 @@ The suite runs in a fixed order: a 5-second idle reference, functional checks (t
 - Engine-reported timings are not parsed yet, so the engine prefill and decode columns are unavailable. Client timings are measured for every server.
 - The long contexts are built from the interpreter's standard-library source (PSF-licensed code), so comparisons assume the same Python version.
 - The image-token setting is not detected; note it yourself when it matters for the vision scores.
-- Warning thresholds for the boot state (load average above 1.0, GPU more than 5% busy) and the warmup tolerance (10%) are provisional until the workstation pilot.
+- Warning thresholds are provisional: the GPU more than 5% busy at start, system CPU more than 10% busy during the idle reference, and a 10% warmup tolerance. Load average is recorded but does not warn, because it still includes the server's own start-up.
+- The tokenizer route and the server's reported usage can differ by a few tens of tokens (about 0.5% at 8K on Strata); the table shows the server-reported count.
 
 ## Result document
 

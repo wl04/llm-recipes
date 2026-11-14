@@ -16,6 +16,7 @@ CASE_COLUMNS = (
 )
 RESOURCE_COLUMNS = (
     ("cpu_cores_avg", "CPU (cores)"),
+    ("system_cpu_busy_percent", "System CPU busy (%)"),
     ("ram_peak_gib", "Peak RAM (GiB)"),
     ("ram_anon_peak_gib", "Peak anon RAM (GiB)"),
     ("ram_file_peak_gib", "Peak file cache (GiB)"),

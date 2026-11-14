@@ -202,6 +202,13 @@ def _resource_metrics(
         total, seconds = change
         return _measured((total / seconds if per_second else total) / scale, unit, source)
 
+    def cpu_busy() -> Any:
+        busy = _counter_change(_points(samples, "cpu_busy_ticks"), intervals)
+        total = _counter_change(_points(samples, "cpu_total_ticks"), intervals)
+        if busy is None or total is None or total[0] <= 0 or not inside:
+            return missing("cpu_total_ticks")
+        return _measured(100 * busy[0] / total[0], "%", "/proc/stat")
+
     memory_key = target.get("memory_key", "mem_bytes")
     memory = target.get("memory_label", "cgroup memory.current")
     cpu = target.get("cpu_label", "cgroup cpu.stat")
@@ -209,6 +216,7 @@ def _resource_metrics(
     gap = _max_gap(samples, intervals)
     return {
         "cpu_cores_avg": delta("cpu_usec", "cores", cpu, True, 1_000_000),
+        "system_cpu_busy_percent": cpu_busy(),
         "ram_peak_gib": peak(memory_key, GIB, "GiB", memory, max),
         "ram_anon_peak_gib": peak("mem_anon_bytes", GIB, "GiB", f"{memory} anon", max),
         "ram_file_peak_gib": peak("mem_file_bytes", GIB, "GiB", f"{memory} file cache", max),
@@ -232,8 +240,10 @@ def _resource_metrics(
     }
 
 
+IDLE_CPU_WARNING_PERCENT = 10.0
 IDLE_METRICS = (
     "cpu_cores_avg",
+    "system_cpu_busy_percent",
     "ram_peak_gib",
     "system_available_min_gib",
     "vram_peak_gib",
@@ -271,7 +281,14 @@ def build_results(raw: RawRun) -> dict[str, Any]:
                 samples, [(idle["start_s"], idle["end_s"])], target, "the idle reference"
             )
             metrics.update({f"idle_{name}": reference[name] for name in IDLE_METRICS})
-        document["boot"] = {"metrics": metrics, "warnings": list((boot or {}).get("warnings", []))}
+        warnings = list((boot or {}).get("warnings", []))
+        busy = metrics.get("idle_system_cpu_busy_percent", {}).get("value")
+        if busy is not None and busy > IDLE_CPU_WARNING_PERCENT:
+            warnings.append(
+                f"System CPU was {busy:.1f}% busy during the idle reference; "
+                "the machine may not have been quiet"
+            )
+        document["boot"] = {"metrics": metrics, "warnings": warnings}
     document["functional"] = [
         r["functional"] for r in raw.requests if r.get("phase") == "functional"
     ]

@@ -137,6 +137,17 @@ def test_read_system_reports_memory_swap_and_swap_activity(tmp_path: Path) -> No
     }
 
 
+def test_read_system_reports_cpu_busy_and_total_ticks_without_guest_double_counting(
+    tmp_path: Path,
+) -> None:
+    write(tmp_path / "stat", "cpu  100 10 50 800 20 5 15 0 7 0\ncpu0 1 1 1 1 1 1 1 1 1 1\n")
+
+    reading = sources.read_system(tmp_path)
+
+    assert reading.values["cpu_total_ticks"] == 1000
+    assert reading.values["cpu_busy_ticks"] == 180
+
+
 def make_gpu(root: Path, address: str = "0000:03:00.0", vram_total: int = 17_000_000_000) -> Path:
     device = root / address
     write(device / "vendor", "0x1002\n")

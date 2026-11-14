@@ -223,6 +223,42 @@ def test_resources_compute_cpu_cores_by_interpolating_counter_at_request_bounds(
     assert metrics["cpu_cores_avg"]["source"] == "cgroup cpu.stat"
 
 
+def test_resources_report_system_cpu_busy_percent_from_tick_counters() -> None:
+    samples = [
+        sample(1.0, cpu_busy_ticks=100, cpu_total_ticks=1000),
+        sample(3.0, cpu_busy_ticks=300, cpu_total_ticks=2000),
+    ]
+
+    metrics = resources_of(results(requests_between(1.0, 3.0), samples))
+
+    assert metrics["system_cpu_busy_percent"]["value"] == pytest.approx(20.0)
+    assert metrics["system_cpu_busy_percent"]["unit"] == "%"
+
+
+def test_busy_system_during_idle_reference_adds_a_boot_warning() -> None:
+    samples = [
+        sample(0.0, cpu_busy_ticks=0, cpu_total_ticks=0),
+        sample(2.0, cpu_busy_ticks=500, cpu_total_ticks=1000),
+    ]
+    boot: dict[str, Any] = {"metrics": {}, "warnings": []}
+
+    document = results([request("c")], samples, boot=boot, idle={"start_s": 0.0, "end_s": 2.0})
+
+    assert any("50.0%" in warning for warning in document["boot"]["warnings"])
+
+
+def test_quiet_system_during_idle_reference_adds_no_boot_warning() -> None:
+    samples = [
+        sample(0.0, cpu_busy_ticks=0, cpu_total_ticks=0),
+        sample(2.0, cpu_busy_ticks=20, cpu_total_ticks=1000),
+    ]
+    boot: dict[str, Any] = {"metrics": {}, "warnings": []}
+
+    document = results([request("c")], samples, boot=boot, idle={"start_s": 0.0, "end_s": 2.0})
+
+    assert document["boot"]["warnings"] == []
+
+
 def test_resources_ignore_peaks_outside_request_intervals() -> None:
     samples = [
         sample(0.5, mem_bytes=9 * GIB),
