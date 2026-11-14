@@ -4,7 +4,7 @@
 
 Build and check the shared [Strata runtime](../../docs/runtimes/strata.md#build-and-check).
 
-Allow at least **110 GB additional free disk space** for 83.63 GB of target shards, the projector, MTP preparation, and pack outputs. Expert weights total **46.84 GiB**, about **7.38 GB more RAM** than the ISTA setup. With 64 GB RAM, close memory-heavy applications and watch RAM, swap, and VRAM during loading and long-context checks. Workstation loading and generation remain to be validated for this recipe.
+Allow at least **110 GB additional free disk space** for 83.63 GB of target shards, the projector, MTP preparation, and pack outputs. Expert weights total **46.84 GiB**, about **7.38 GB more RAM** than the ISTA setup. With 64 GB RAM, close memory-heavy applications and watch RAM, swap, and VRAM during loading and long-context checks. The [initial checks](001-2026-11-14-initial-checks/summary.md) completed text, tools, vision, and near-120K input generation.
 
 ## Prepare models
 
@@ -39,17 +39,26 @@ Readiness: `curl -f http://127.0.0.1:8080/health`. The API is `http://127.0.0.1:
 
 ## Checks
 
-After readiness:
+Run this Bash block from the repository root after startup. Vision uses the shared [amdgpu_top screenshot](../../assets/checks/amdgpu-top.png); use `--image /path/to/image.png` to check another image.
 
 ```bash
-check=runtimes/strata/scripts/check_generation.py
-python3 "$check" text --model qwen3.8-flash-next-ud-iq3_xxs
-python3 "$check" tools --model qwen3.8-flash-next-ud-iq3_xxs
-python3 "$check" vision --model qwen3.8-flash-next-ud-iq3_xxs --image /path/to/screenshot.png
-python3 "$check" long --model qwen3.8-flash-next-ud-iq3_xxs --input-tokens 120000
+(
+  set -euo pipefail
+  out=$(mktemp -d "${TMPDIR:-/tmp}/strata-checks-$(date +%F)-XXXXXX")
+  check=runtimes/strata/scripts/check_generation.py
+  model=qwen3.8-flash-next-ud-iq3_xxs
+  echo "Saving checks to $out"
+
+  curl -fsS http://127.0.0.1:8080/health | tee "$out/health.txt"
+  curl -fsS http://127.0.0.1:8080/v1/models | python3 -m json.tool | tee "$out/models.json"
+  python3 "$check" text --model "$model" | tee "$out/text.json"
+  python3 "$check" tools --model "$model" | tee "$out/tools.json"
+  python3 "$check" vision --model "$model" | tee "$out/vision.json"
+  python3 "$check" long --model "$model" --input-tokens 120000 | tee "$out/long.json"
+)
 ```
 
-See [check behavior](../../docs/runtimes/strata.md#checks-and-clients) for sampling, token limits, and interpreting the output.
+Each helper checks the loaded model ID before generation. The block stops on failure and saves outputs in a fresh temporary directory. Keep any files needed for analysis before clearing temporary storage; summarize results in a numbered experiment. See [check behavior](../../docs/runtimes/strata.md#checks-and-clients) for sampling, token limits, and interpreting the output.
 
 ## Pi
 

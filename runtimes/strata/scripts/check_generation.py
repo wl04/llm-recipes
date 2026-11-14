@@ -3,6 +3,7 @@
 import argparse
 import base64
 import json
+import sys
 import time
 import uuid
 from collections.abc import Iterable
@@ -162,7 +163,7 @@ def check_long(base: str, target: int, model: str) -> dict[str, Any]:
             selected, count, low = candidate, tokens, middle + 1
         else:
             high = middle - 1
-    print(f"Sending {count:,} input tokens; up to 128 output tokens.", flush=True)
+    print(f"Sending {count:,} input tokens; up to 128 output tokens.", file=sys.stderr, flush=True)
     started = time.monotonic()
     result = request(base, "/v1/messages", selected)
     if not any(part.get("text") for part in result.get("content", [])):
@@ -181,11 +182,14 @@ def main() -> None:
         "--base-url", default="http://127.0.0.1:8080", help="Server URL without /v1"
     )
     parser.add_argument("--model", required=True, help="Expected server model ID")
-    parser.add_argument("--image", type=Path, help="PNG or JPEG for the vision check")
+    parser.add_argument(
+        "--image",
+        type=Path,
+        default=Path(__file__).resolve().parents[3] / "assets/checks/amdgpu-top.png",
+        help="PNG or JPEG (default: repository amdgpu_top baseline)",
+    )
     parser.add_argument("--input-tokens", type=int, default=120000)
     options = parser.parse_args()
-    if options.mode == "vision" and not options.image:
-        parser.error("vision requires --image")
     if options.input_tokens < 1024:
         parser.error("--input-tokens must be at least 1024")
     base = options.base_url.rstrip("/")

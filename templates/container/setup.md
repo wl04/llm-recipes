@@ -26,7 +26,20 @@ Include the API address and readiness check. Link `config/launch.json` and nativ
 
 ## Checks
 
-Provide runnable check commands with the served model ID. Link to the runtime guide for check behavior and token limits.
+Provide a Bash block that waits for readiness, displays the loaded model ID, and saves each supported check to a fresh directory. Use the runtime's actual endpoints and helpers; include tools, vision, and long context when supported. Keep input plus output within the configured context. For example:
+
+```bash
+(
+  set -euo pipefail
+  out=$(mktemp -d "${TMPDIR:-/tmp}/recipe-checks-$(date +%F)-XXXXXX")
+  echo "Saving checks to $out"
+  # Insert readiness and loaded-model commands for this API server.
+  # Insert each check with its explicit model ID, piping JSON stdout to:
+  #   tee "$out/<check>.json"
+)
+```
+
+Use stderr for helper progress so saved JSON remains parseable. Use the shared `assets/checks/amdgpu-top.png` as the vision input when supported, with an optional `--image` override; link [baseline reading details](../../docs/vision-check.md). The subshell keeps shell options local; `pipefail` propagates failures through `tee`. Link the runtime guide for check behavior and token limits. Outputs stay outside the repository; record the relevant statistics and observations in the experiment summary.
 
 ## Pi
 
