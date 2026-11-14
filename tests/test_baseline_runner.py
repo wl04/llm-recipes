@@ -576,3 +576,36 @@ def test_managed_run_notes_when_the_server_was_already_settled(tmp_path: Path) -
     settle = next(p for p in results_of(raw)["phases"] if p["id"] == "settle")
     assert "already settled" in settle["note"].lower()
     assert list(settle["metrics"]) == ["duration_s"]
+
+
+def test_run_repeats_only_the_largest_context_and_reports_its_spread(tmp_path: Path) -> None:
+    suite = SuiteConfig(
+        **{
+            **SUITE.__dict__,
+            "contexts": (("context-small", 300), ("context-large", 600)),
+            "largest_context_runs": 2,
+        }
+    )
+    with FakeServer() as server:
+        _, raw, _ = execute(tmp_path, server, suite=suite)
+
+    document = results_of(raw)
+    large, small = case_of(document, "context-large"), case_of(document, "context-small")
+    assert (large["runs"], small["runs"]) == (2, 1)
+    assert "noise_decode_spread" in large["metrics"]
+    assert "noise_decode_spread" not in small["metrics"]
+    large_prompts = [
+        str(p["messages"][0]["content"])
+        for p in server.requests
+        if p.get("stream") and "context-large" in str(p["messages"][0]["content"])[:60]
+    ]
+    assert len(large_prompts) == 2 and large_prompts[0] != large_prompts[1]
+
+
+def test_run_does_not_repeat_a_largest_context_that_was_skipped(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        _, raw, _ = execute(tmp_path, server)
+
+    skipped = [r for r in raw.requests if r.get("case") == "context-big"]
+    assert len(skipped) == 1
+    assert skipped[0]["status"] == "skipped"

@@ -659,17 +659,23 @@ class Runner:
     def _contexts(self) -> None:
         suite = self._config.suite
         plan = workloads.plan_contexts(suite, self._config.context_tokens)
+        largest = max(plan, key=lambda item: item.tokens, default=None)
         for index, item in enumerate(plan):
             self._check_stop()
+            runs = suite.largest_context_runs if item is largest else 1
             if item.skip is None:
-                self._progress(item.label)
                 try:
-                    self._prompt_request(
-                        phase="case", case=item.label, run=1,
-                        nonce=f"{self._config.run_id}-{item.label}", variant=100 + index,
-                        tokens=item.tokens, task=workloads.REVIEW_TASK,
-                        max_tokens=suite.context_output,
-                    )  # fmt: skip
+                    for run in range(1, runs + 1):
+                        self._progress(
+                            f"{item.label}: run {run} of {runs}" if runs > 1 else item.label
+                        )
+                        self._prompt_request(
+                            phase="case", case=item.label, run=run,
+                            nonce=f"{self._config.run_id}-{item.label}-{run}",
+                            variant=100 + index + 50 * (run - 1),
+                            tokens=item.tokens, task=workloads.REVIEW_TASK,
+                            max_tokens=suite.context_output, noise_probe=runs > 1,
+                        )  # fmt: skip
                     continue
                 except ValueError as error:
                     item = workloads.PlannedContext(item.label, item.tokens, str(error))

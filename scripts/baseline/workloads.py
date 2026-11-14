@@ -120,6 +120,7 @@ class SuiteConfig:
         ("context-120k", 120000),
     )
     context_output: int = 1024
+    largest_context_runs: int = 2
     sustained_output: int = 2048
     min_sustained_output: int = 512
     warmup_max: int = 4

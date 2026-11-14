@@ -176,6 +176,7 @@ def test_default_suite_matches_the_documented_matrix() -> None:
     assert [label for label, _ in config.contexts] == ["context-32k", "context-64k", "context-120k"]
     assert config.probe_tokens == 8192
     assert config.noise_runs == 5
+    assert config.largest_context_runs == 2
     assert config.sustained_output == 2048
     assert config.sample_interval_s == 0.5
 

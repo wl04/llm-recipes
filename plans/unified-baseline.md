@@ -189,7 +189,7 @@ Capture client request duration and time to first nonempty streamed output using
 - Engine-reported rates are supplementary and shown separately where available.
 - Do not calculate prefill speed from time to first token; queueing, image encoding, and other work can be included.
 - Do not treat one streamed chunk as one token. Report chunk timing only as chunk timing.
-- Per-case values are per request. The 8K case reports the median of its five requests with the noise floor; all other cases are single observations with no median or range. Do not claim a tail-latency figure such as p99.
+- Per-case values are per request. The 8K case reports the median of its five requests with the noise floor, and the largest context case (120K) runs twice and reports the spread between its two runs, because it varied most between repeated runs in the pilot (decode differed by 14%, driven by draft acceptance). All other cases are single observations with no median or range. Do not claim a tail-latency figure such as p99.
 - Where several requests are summarized (for example engine throughput over the sustained-generation tasks), aggregate throughput is total applicable tokens divided by total applicable engine time. Draft acceptance is total accepted divided by total proposed for the same covered requests.
 - Preserve failed and short requests in results. Summaries state included/excluded counts and reasons.
 

@@ -29,7 +29,7 @@ Each phase is sampled and reported separately:
 | load | The server starts and is polled until it serves a model, with a 30-minute timeout. Records time to ready and the load's peaks, including the cold-cache cost after a reboot. |
 | settle | Waits until system CPU (under 15%) and server CPU (under 0.25 cores) stay low for 10 s, for at most 120 s. A note is added if it does not settle. |
 | loaded idle | 10 s with the model loaded and the server quiet: the model's resting footprint. |
-| suite | Functional checks (text, forced tool call, vision), an adaptive warmup of up to four requests, the 8K case repeated five times, three sustained-generation tasks, then 32K, 64K, and 120K contexts. Each case after the 8K probe is a single observation. Cases whose input plus output cannot fit the context are skipped. |
+| suite | Functional checks (text, forced tool call, vision), an adaptive warmup of up to four requests, the 8K case repeated five times, three sustained-generation tasks, then 32K, 64K, and 120K contexts. The 120K case runs twice, with distinct content each time, and the report shows the spread between the two runs; the 32K and 64K cases and the sustained tasks are single observations. Cases whose input plus output cannot fit the context are skipped. |
 | unload | The server is stopped. Records time to stop. |
 | after unload | 10 s of observation once the server has stopped. Records whether VRAM and available RAM returned to the idle level, which exposes leaks. |
 
