@@ -17,8 +17,6 @@ Useful details to compare with the answer:
 
 Review the response against the image. The check requests a description and visible text, with a 256-token output cap; it may finish before listing every detail. Record the image used, image-token settings, and output cap when comparing results. The displayed memory values belong to the captured screenshot, not to the server currently processing it.
 
-The Unsloth initial result used a different image of `gpu-switcher`; this shared screenshot is the default for subsequent checks.
-
 ---
 
 [All recipes](../README.md) · [Strata runtime](runtimes/strata.md) · [Authoring](authoring.md)

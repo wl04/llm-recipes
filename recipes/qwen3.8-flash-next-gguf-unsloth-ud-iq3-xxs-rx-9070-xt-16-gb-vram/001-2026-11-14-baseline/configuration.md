@@ -27,6 +27,7 @@
 |---|---|
 | Operating system | Ubuntu |
 | OS version | 26.10 |
+| Kernel version | 7.3.0-10-generic |
 | Kernel driver | amdgpu |
 
 
@@ -35,7 +36,8 @@
 
 | Setting | Value |
 |---|---|
-| Check client | Recipe check_generation.py (text, tools, vision, long) |
+| Check client | llm-recipes baseline runner |
+| Check client revision | [13dfa3ba](https://github.com/wl04/llm-recipes/commit/13dfa3baa93040188a63391f0a2b7463835742bb) |
 | API server | Strata serve.server |
 | Engine | Strata |
 | Engine version | 0.1.59.1 |
@@ -46,7 +48,9 @@
 | Vision engine | llama.cpp mtmd (CPU) |
 | Vision engine release | [b11062](https://github.com/ggml-org/llama.cpp/releases/tag/b11062) |
 | Vision revision | [3cf03257](https://github.com/ggml-org/llama.cpp/commit/3cf03257f219afbe7334045ff7c6a06ac68c627d) |
-| Software configuration basis | Repository runtime and model locks; build identities were not included in the check outputs |
+| Host Python | 3.14.8 |
+| Running image ID | sha256:afe7c1bff2f14085879a86bfcdc5729996a66beac14edee40207c08e255feca6 |
+| Software configuration basis | Repository runtime and model locks; the running image ID and the engine startup log were captured by the baseline run |
 
 
 ## Model
@@ -71,33 +75,33 @@
 
 | Setting | Value |
 |---|---|
+| Context length (tokens) | 131072 |
 | KV cache | INT8 K and V |
 | GPU resident KV cells | 32768 |
-| Expert cache | auto |
-| Prefill | auto |
+| Expert cache | auto; 4628 slots / 8.82 GiB at startup |
+| Prefill | auto; 8192-token chunks selected at runtime |
 | Speculative decoding | MTP enabled |
 | Maximum draft tokens | 4 |
 | Minimum draft probability | 0.5 |
-| Draft vocabulary | draft_vocab.bin |
-| Vision | CPU (recipe configuration) |
+| Draft vocabulary | draft_vocab.bin; 106299 tokens in the loaded draft head |
+| Vision | CPU; 8 threads |
+| Expert pool | 7 workers plus host thread |
+| Conversation cache | 1024 MiB; up to 4 parked conversations |
+| Hyper connection projections | Q8_0 (upstream default) |
+| Route tail skip | 7 |
 | Temperature | 1.0 |
 | Top k | 20 |
 | Top p | 0.95 |
 | Min p | 0 |
 | Repetition penalty | 1 |
 | Presence penalty | 0 |
-| Temperature | 0 |
-| Thinking during checks | disabled |
-| Maximum output tokens | 256 for text/tools/vision; 128 for long context |
-| Concurrency | 1 |
-| Endpoints | Streamed /v1/chat/completions for text; non-streamed chat for tools/vision; /v1/messages for long context |
-| Maximum image tokens | 1024 |
-| Configured context length (tokens) | 131072 |
-| Configuration basis | Recipe defaults; launch command and engine startup log were not captured |
+| Workload suite | 1 |
+| Request policy | Performance cases: temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, presence penalty 0, thinking disabled, concurrency 1. Functional checks: temperature 0. Output caps: 1,024 tokens for the 8K and context cases, 2,048 for sustained generation, 256 for text and tools, 512 for vision. Streamed /v1/chat/completions; prompts sized with /v1/messages/count_tokens. |
 | Minimum image tokens | 1024 |
+| Maximum image tokens | 1024 |
 
 ---
 
-[Recipe](../recipe.md) · [Results](summary.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)
+[Recipe](../recipe.md) · [Results](summary.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml) · [Results data](results.json)
 
 <!-- END GENERATED CONFIGURATIONS -->
