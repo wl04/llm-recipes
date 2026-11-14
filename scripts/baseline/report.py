@@ -77,6 +77,8 @@ def _number(metric: dict[str, Any] | None) -> str:
     value = metric["value"]
     if metric.get("unit") == "ratio":
         return f"{value:.1%}"
+    if metric.get("unit") == "tokens":
+        return f"{round(value):,}"
     if isinstance(value, int):
         return f"{value:,}"
     return f"{value:.3f}" if abs(value) < 1 else f"{value:,.2f}"

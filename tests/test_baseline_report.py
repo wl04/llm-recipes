@@ -295,3 +295,13 @@ def test_uptime_is_shown_in_hours_and_minutes(seconds: int, expected: str) -> No
     document["boot"]["metrics"]["uptime_s"] = schema.measured(seconds, "s", "/proc/uptime")
 
     assert row_of(section(render(document), "### Boot state"), "Uptime")[1] == expected
+
+
+def test_token_counts_are_shown_as_whole_numbers_even_when_a_median_is_fractional() -> None:
+    document = sample_results()
+    document["cases"][0]["metrics"]["input_tokens"] = schema.measured(117733.5, "tokens", "usage")
+
+    row = row_of(section(render(document), "### Cases"), "context-8k")
+
+    assert "117,734" in row or "117,733" in row
+    assert "117,733.50" not in row

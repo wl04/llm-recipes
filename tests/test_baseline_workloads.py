@@ -217,3 +217,10 @@ def test_fit_prompt_never_returns_a_prompt_over_the_target_when_it_can_count() -
     _, tokens = fit(700, lambda prompt: prompt.chars // 3 + 120)
 
     assert tokens is not None and tokens <= 700
+
+
+def test_fit_prompt_aims_within_one_percent_below_the_target() -> None:
+    _, tokens = fit(9000, lambda prompt: prompt.chars // 4)
+
+    assert tokens is not None
+    assert 0.99 * 9000 <= tokens <= 9000

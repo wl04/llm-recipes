@@ -13,7 +13,7 @@ MIN_CHARS_PER_TOKEN, MAX_CHARS_PER_TOKEN = 1.5, 8.0
 INITIAL_CHARS_PER_TOKEN = 3.0
 LENGTH_MARGIN = 0.97
 VARIANT_STRIDE = 7
-FIT_TOLERANCE = 0.03
+FIT_TOLERANCE = 0.01
 FIT_ROUNDS = 8
 
 # Verified field names; other servers need their own settings supplied with --request-extra.
