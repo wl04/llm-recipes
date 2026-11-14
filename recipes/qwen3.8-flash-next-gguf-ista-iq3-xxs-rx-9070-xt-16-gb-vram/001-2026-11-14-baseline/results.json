@@ -3,7 +3,7 @@
   "suite_version": "1",
   "recipe": "qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram",
   "run": {
-    "id": "55b0d15c",
+    "id": "62d94c60",
     "status": "complete"
   },
   "server": {
@@ -34,17 +34,17 @@
   "boot": {
     "metrics": {
       "uptime_s": {
-        "value": 62.45,
+        "value": 53.93,
         "unit": "s",
         "source": "/proc/uptime"
       },
       "mem_used_gib": {
-        "value": 2.362843,
+        "value": 2.27047,
         "unit": "GiB",
         "source": "/proc/meminfo MemTotal-MemAvailable"
       },
       "mem_total_gib": {
-        "value": 59.236134,
+        "value": 59.236145,
         "unit": "GiB",
         "source": "/proc/meminfo MemTotal"
       },
@@ -74,12 +74,12 @@
         "source": "amdgpu sysfs"
       },
       "gpu_power_w": {
-        "value": 10.0,
+        "value": 9.0,
         "unit": "W",
         "source": "amdgpu sysfs"
       },
       "gpu_temp_c": {
-        "value": 29.0,
+        "value": 33.0,
         "unit": "C",
         "source": "amdgpu sysfs"
       }
@@ -92,27 +92,27 @@
       "status": "ok",
       "metrics": {
         "duration_s": {
-          "value": 30.000075,
+          "value": 30.000454,
           "unit": "s",
           "source": "client monotonic clock"
         },
         "ram_used_peak_gib": {
-          "value": 2.389748,
+          "value": 2.314945,
           "unit": "GiB",
           "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "system_cpu_busy_percent": {
-          "value": 0.366284,
+          "value": 0.17704,
           "unit": "%",
           "source": "/proc/stat"
         },
         "system_available_min_gib": {
-          "value": 56.846386,
+          "value": 56.9212,
           "unit": "GiB",
           "source": "/proc/meminfo MemAvailable"
         },
         "vram_peak_gib": {
-          "value": 0.16713,
+          "value": 0.167114,
           "unit": "GiB",
           "source": "amdgpu sysfs mem_info_vram_used"
         },
@@ -122,17 +122,17 @@
           "source": "amdgpu sysfs mem_info_gtt_used"
         },
         "gpu_busy_avg_percent": {
-          "value": 0.333359,
+          "value": 0.016656,
           "unit": "%",
           "source": "amdgpu sysfs gpu_busy_percent"
         },
         "gpu_power_avg_w": {
-          "value": 6.933611,
+          "value": 5.0667,
           "unit": "W",
           "source": "amdgpu sysfs hwmon power1_average"
         },
         "gpu_temp_max_c": {
-          "value": 30,
+          "value": 32,
           "unit": "C",
           "source": "amdgpu sysfs hwmon temp1_input"
         },
@@ -147,7 +147,7 @@
           "source": "/proc/vmstat pswpout"
         },
         "sample_count": {
-          "value": 59,
+          "value": 60,
           "unit": "samples",
           "source": "sampler"
         }
@@ -158,27 +158,27 @@
       "status": "ok",
       "metrics": {
         "duration_s": {
-          "value": 36.432662,
+          "value": 36.445702,
           "unit": "s",
           "source": "client monotonic clock"
         },
         "ram_used_peak_gib": {
-          "value": 46.338047,
+          "value": 46.293987,
           "unit": "GiB",
           "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "system_cpu_busy_percent": {
-          "value": 2.076535,
+          "value": 1.919594,
           "unit": "%",
           "source": "/proc/stat"
         },
         "system_available_min_gib": {
-          "value": 12.898087,
+          "value": 12.942158,
           "unit": "GiB",
           "source": "/proc/meminfo MemAvailable"
         },
         "vram_peak_gib": {
-          "value": 15.041389,
+          "value": 15.296906,
           "unit": "GiB",
           "source": "amdgpu sysfs mem_info_vram_used"
         },
@@ -188,17 +188,17 @@
           "source": "amdgpu sysfs mem_info_gtt_used"
         },
         "gpu_busy_avg_percent": {
-          "value": 5.434258,
+          "value": 5.072268,
           "unit": "%",
           "source": "amdgpu sysfs gpu_busy_percent"
         },
         "gpu_power_avg_w": {
-          "value": 36.508766,
+          "value": 35.634047,
           "unit": "W",
           "source": "amdgpu sysfs hwmon power1_average"
         },
         "gpu_temp_max_c": {
-          "value": 32,
+          "value": 34,
           "unit": "C",
           "source": "amdgpu sysfs hwmon temp1_input"
         },
@@ -218,32 +218,32 @@
           "source": "sampler"
         },
         "cpu_cores_avg": {
-          "value": 0.307856,
+          "value": 0.306905,
           "unit": "cores",
           "source": "cgroup cpu.stat"
         },
         "ram_peak_gib": {
-          "value": 55.732422,
+          "value": 56.200443,
           "unit": "GiB",
           "source": "cgroup memory.current"
         },
         "ram_anon_peak_gib": {
-          "value": 41.683472,
+          "value": 41.69725,
           "unit": "GiB",
           "source": "cgroup memory.current anon"
         },
         "ram_file_peak_gib": {
-          "value": 13.921528,
+          "value": 14.402428,
           "unit": "GiB",
           "source": "cgroup memory.current file cache"
         },
         "proc_vram_peak_gib": {
-          "value": 14.730999,
+          "value": 14.98653,
           "unit": "GiB",
           "source": "DRM fdinfo (drm-memory-vram)"
         },
         "time_to_ready_s": {
-          "value": 36.235044,
+          "value": 36.240711,
           "unit": "s",
           "source": "client monotonic clock"
         }
@@ -252,41 +252,29 @@
     {
       "id": "settle",
       "status": "ok",
-      "note": "Already settled when the server became ready",
       "metrics": {
         "duration_s": {
-          "value": 5.2e-05,
-          "unit": "s",
-          "source": "client monotonic clock"
-        }
-      }
-    },
-    {
-      "id": "loaded_idle",
-      "status": "ok",
-      "metrics": {
-        "duration_s": {
-          "value": 10.000385,
+          "value": 1.00063,
           "unit": "s",
           "source": "client monotonic clock"
         },
         "ram_used_peak_gib": {
-          "value": 46.394768,
+          "value": 46.300304,
           "unit": "GiB",
           "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "system_cpu_busy_percent": {
-          "value": 0.330139,
+          "value": 0.194202,
           "unit": "%",
           "source": "/proc/stat"
         },
         "system_available_min_gib": {
-          "value": 12.841366,
+          "value": 12.935841,
           "unit": "GiB",
           "source": "/proc/meminfo MemAvailable"
         },
         "vram_peak_gib": {
-          "value": 15.296776,
+          "value": 15.296906,
           "unit": "GiB",
           "source": "amdgpu sysfs mem_info_vram_used"
         },
@@ -296,17 +284,108 @@
           "source": "amdgpu sysfs mem_info_gtt_used"
         },
         "gpu_busy_avg_percent": {
-          "value": 3.423321,
+          "value": 3,
           "unit": "%",
           "source": "amdgpu sysfs gpu_busy_percent"
         },
         "gpu_power_avg_w": {
-          "value": 43.19647,
+          "value": 43,
           "unit": "W",
           "source": "amdgpu sysfs hwmon power1_average"
         },
         "gpu_temp_max_c": {
-          "value": 32,
+          "value": 34,
+          "unit": "C",
+          "source": "amdgpu sysfs hwmon temp1_input"
+        },
+        "swap_in_pages": {
+          "value": 0,
+          "unit": "pages",
+          "source": "/proc/vmstat pswpin"
+        },
+        "swap_out_pages": {
+          "value": 0,
+          "unit": "pages",
+          "source": "/proc/vmstat pswpout"
+        },
+        "sample_count": {
+          "value": 2,
+          "unit": "samples",
+          "source": "sampler"
+        },
+        "cpu_cores_avg": {
+          "value": 0.00319,
+          "unit": "cores",
+          "source": "cgroup cpu.stat"
+        },
+        "ram_peak_gib": {
+          "value": 56.083363,
+          "unit": "GiB",
+          "source": "cgroup memory.current"
+        },
+        "ram_anon_peak_gib": {
+          "value": 41.697285,
+          "unit": "GiB",
+          "source": "cgroup memory.current anon"
+        },
+        "ram_file_peak_gib": {
+          "value": 14.2575,
+          "unit": "GiB",
+          "source": "cgroup memory.current file cache"
+        },
+        "proc_vram_peak_gib": {
+          "value": 14.98653,
+          "unit": "GiB",
+          "source": "DRM fdinfo (drm-memory-vram)"
+        }
+      }
+    },
+    {
+      "id": "loaded_idle",
+      "status": "ok",
+      "metrics": {
+        "duration_s": {
+          "value": 10.000392,
+          "unit": "s",
+          "source": "client monotonic clock"
+        },
+        "ram_used_peak_gib": {
+          "value": 46.30088,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
+        },
+        "system_cpu_busy_percent": {
+          "value": 0.184907,
+          "unit": "%",
+          "source": "/proc/stat"
+        },
+        "system_available_min_gib": {
+          "value": 12.935265,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemAvailable"
+        },
+        "vram_peak_gib": {
+          "value": 15.296906,
+          "unit": "GiB",
+          "source": "amdgpu sysfs mem_info_vram_used"
+        },
+        "gtt_peak_gib": {
+          "value": 0.113701,
+          "unit": "GiB",
+          "source": "amdgpu sysfs mem_info_gtt_used"
+        },
+        "gpu_busy_avg_percent": {
+          "value": 3,
+          "unit": "%",
+          "source": "amdgpu sysfs gpu_busy_percent"
+        },
+        "gpu_power_avg_w": {
+          "value": 43,
+          "unit": "W",
+          "source": "amdgpu sysfs hwmon power1_average"
+        },
+        "gpu_temp_max_c": {
+          "value": 34,
           "unit": "C",
           "source": "amdgpu sysfs hwmon temp1_input"
         },
@@ -326,27 +405,27 @@
           "source": "sampler"
         },
         "cpu_cores_avg": {
-          "value": 0.009461,
+          "value": 0.006155,
           "unit": "cores",
           "source": "cgroup cpu.stat"
         },
         "ram_peak_gib": {
-          "value": 55.6478,
+          "value": 56.083595,
           "unit": "GiB",
           "source": "cgroup memory.current"
         },
         "ram_anon_peak_gib": {
-          "value": 41.697311,
+          "value": 41.697315,
           "unit": "GiB",
           "source": "cgroup memory.current anon"
         },
         "ram_file_peak_gib": {
-          "value": 13.821697,
+          "value": 14.2575,
           "unit": "GiB",
           "source": "cgroup memory.current file cache"
         },
         "proc_vram_peak_gib": {
-          "value": 14.986385,
+          "value": 14.98653,
           "unit": "GiB",
           "source": "DRM fdinfo (drm-memory-vram)"
         }
@@ -357,27 +436,27 @@
       "status": "ok",
       "metrics": {
         "duration_s": {
-          "value": 0.924852,
+          "value": 1.075704,
           "unit": "s",
           "source": "client monotonic clock"
         },
         "ram_used_peak_gib": {
-          "value": 50.401016,
+          "value": 51.532036,
           "unit": "GiB",
           "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "system_cpu_busy_percent": {
-          "value": 7.790553,
+          "value": 6.895293,
           "unit": "%",
           "source": "/proc/stat"
         },
         "system_available_min_gib": {
-          "value": 8.835117,
+          "value": 7.704109,
           "unit": "GiB",
           "source": "/proc/meminfo MemAvailable"
         },
         "vram_peak_gib": {
-          "value": 15.334431,
+          "value": 15.334629,
           "unit": "GiB",
           "source": "amdgpu sysfs mem_info_vram_used"
         },
@@ -387,17 +466,17 @@
           "source": "amdgpu sysfs mem_info_gtt_used"
         },
         "gpu_busy_avg_percent": {
-          "value": 46.122001,
+          "value": 45.744817,
           "unit": "%",
           "source": "amdgpu sysfs gpu_busy_percent"
         },
         "gpu_power_avg_w": {
-          "value": 128.41908,
+          "value": 139.727557,
           "unit": "W",
           "source": "amdgpu sysfs hwmon power1_average"
         },
         "gpu_temp_max_c": {
-          "value": 55,
+          "value": 54,
           "unit": "C",
           "source": "amdgpu sysfs hwmon temp1_input"
         },
@@ -417,7 +496,7 @@
           "source": "sampler"
         },
         "time_to_stop_s": {
-          "value": 0.92485,
+          "value": 1.075702,
           "unit": "s",
           "source": "client monotonic clock"
         }
@@ -428,22 +507,22 @@
       "status": "ok",
       "metrics": {
         "duration_s": {
-          "value": 10.000379,
+          "value": 10.000349,
           "unit": "s",
           "source": "client monotonic clock"
         },
         "ram_used_peak_gib": {
-          "value": 2.282822,
+          "value": 2.176395,
           "unit": "GiB",
           "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "system_cpu_busy_percent": {
-          "value": 0.456345,
+          "value": 0.223752,
           "unit": "%",
           "source": "/proc/stat"
         },
         "system_available_min_gib": {
-          "value": 56.953312,
+          "value": 57.05975,
           "unit": "GiB",
           "source": "/proc/meminfo MemAvailable"
         },
@@ -458,12 +537,12 @@
           "source": "amdgpu sysfs mem_info_gtt_used"
         },
         "gpu_busy_avg_percent": {
-          "value": 1.593551,
+          "value": 1.294836,
           "unit": "%",
           "source": "amdgpu sysfs gpu_busy_percent"
         },
         "gpu_power_avg_w": {
-          "value": 18.366773,
+          "value": 9.292253,
           "unit": "W",
           "source": "amdgpu sysfs hwmon power1_average"
         },
@@ -488,12 +567,12 @@
           "source": "sampler"
         },
         "vram_vs_idle_gib": {
-          "value": 0,
+          "value": 1.6e-05,
           "unit": "GiB",
           "source": "after-unload minus idle phase"
         },
         "available_ram_vs_idle_gib": {
-          "value": -0.106926,
+          "value": -0.13855,
           "unit": "GiB",
           "source": "after-unload minus idle phase"
         }
@@ -583,7 +662,7 @@
     "converged": true,
     "metrics": {
       "duration_s": {
-        "value": 3.281692,
+        "value": 3.441175,
         "unit": "s",
         "source": "client monotonic clock"
       }
@@ -597,7 +676,7 @@
       "finish_reason": "length",
       "metrics": {
         "input_tokens": {
-          "value": 8013,
+          "value": 8111,
           "unit": "tokens",
           "source": "server usage"
         },
@@ -612,37 +691,37 @@
           "source": "server usage"
         },
         "first_output_s": {
-          "value": 2.815846,
+          "value": 2.848924,
           "unit": "s",
           "source": "client monotonic clock"
         },
         "client_decode_tok_s": {
-          "value": 93.892699,
+          "value": 94.621493,
           "unit": "tokens/s",
           "source": "client estimate: (tokens - 1) / (last - first output)"
         },
         "engine_prefill_tok_s": {
-          "value": 2873.03524,
+          "value": 2878.067811,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "engine_decode_tok_s": {
-          "value": 93.284767,
+          "value": 95.234524,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "draft_acceptance": {
-          "value": 0.629778,
+          "value": 0.635891,
           "unit": "ratio",
           "source": "engine log (strata serve)"
         },
         "noise_first_output_spread": {
-          "value": 0.028037,
+          "value": 0.035247,
           "unit": "ratio",
           "source": "5 runs, range over median"
         },
         "noise_decode_spread": {
-          "value": 0.05801,
+          "value": 0.045593,
           "unit": "ratio",
           "source": "5 runs, range over median"
         }
@@ -652,7 +731,7 @@
       "id": "sustained-lru-cache",
       "status": "ok",
       "runs": 1,
-      "finish_reason": "stop",
+      "finish_reason": "length",
       "metrics": {
         "input_tokens": {
           "value": 65,
@@ -660,7 +739,7 @@
           "source": "server usage"
         },
         "output_tokens": {
-          "value": 1706,
+          "value": 2048,
           "unit": "tokens",
           "source": "server usage"
         },
@@ -670,27 +749,27 @@
           "source": "server usage"
         },
         "first_output_s": {
-          "value": 0.531974,
+          "value": 0.533252,
           "unit": "s",
           "source": "client monotonic clock"
         },
         "client_decode_tok_s": {
-          "value": 111.067923,
+          "value": 114.498852,
           "unit": "tokens/s",
           "source": "client estimate: (tokens - 1) / (last - first output)"
         },
         "engine_prefill_tok_s": {
-          "value": 127.201566,
+          "value": 126.705653,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "engine_decode_tok_s": {
-          "value": 110.743265,
+          "value": 114.438981,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "draft_acceptance": {
-          "value": 0.738958,
+          "value": 0.757426,
           "unit": "ratio",
           "source": "engine log (strata serve)"
         }
@@ -718,27 +797,27 @@
           "source": "server usage"
         },
         "first_output_s": {
-          "value": 0.54508,
+          "value": 0.531332,
           "unit": "s",
           "source": "client monotonic clock"
         },
         "client_decode_tok_s": {
-          "value": 122.390907,
+          "value": 116.130979,
           "unit": "tokens/s",
           "source": "client estimate: (tokens - 1) / (last - first output)"
         },
         "engine_prefill_tok_s": {
-          "value": 118.095238,
+          "value": 121.09375,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "engine_decode_tok_s": {
-          "value": 122.319775,
+          "value": 116.073453,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "draft_acceptance": {
-          "value": 0.800115,
+          "value": 0.756696,
           "unit": "ratio",
           "source": "engine log (strata serve)"
         }
@@ -766,27 +845,27 @@
           "source": "server usage"
         },
         "first_output_s": {
-          "value": 0.511506,
+          "value": 0.513618,
           "unit": "s",
           "source": "client monotonic clock"
         },
         "client_decode_tok_s": {
-          "value": 117.074196,
+          "value": 121.537034,
           "unit": "tokens/s",
           "source": "client estimate: (tokens - 1) / (last - first output)"
         },
         "engine_prefill_tok_s": {
-          "value": 115.853659,
+          "value": 115.618661,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "engine_decode_tok_s": {
-          "value": 117.008513,
+          "value": 121.463733,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "draft_acceptance": {
-          "value": 0.790977,
+          "value": 0.820678,
           "unit": "ratio",
           "source": "engine log (strata serve)"
         }
@@ -799,7 +878,7 @@
       "finish_reason": "length",
       "metrics": {
         "input_tokens": {
-          "value": 31889,
+          "value": 32538,
           "unit": "tokens",
           "source": "server usage"
         },
@@ -814,27 +893,27 @@
           "source": "server usage"
         },
         "first_output_s": {
-          "value": 9.745747,
+          "value": 9.913006,
           "unit": "s",
           "source": "client monotonic clock"
         },
         "client_decode_tok_s": {
-          "value": 92.026037,
+          "value": 91.386939,
           "unit": "tokens/s",
           "source": "client estimate: (tokens - 1) / (last - first output)"
         },
         "engine_prefill_tok_s": {
-          "value": 3283.125708,
+          "value": 3293.653204,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "engine_decode_tok_s": {
-          "value": 91.954023,
+          "value": 91.314428,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "draft_acceptance": {
-          "value": 0.632939,
+          "value": 0.659365,
           "unit": "ratio",
           "source": "engine log (strata serve)"
         }
@@ -847,7 +926,7 @@
       "finish_reason": "length",
       "metrics": {
         "input_tokens": {
-          "value": 64504,
+          "value": 65187,
           "unit": "tokens",
           "source": "server usage"
         },
@@ -862,27 +941,27 @@
           "source": "server usage"
         },
         "first_output_s": {
-          "value": 18.730049,
+          "value": 18.899857,
           "unit": "s",
           "source": "client monotonic clock"
         },
         "client_decode_tok_s": {
-          "value": 93.695142,
+          "value": 90.05853,
           "unit": "tokens/s",
           "source": "client estimate: (tokens - 1) / (last - first output)"
         },
         "engine_prefill_tok_s": {
-          "value": 3452.550447,
+          "value": 3457.645998,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "engine_decode_tok_s": {
-          "value": 93.610019,
+          "value": 89.990333,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "draft_acceptance": {
-          "value": 0.672566,
+          "value": 0.635659,
           "unit": "ratio",
           "source": "engine log (strata serve)"
         }
@@ -891,11 +970,11 @@
     {
       "id": "context-120k",
       "status": "ok",
-      "runs": 1,
+      "runs": 2,
       "finish_reason": "length",
       "metrics": {
         "input_tokens": {
-          "value": 116535,
+          "value": 119492,
           "unit": "tokens",
           "source": "server usage"
         },
@@ -910,29 +989,39 @@
           "source": "server usage"
         },
         "first_output_s": {
-          "value": 34.508004,
+          "value": 35.288473,
           "unit": "s",
           "source": "client monotonic clock"
         },
         "client_decode_tok_s": {
-          "value": 95.109439,
+          "value": 91.186378,
           "unit": "tokens/s",
           "source": "client estimate: (tokens - 1) / (last - first output)"
         },
         "engine_prefill_tok_s": {
-          "value": 3383.612555,
+          "value": 3392.779568,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "engine_decode_tok_s": {
-          "value": 95.034803,
+          "value": 91.103203,
           "unit": "tokens/s",
           "source": "engine log (strata serve)"
         },
         "draft_acceptance": {
-          "value": 0.701613,
+          "value": 0.654267,
           "unit": "ratio",
           "source": "engine log (strata serve)"
+        },
+        "noise_first_output_spread": {
+          "value": 0.006803,
+          "unit": "ratio",
+          "source": "2 runs, range over median"
+        },
+        "noise_decode_spread": {
+          "value": 0.002502,
+          "unit": "ratio",
+          "source": "2 runs, range over median"
         }
       }
     }
@@ -942,42 +1031,42 @@
       "case": "context-8k",
       "metrics": {
         "cpu_cores_avg": {
-          "value": 6.738403,
+          "value": 6.714331,
           "unit": "cores",
           "source": "cgroup cpu.stat"
         },
         "system_cpu_busy_percent": {
-          "value": 42.151033,
+          "value": 41.819312,
           "unit": "%",
           "source": "/proc/stat"
         },
         "ram_peak_gib": {
-          "value": 55.679276,
+          "value": 56.187973,
           "unit": "GiB",
           "source": "cgroup memory.current"
         },
         "ram_used_peak_gib": {
-          "value": 48.374413,
+          "value": 48.286026,
           "unit": "GiB",
           "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "ram_anon_peak_gib": {
-          "value": 43.495502,
+          "value": 43.504562,
           "unit": "GiB",
           "source": "cgroup memory.current anon"
         },
         "ram_file_peak_gib": {
-          "value": 12.492004,
+          "value": 12.930088,
           "unit": "GiB",
           "source": "cgroup memory.current file cache"
         },
         "system_available_min_gib": {
-          "value": 10.861721,
+          "value": 10.950119,
           "unit": "GiB",
           "source": "/proc/meminfo MemAvailable"
         },
         "vram_peak_gib": {
-          "value": 15.332218,
+          "value": 15.33213,
           "unit": "GiB",
           "source": "amdgpu sysfs mem_info_vram_used"
         },
@@ -987,17 +1076,17 @@
           "source": "amdgpu sysfs mem_info_gtt_used"
         },
         "proc_vram_peak_gib": {
-          "value": 15.021828,
+          "value": 15.021755,
           "unit": "GiB",
           "source": "DRM fdinfo (drm-memory-vram)"
         },
         "gpu_busy_avg_percent": {
-          "value": 97.762707,
+          "value": 97.614755,
           "unit": "%",
           "source": "amdgpu sysfs gpu_busy_percent"
         },
         "gpu_power_avg_w": {
-          "value": 257.905239,
+          "value": 261.23231,
           "unit": "W",
           "source": "amdgpu sysfs hwmon power1_average"
         },
@@ -1022,7 +1111,7 @@
           "source": "sampler"
         },
         "sample_max_gap_s": {
-          "value": 0.500472,
+          "value": 0.500043,
           "unit": "s",
           "source": "sampler"
         }
@@ -1032,42 +1121,42 @@
       "case": "sustained-lru-cache",
       "metrics": {
         "cpu_cores_avg": {
-          "value": 8.068675,
+          "value": 8.07019,
           "unit": "cores",
           "source": "cgroup cpu.stat"
         },
         "system_cpu_busy_percent": {
-          "value": 50.5602,
+          "value": 50.400525,
           "unit": "%",
           "source": "/proc/stat"
         },
         "ram_peak_gib": {
-          "value": 55.567112,
+          "value": 56.016113,
           "unit": "GiB",
           "source": "cgroup memory.current"
         },
         "ram_used_peak_gib": {
-          "value": 48.369991,
+          "value": 48.285263,
           "unit": "GiB",
           "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "ram_anon_peak_gib": {
-          "value": 43.495502,
+          "value": 43.50415,
           "unit": "GiB",
           "source": "cgroup memory.current anon"
         },
         "ram_file_peak_gib": {
-          "value": 11.942863,
+          "value": 12.382263,
           "unit": "GiB",
           "source": "cgroup memory.current file cache"
         },
         "system_available_min_gib": {
-          "value": 10.866142,
+          "value": 10.950882,
           "unit": "GiB",
           "source": "/proc/meminfo MemAvailable"
         },
         "vram_peak_gib": {
-          "value": 15.332546,
+          "value": 15.332424,
           "unit": "GiB",
           "source": "amdgpu sysfs mem_info_vram_used"
         },
@@ -1077,17 +1166,17 @@
           "source": "amdgpu sysfs mem_info_gtt_used"
         },
         "proc_vram_peak_gib": {
-          "value": 15.022156,
+          "value": 15.022049,
           "unit": "GiB",
           "source": "DRM fdinfo (drm-memory-vram)"
         },
         "gpu_busy_avg_percent": {
-          "value": 99.905776,
+          "value": 99.646965,
           "unit": "%",
           "source": "amdgpu sysfs gpu_busy_percent"
         },
         "gpu_power_avg_w": {
-          "value": 270.310948,
+          "value": 271.178876,
           "unit": "W",
           "source": "amdgpu sysfs hwmon power1_average"
         },
@@ -1107,12 +1196,12 @@
           "source": "/proc/vmstat pswpout"
         },
         "sample_count": {
-          "value": 32,
+          "value": 37,
           "unit": "samples",
           "source": "sampler"
         },
         "sample_max_gap_s": {
-          "value": 0.500014,
+          "value": 0.500021,
           "unit": "s",
           "source": "sampler"
         }
@@ -1122,42 +1211,42 @@
       "case": "sustained-tokenizer",
       "metrics": {
         "cpu_cores_avg": {
-          "value": 8.065583,
+          "value": 8.071791,
           "unit": "cores",
           "source": "cgroup cpu.stat"
         },
         "system_cpu_busy_percent": {
-          "value": 50.550056,
+          "value": 50.362654,
           "unit": "%",
           "source": "/proc/stat"
         },
         "ram_peak_gib": {
-          "value": 55.461685,
+          "value": 55.915791,
           "unit": "GiB",
           "source": "cgroup memory.current"
         },
         "ram_used_peak_gib": {
-          "value": 48.259205,
+          "value": 48.183228,
           "unit": "GiB",
           "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "ram_anon_peak_gib": {
-          "value": 43.390617,
+          "value": 43.404125,
           "unit": "GiB",
           "source": "cgroup memory.current anon"
         },
         "ram_file_peak_gib": {
-          "value": 11.942867,
+          "value": 12.382267,
           "unit": "GiB",
           "source": "cgroup memory.current file cache"
         },
         "system_available_min_gib": {
-          "value": 10.976929,
+          "value": 11.052917,
           "unit": "GiB",
           "source": "/proc/meminfo MemAvailable"
         },
         "vram_peak_gib": {
-          "value": 15.332764,
+          "value": 15.332783,
           "unit": "GiB",
           "source": "amdgpu sysfs mem_info_vram_used"
         },
@@ -1167,107 +1256,17 @@
           "source": "amdgpu sysfs mem_info_gtt_used"
         },
         "proc_vram_peak_gib": {
-          "value": 15.022373,
+          "value": 15.022408,
           "unit": "GiB",
           "source": "DRM fdinfo (drm-memory-vram)"
         },
         "gpu_busy_avg_percent": {
-          "value": 99.913148,
+          "value": 99.752178,
           "unit": "%",
           "source": "amdgpu sysfs gpu_busy_percent"
         },
         "gpu_power_avg_w": {
-          "value": 276.142396,
-          "unit": "W",
-          "source": "amdgpu sysfs hwmon power1_average"
-        },
-        "gpu_temp_max_c": {
-          "value": 54,
-          "unit": "C",
-          "source": "amdgpu sysfs hwmon temp1_input"
-        },
-        "swap_in_pages": {
-          "value": 0,
-          "unit": "pages",
-          "source": "/proc/vmstat pswpin"
-        },
-        "swap_out_pages": {
-          "value": 0,
-          "unit": "pages",
-          "source": "/proc/vmstat pswpout"
-        },
-        "sample_count": {
-          "value": 34,
-          "unit": "samples",
-          "source": "sampler"
-        },
-        "sample_max_gap_s": {
-          "value": 0.500037,
-          "unit": "s",
-          "source": "sampler"
-        }
-      }
-    },
-    {
-      "case": "sustained-event-store",
-      "metrics": {
-        "cpu_cores_avg": {
-          "value": 8.067208,
-          "unit": "cores",
-          "source": "cgroup cpu.stat"
-        },
-        "system_cpu_busy_percent": {
-          "value": 50.552985,
-          "unit": "%",
-          "source": "/proc/stat"
-        },
-        "ram_peak_gib": {
-          "value": 55.363781,
-          "unit": "GiB",
-          "source": "cgroup memory.current"
-        },
-        "ram_used_peak_gib": {
-          "value": 48.166965,
-          "unit": "GiB",
-          "source": "/proc/meminfo MemTotal-MemAvailable"
-        },
-        "ram_anon_peak_gib": {
-          "value": 43.292858,
-          "unit": "GiB",
-          "source": "cgroup memory.current anon"
-        },
-        "ram_file_peak_gib": {
-          "value": 11.942867,
-          "unit": "GiB",
-          "source": "cgroup memory.current file cache"
-        },
-        "system_available_min_gib": {
-          "value": 11.069168,
-          "unit": "GiB",
-          "source": "/proc/meminfo MemAvailable"
-        },
-        "vram_peak_gib": {
-          "value": 15.333008,
-          "unit": "GiB",
-          "source": "amdgpu sysfs mem_info_vram_used"
-        },
-        "gtt_peak_gib": {
-          "value": 0.117615,
-          "unit": "GiB",
-          "source": "amdgpu sysfs mem_info_gtt_used"
-        },
-        "proc_vram_peak_gib": {
-          "value": 15.022617,
-          "unit": "GiB",
-          "source": "DRM fdinfo (drm-memory-vram)"
-        },
-        "gpu_busy_avg_percent": {
-          "value": 99.138786,
-          "unit": "%",
-          "source": "amdgpu sysfs gpu_busy_percent"
-        },
-        "gpu_power_avg_w": {
-          "value": 270.947316,
+          "value": 274.178584,
           "unit": "W",
           "source": "amdgpu sysfs hwmon power1_average"
         },
@@ -1292,52 +1291,52 @@
           "source": "sampler"
         },
         "sample_max_gap_s": {
-          "value": 0.50004,
+          "value": 0.500058,
           "unit": "s",
           "source": "sampler"
         }
       }
     },
     {
-      "case": "context-32k",
+      "case": "sustained-event-store",
       "metrics": {
         "cpu_cores_avg": {
-          "value": 4.84533,
+          "value": 8.037979,
           "unit": "cores",
           "source": "cgroup cpu.stat"
         },
         "system_cpu_busy_percent": {
-          "value": 30.185433,
+          "value": 50.182743,
           "unit": "%",
           "source": "/proc/stat"
         },
         "ram_peak_gib": {
-          "value": 55.406025,
+          "value": 55.815735,
           "unit": "GiB",
           "source": "cgroup memory.current"
         },
         "ram_used_peak_gib": {
-          "value": 48.207245,
+          "value": 48.09071,
           "unit": "GiB",
           "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "ram_anon_peak_gib": {
-          "value": 43.334614,
+          "value": 43.3041,
           "unit": "GiB",
           "source": "cgroup memory.current anon"
         },
         "ram_file_peak_gib": {
-          "value": 11.942867,
+          "value": 12.382267,
           "unit": "GiB",
           "source": "cgroup memory.current file cache"
         },
         "system_available_min_gib": {
-          "value": 11.028889,
+          "value": 11.145435,
           "unit": "GiB",
           "source": "/proc/meminfo MemAvailable"
         },
         "vram_peak_gib": {
-          "value": 15.333206,
+          "value": 15.332863,
           "unit": "GiB",
           "source": "amdgpu sysfs mem_info_vram_used"
         },
@@ -1347,22 +1346,112 @@
           "source": "amdgpu sysfs mem_info_gtt_used"
         },
         "proc_vram_peak_gib": {
-          "value": 15.022816,
+          "value": 15.022488,
           "unit": "GiB",
           "source": "DRM fdinfo (drm-memory-vram)"
         },
         "gpu_busy_avg_percent": {
-          "value": 96.381082,
+          "value": 99.711947,
           "unit": "%",
           "source": "amdgpu sysfs gpu_busy_percent"
         },
         "gpu_power_avg_w": {
-          "value": 266.928771,
+          "value": 273.026247,
           "unit": "W",
           "source": "amdgpu sysfs hwmon power1_average"
         },
         "gpu_temp_max_c": {
-          "value": 55,
+          "value": 54,
+          "unit": "C",
+          "source": "amdgpu sysfs hwmon temp1_input"
+        },
+        "swap_in_pages": {
+          "value": 0,
+          "unit": "pages",
+          "source": "/proc/vmstat pswpin"
+        },
+        "swap_out_pages": {
+          "value": 0,
+          "unit": "pages",
+          "source": "/proc/vmstat pswpout"
+        },
+        "sample_count": {
+          "value": 35,
+          "unit": "samples",
+          "source": "sampler"
+        },
+        "sample_max_gap_s": {
+          "value": 0.500058,
+          "unit": "s",
+          "source": "sampler"
+        }
+      }
+    },
+    {
+      "case": "context-32k",
+      "metrics": {
+        "cpu_cores_avg": {
+          "value": 4.879014,
+          "unit": "cores",
+          "source": "cgroup cpu.stat"
+        },
+        "system_cpu_busy_percent": {
+          "value": 30.258682,
+          "unit": "%",
+          "source": "/proc/stat"
+        },
+        "ram_peak_gib": {
+          "value": 55.853962,
+          "unit": "GiB",
+          "source": "cgroup memory.current"
+        },
+        "ram_used_peak_gib": {
+          "value": 48.13028,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
+        },
+        "ram_anon_peak_gib": {
+          "value": 43.342052,
+          "unit": "GiB",
+          "source": "cgroup memory.current anon"
+        },
+        "ram_file_peak_gib": {
+          "value": 12.382267,
+          "unit": "GiB",
+          "source": "cgroup memory.current file cache"
+        },
+        "system_available_min_gib": {
+          "value": 11.105865,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemAvailable"
+        },
+        "vram_peak_gib": {
+          "value": 15.333084,
+          "unit": "GiB",
+          "source": "amdgpu sysfs mem_info_vram_used"
+        },
+        "gtt_peak_gib": {
+          "value": 0.117615,
+          "unit": "GiB",
+          "source": "amdgpu sysfs mem_info_gtt_used"
+        },
+        "proc_vram_peak_gib": {
+          "value": 15.022694,
+          "unit": "GiB",
+          "source": "DRM fdinfo (drm-memory-vram)"
+        },
+        "gpu_busy_avg_percent": {
+          "value": 97.086293,
+          "unit": "%",
+          "source": "amdgpu sysfs gpu_busy_percent"
+        },
+        "gpu_power_avg_w": {
+          "value": 265.268286,
+          "unit": "W",
+          "source": "amdgpu sysfs hwmon power1_average"
+        },
+        "gpu_temp_max_c": {
+          "value": 54,
           "unit": "C",
           "source": "amdgpu sysfs hwmon temp1_input"
         },
@@ -1382,7 +1471,7 @@
           "source": "sampler"
         },
         "sample_max_gap_s": {
-          "value": 0.500014,
+          "value": 0.500042,
           "unit": "s",
           "source": "sampler"
         }
@@ -1392,42 +1481,42 @@
       "case": "context-64k",
       "metrics": {
         "cpu_cores_avg": {
-          "value": 3.709542,
+          "value": 3.734584,
           "unit": "cores",
           "source": "cgroup cpu.stat"
         },
         "system_cpu_busy_percent": {
-          "value": 23.736021,
+          "value": 23.105516,
           "unit": "%",
           "source": "/proc/stat"
         },
         "ram_peak_gib": {
-          "value": 55.628834,
+          "value": 56.081356,
           "unit": "GiB",
           "source": "cgroup memory.current"
         },
         "ram_used_peak_gib": {
-          "value": 49.004097,
+          "value": 48.827446,
           "unit": "GiB",
           "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "ram_anon_peak_gib": {
-          "value": 44.033726,
+          "value": 44.046642,
           "unit": "GiB",
           "source": "cgroup memory.current anon"
         },
         "ram_file_peak_gib": {
-          "value": 11.942871,
+          "value": 12.016598,
           "unit": "GiB",
           "source": "cgroup memory.current file cache"
         },
         "system_available_min_gib": {
-          "value": 10.232037,
+          "value": 10.408699,
           "unit": "GiB",
           "source": "/proc/meminfo MemAvailable"
         },
         "vram_peak_gib": {
-          "value": 15.333679,
+          "value": 15.333466,
           "unit": "GiB",
           "source": "amdgpu sysfs mem_info_vram_used"
         },
@@ -1437,17 +1526,17 @@
           "source": "amdgpu sysfs mem_info_gtt_used"
         },
         "proc_vram_peak_gib": {
-          "value": 15.023289,
+          "value": 15.023075,
           "unit": "GiB",
           "source": "DRM fdinfo (drm-memory-vram)"
         },
         "gpu_busy_avg_percent": {
-          "value": 96.509193,
+          "value": 97.33467,
           "unit": "%",
           "source": "amdgpu sysfs gpu_busy_percent"
         },
         "gpu_power_avg_w": {
-          "value": 269.278253,
+          "value": 271.435214,
           "unit": "W",
           "source": "amdgpu sysfs hwmon power1_average"
         },
@@ -1472,7 +1561,7 @@
           "source": "sampler"
         },
         "sample_max_gap_s": {
-          "value": 0.500042,
+          "value": 0.500039,
           "unit": "s",
           "source": "sampler"
         }
@@ -1482,42 +1571,42 @@
       "case": "context-120k",
       "metrics": {
         "cpu_cores_avg": {
-          "value": 2.77572,
+          "value": 2.798377,
           "unit": "cores",
           "source": "cgroup cpu.stat"
         },
         "system_cpu_busy_percent": {
-          "value": 17.246048,
+          "value": 17.221675,
           "unit": "%",
           "source": "/proc/stat"
         },
         "ram_peak_gib": {
-          "value": 55.451996,
+          "value": 56.100811,
           "unit": "GiB",
           "source": "cgroup memory.current"
         },
         "ram_used_peak_gib": {
-          "value": 50.397728,
+          "value": 51.595699,
           "unit": "GiB",
           "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "ram_anon_peak_gib": {
-          "value": 45.506775,
+          "value": 46.708931,
           "unit": "GiB",
           "source": "cgroup memory.current anon"
         },
         "ram_file_peak_gib": {
-          "value": 9.928917,
+          "value": 11.651363,
           "unit": "GiB",
           "source": "cgroup memory.current file cache"
         },
         "system_available_min_gib": {
-          "value": 8.838406,
+          "value": 7.640446,
           "unit": "GiB",
           "source": "/proc/meminfo MemAvailable"
         },
         "vram_peak_gib": {
-          "value": 15.334484,
+          "value": 15.334732,
           "unit": "GiB",
           "source": "amdgpu sysfs mem_info_vram_used"
         },
@@ -1527,17 +1616,17 @@
           "source": "amdgpu sysfs mem_info_gtt_used"
         },
         "proc_vram_peak_gib": {
-          "value": 15.024094,
+          "value": 15.024342,
           "unit": "GiB",
           "source": "DRM fdinfo (drm-memory-vram)"
         },
         "gpu_busy_avg_percent": {
-          "value": 97.890216,
+          "value": 97.61332,
           "unit": "%",
           "source": "amdgpu sysfs gpu_busy_percent"
         },
         "gpu_power_avg_w": {
-          "value": 275.459107,
+          "value": 275.27418,
           "unit": "W",
           "source": "amdgpu sysfs hwmon power1_average"
         },
@@ -1557,12 +1646,12 @@
           "source": "/proc/vmstat pswpout"
         },
         "sample_count": {
-          "value": 90,
+          "value": 187,
           "unit": "samples",
           "source": "sampler"
         },
         "sample_max_gap_s": {
-          "value": 0.500042,
+          "value": 0.500322,
           "unit": "s",
           "source": "sampler"
         }
