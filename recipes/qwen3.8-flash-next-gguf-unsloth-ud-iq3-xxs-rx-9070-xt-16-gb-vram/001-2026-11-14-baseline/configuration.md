@@ -37,7 +37,7 @@
 | Setting | Value |
 |---|---|
 | Harness | llm-recipes baseline runner |
-| Harness revision | [13dfa3ba](https://github.com/wl04/llm-recipes/commit/13dfa3baa93040188a63391f0a2b7463835742bb) |
+| Harness revision | [f1abc9d3](https://github.com/wl04/llm-recipes/commit/f1abc9d3406b0f0baf3515775841c23f35380941) |
 | API server | Strata serve.server |
 | Engine | Strata |
 | Engine version | 0.1.59.1 |
@@ -86,7 +86,7 @@
 | Draft vocabulary | draft_vocab.bin; 106299 tokens in the loaded draft head |
 | Vision | CPU; 8 threads |
 | Expert pool | 7 workers plus host thread |
-| Conversation cache | 1024 MiB; up to 4 parked conversations |
+| Conversation cache | 1280 MiB; up to 4 parked conversations |
 | Hyper connection projections | Q8_0 (upstream default) |
 | Route tail skip | 7 |
 | Temperature | 1.0 |

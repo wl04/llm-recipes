@@ -18,40 +18,42 @@ Suite v1 · run complete · model `qwen3.8-flash-next-ud-iq3_xxs` · context 131
 
 | Measurement | Value |
 |---|---|
-| Uptime | 13 min |
-| Swap used / total (GB) | 0.0 / — |
-| GPU busy (%) | 1 |
-| VRAM used / total (GB) | 0.2 / — |
-| GPU power (W) | 10.00 |
-| GPU temperature (°C) | 32 |
+| Uptime | 56 s |
+| RAM used / total (GB) | 2.3 / 59.2 |
+| Swap used / total (GB) | 0.0 / 8.0 |
+| GPU busy (%) | 2 |
+| VRAM used / total (GB) | 0.2 / 15.9 |
+| GPU power (W) | 9.00 |
+| GPU temperature (°C) | 33 |
 
-Warmup: 3 requests, converged, 3.48 s.
+Warmup: 2 requests, converged, 2.55 s.
 
 ### Cases
 
 | Case | Status | Runs | Input tokens | Output tokens | Cached input | First output (s) | Prefill (tok/s) | Decode (tok/s) | Draft acceptance | Finish |
 |---|---|---|---|---|---|---|---|---|---|---|
-| context-8k | ok | 5 | 8,011 | 1,024 | 0 | 2.67 | 3,026.31 | 87.66 | 60.8% | length |
-| sustained-lru-cache | ok | 1 | 61 | 2,048 | 0 | 0.554 | 114.66 | 115.46 | 81.9% | length |
-| sustained-tokenizer | ok | 1 | 58 | 2,048 | 0 | 0.543 | 111.11 | 111.09 | 78.0% | length |
-| sustained-event-store | ok | 1 | 53 | 2,048 | 0 | 0.520 | 106.64 | 119.28 | 84.2% | length |
-| context-32k | ok | 1 | 31,892 | 1,024 | 0 | 10.03 | 3,189.84 | 82.53 | 61.1% | length |
-| context-64k | ok | 1 | 64,503 | 1,014 | 0 | 19.76 | 3,271.61 | 87.10 | 64.2% | stop |
-| context-120k | ok | 1 | 116,536 | 1,024 | 0 | 36.42 | 3,205.77 | 87.65 | 65.5% | length |
+| context-8k | ok | 5 | 8,111 | 1,024 | 0 | 2.69 | 3,041.83 | 89.24 | 63.5% | length |
+| sustained-lru-cache | ok | 1 | 64 | 2,048 | 0 | 0.582 | 114.29 | 111.22 | 79.1% | length |
+| sustained-tokenizer | ok | 1 | 61 | 2,048 | 0 | 0.498 | 127.62 | 117.40 | 80.0% | length |
+| sustained-event-store | ok | 1 | 56 | 2,048 | 0 | 0.546 | 106.87 | 112.98 | 78.3% | length |
+| context-32k | ok | 1 | 32,536 | 1,024 | 0 | 10.14 | 3,218.20 | 86.26 | 63.5% | length |
+| context-64k | ok | 1 | 65,186 | 1,024 | 0 | 19.90 | 3,282.94 | 83.37 | 59.5% | length |
+| context-120k | ok | 2 | 119,492 | 1,024 | 0 | 37.06 | 3,230.21 | 84.56 | 63.6% | length |
 
-- Noise floor, context-8k (5 runs): first output 2.5%, decode rate 4.9% (range over median).
+- Noise floor, context-8k (5 runs): first output 2.3%, decode rate 12.5% (range over median).
+- Noise floor, context-120k (2 runs): first output 0.1%, decode rate 8.2% (range over median).
 
 ### Resources
 
 | Case | Server CPU (cores) | System CPU busy (%) | RAM peak / total (GB) | VRAM peak / total (GB) | GPU busy (%) | GPU power (W) | GPU temp (°C) | Swap in / out (pages) | Samples | Max sample gap (s) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| context-8k | 6.86 | 42.97 | 55.1 / — | 15.3 / — | 98.76 | 264.20 | 54 | 0 / 0 | 143 | 0.500 |
-| sustained-lru-cache | 8.07 | 50.59 | 54.9 / — | 15.3 / — | 99.64 | 272.64 | 54 | 0 / 0 | 36 | 0.500 |
-| sustained-tokenizer | 8.06 | 50.55 | 55.1 / — | 15.3 / — | 99.74 | 273.47 | 54 | 0 / 0 | 38 | 0.500 |
-| sustained-event-store | 8.04 | 50.40 | 55.0 / — | 15.3 / — | 97.51 | 269.05 | 55 | 0 / 0 | 36 | 0.500 |
-| context-32k | 5.08 | 31.79 | 55.1 / — | 15.3 / — | 98.60 | 270.76 | 54 | 0 / 0 | 45 | 0.500 |
-| context-64k | 3.83 | 23.92 | 55.3 / — | 15.3 / — | 98.52 | 276.30 | 55 | 0 / 0 | 63 | 0.500 |
-| context-120k | 2.94 | 18.31 | 55.5 / — | 15.3 / — | 98.99 | 278.79 | 55 | 0 / 0 | 96 | 0.500 |
+| context-8k | 6.83 | 42.58 | 54.9 / 59.2 | 15.3 / 15.9 | 98.45 | 263.37 | 54 | 0 / 0 | 141 | 0.500 |
+| sustained-lru-cache | 8.06 | 50.35 | 54.8 / 59.2 | 15.3 / 15.9 | 99.66 | 273.11 | 54 | 0 / 0 | 38 | 0.500 |
+| sustained-tokenizer | 8.06 | 50.37 | 54.7 / 59.2 | 15.3 / 15.9 | 99.75 | 276.72 | 54 | 0 / 0 | 36 | 0.500 |
+| sustained-event-store | 8.03 | 50.16 | 55.0 / 59.2 | 15.3 / 15.9 | 99.76 | 274.99 | 54 | 0 / 0 | 37 | 0.500 |
+| context-32k | 4.98 | 30.96 | 55.0 / 59.2 | 15.3 / 15.9 | 98.27 | 271.42 | 54 | 0 / 0 | 44 | 0.500 |
+| context-64k | 3.90 | 24.17 | 55.2 / 59.2 | 15.3 / 15.9 | 98.34 | 274.93 | 54 | 0 / 0 | 65 | 0.500 |
+| context-120k | 2.96 | 18.25 | 55.5 / 59.2 | 15.3 / 15.9 | 98.83 | 278.56 | 56 | 0 / 0 | 196 | 0.500 |
 
 Decode is a client estimate: (output tokens - 1) / (last - first output). Prefill is reported by the engine and is empty when the server reports none.
 
