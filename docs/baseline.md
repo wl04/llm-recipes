@@ -1,6 +1,6 @@
 # Baseline runner
 
-The runner measures functional checks, coding workloads, context scaling, and resource use. Each run produces a standalone report. Its implementation is in `scripts/baseline/`; remaining work is tracked in the [plan](../plans/unified-baseline.md).
+The runner measures functional checks, coding workloads, context scaling, and resource use. Each run produces a standalone report. Its implementation is in `scripts/baseline/`.
 
 ## Running
 
