@@ -1,0 +1,5 @@
+No token-count route answered with a usable response.
+Attempts:
+  /v1/token/encode -> 200
+  /v1/messages/count_tokens -> 200
+  /api/v0/tokenize -> 200

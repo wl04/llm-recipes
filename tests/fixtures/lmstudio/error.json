@@ -1,0 +1,33 @@
+{
+  "id": "chatcmpl-v9k55bs1wwdg0ev36ut7",
+  "object": "chat.completion",
+  "created": 1794699882,
+  "model": "qwen3.8-27b-gsq-rco",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Could you clarify what you mean by “x”? For example, are you asking to solve for **x** in an equation, define a variable, or something else?",
+        "reasoning_content": "We need answer user's input \"x\". Need produce final. Need infer likely? User just says x. Could be asking variable? We need respond maybe ask clarification. Desired oververbosity 9 but user input minimal. We can say \"Could you clarify what you mean by 'x'? If you're solving for x, provide equation...\" Need be helpful. No other constraints. Final concise.",
+        "tool_calls": []
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 53,
+    "completion_tokens": 117,
+    "total_tokens": 170,
+    "completion_tokens_details": {
+      "reasoning_tokens": 79
+    }
+  },
+  "stats": {
+    "total_draft_tokens_count": 135,
+    "accepted_draft_tokens_count": 71,
+    "rejected_draft_tokens_count": 64
+  },
+  "system_fingerprint": "qwen3.8-27b-gsq-rco"
+}

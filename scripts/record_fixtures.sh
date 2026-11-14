@@ -126,6 +126,12 @@ grep -qi 'data: *\[' "$out/stream.sse" || warn "stream.sse has no terminal 'data
 tools_schema='"tools":[{"type":"function","function":{"name":"get_temperature","description":"Read a city temperature.","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"],"additionalProperties":false}}}]'
 tools_choice='"tool_choice":{"type":"function","function":{"name":"get_temperature"}}'
 tools_messages='"messages":[{"role":"user","content":"Use get_temperature for Belgrade, then report its returned temperature."}]'
+# LM Studio accepts only the string tool_choice values none, auto, and required.
+if [[ $kind == lmstudio ]]; then
+    tools_choice='"tool_choice":"required"'
+else
+    tools_choice='"tool_choice":{"type":"function","function":{"name":"get_temperature"}}'
+fi
 tools_base="{\"model\":\"$model\",$tools_messages,\"$limit_field\":256,$samplers$thinking,$tools_schema,$tools_choice"
 tools_body="$tools_base,\"stream\":true,\"stream_options\":{\"include_usage\":true}}"
 status=$(send "$out/tools.sse" POST /v1/chat/completions "$tools_body" stream) ||
@@ -182,12 +188,12 @@ case $kind in
             route=${route_body%%:*}
             body=${route_body#*:}
             if status=$(send "$out/.probe" POST "$route" "$body"); then
-                attempts+=("$route -> $status")
                 if [[ $status == 2* ]] && ! grep -qiE '"(error|not found)"' "$out/.probe"; then
                     mv "$out/.probe" "$out/token_count.json"
                     token_note="$route -> $status (saved as token_count.json)"
                     break
                 fi
+                attempts+=("$route -> $status; body: $(head -c 160 "$out/.probe" | tr -d '\r\n')")
             else
                 attempts+=("$route -> curl error")
             fi
