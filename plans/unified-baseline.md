@@ -251,7 +251,7 @@ Implementation notes (stage 2, implemented):
 - The long contexts are built from the interpreter's standard-library source, which is PSF-licensed and needs no checked-in corpus. The Python version is part of what makes runs comparable.
 - Prompts are fitted to the token target with the server's tokenizer route (Strata `/v1/messages/count_tokens`), which counts without running the prompt, so no measured prompt warms the cache. Servers without a known route fall back to calibrating from the previous request's reported tokens. The first Unsloth pilot showed why: characters per token ranged from 2.5 to 4.5 across the corpus, so a single early calibration put the 120K prompt at 141K tokens.
 - Thinking is disabled by default only for Strata, the one server with a verified field. Others need `--request-extra`, and the result records whether the default applied.
-- Engine-reported timings are not parsed yet; those metrics are unavailable with that reason.
+- Engine-reported timings are parsed from the Strata engine log kept in the run directory (the per-completion `strata serve: prompt ...` lines), matched to the requests in order. In the first managed pilot the engine decode speed agreed with the client estimate within 0.5%. Other servers keep those metrics unavailable until their log formats are recorded.
 - Per-process VRAM is read from DRM fdinfo of the server's cgroup, and desktop apps are measured through their cgroup like containers; no external utility and no process-tree code remain. Device-wide figures come from sysfs.
 - Still open for the workstation pilot: warmup tolerance, quiet-system thresholds, the minimum sustained output length, observer overhead, and the image-token setting.
 

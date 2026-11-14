@@ -9,7 +9,7 @@ from collections.abc import Callable
 from itertools import pairwise
 from typing import Any
 
-from baseline import schema, stats
+from baseline import engine_log, schema, stats
 from baseline.rawlog import RawRun
 
 GIB = 1024**3
@@ -36,7 +36,43 @@ def _median_metric(values: list[float], unit: str, source: str, missing: str) ->
     return schema.unavailable(missing) if median is None else _measured(median, unit, source)
 
 
-def _case_metrics(ok: list[dict[str, Any]], kind: str) -> dict[str, Any]:
+ENGINE_SOURCE = "engine log (strata serve)"
+
+
+def _engine_metrics(
+    ok: list[dict[str, Any]], kind: str, aligned: engine_log.Alignment | None, reason: str
+) -> dict[str, Any]:
+    """Engine prefill and decode speed and draft acceptance, or why they are unavailable."""
+    metrics = {
+        "engine_prefill_tok_s": schema.unavailable(reason),
+        "engine_decode_tok_s": schema.unavailable(reason),
+        "draft_acceptance": schema.unavailable(reason),
+    }
+    if aligned is None:
+        return metrics
+    entries = [e for r in ok for e in aligned.by_record.get(id(r), [])]
+    if not entries:
+        miss = aligned.reason or "no engine log entries matched these requests"
+        return {name: schema.unavailable(miss) for name in metrics}
+    summary = engine_log.summarize(entries)
+    for name, value, unit in (
+        ("engine_prefill_tok_s", summary.prefill_tok_s, "tokens/s"),
+        ("engine_decode_tok_s", summary.decode_tok_s, "tokens/s"),
+        ("draft_acceptance", summary.draft_acceptance, "ratio"),
+    ):
+        if value is not None:
+            metrics[name] = _measured(value, unit, ENGINE_SOURCE)
+        else:
+            metrics[name] = schema.unavailable("the engine log reports no such figure")
+    return metrics
+
+
+def _case_metrics(
+    ok: list[dict[str, Any]],
+    kind: str,
+    aligned: engine_log.Alignment | None,
+    engine_reason: str,
+) -> dict[str, Any]:
     usages = [r["usage"] for r in ok if r.get("usage")]
     prompt = [u["prompt_tokens"] for u in usages if u.get("prompt_tokens") is not None]
     completion = [u["completion_tokens"] for u in usages if u.get("completion_tokens") is not None]
@@ -55,7 +91,6 @@ def _case_metrics(ok: list[dict[str, Any]], kind: str) -> dict[str, Any]:
         is not None
     ]
     no_usage = "server reported no usage"
-    engine = f"engine timings are not parsed for {kind}"
     metrics = {
         "input_tokens": _median_metric(prompt, "tokens", "server usage", no_usage),
         "output_tokens": _median_metric(completion, "tokens", "server usage", no_usage),
@@ -69,8 +104,7 @@ def _case_metrics(ok: list[dict[str, Any]], kind: str) -> dict[str, Any]:
             "client estimate: (tokens - 1) / (last - first output)",
             "fewer than two output tokens, no usage, or no streaming timings",
         ),
-        "engine_prefill_tok_s": schema.unavailable(engine),
-        "engine_decode_tok_s": schema.unavailable(engine),
+        **_engine_metrics(ok, kind, aligned, engine_reason),
     }
     if any(r.get("noise_probe") for r in ok) and len(ok) >= 2:
         for name, values in (("noise_first_output_spread", first), ("noise_decode_spread", rates)):
@@ -80,7 +114,13 @@ def _case_metrics(ok: list[dict[str, Any]], kind: str) -> dict[str, Any]:
     return metrics
 
 
-def _case_entry(case_id: str, records: list[dict[str, Any]], kind: str) -> dict[str, Any]:
+def _case_entry(
+    case_id: str,
+    records: list[dict[str, Any]],
+    kind: str,
+    aligned: engine_log.Alignment | None,
+    engine_reason: str,
+) -> dict[str, Any]:
     attempts = [r for r in records if r.get("status") != "skipped"]
     if not attempts:
         note = "; ".join(str(r.get("note", "")) for r in records if r.get("note"))
@@ -94,7 +134,7 @@ def _case_entry(case_id: str, records: list[dict[str, Any]], kind: str) -> dict[
     status = "ok" if ok else "failed"
     metrics: dict[str, Any] = {}
     if ok:
-        metrics = _case_metrics(ok, kind)
+        metrics = _case_metrics(ok, kind, aligned, engine_reason)
         minimum = max((r.get("min_output_tokens") or 0 for r in ok), default=0)
         output = metrics["output_tokens"]["value"]
         if minimum and output is not None and output < minimum:
@@ -127,11 +167,21 @@ def _interpolate(points: Points, when: float) -> float | None:
 
 
 def _counter_change(points: Points, intervals: list[Interval]) -> tuple[float, float] | None:
-    """Total counter increase and covered seconds, skipping intervals that cannot be bracketed."""
+    """Total counter increase and covered seconds.
+
+    An interval is clamped to the span the counter was sampled over, so a server that appears
+    part-way through a phase is averaged over the time it existed. Intervals with no overlap, or
+    where the counter went backwards, are skipped.
+    """
+    if not points:
+        return None
     change = covered = 0.0
     for start, end in intervals:
+        start, end = max(start, points[0][0]), min(end, points[-1][0])
+        if end <= start:
+            continue
         begin, finish = _interpolate(points, start), _interpolate(points, end)
-        if begin is None or finish is None or finish < begin or end <= start:
+        if begin is None or finish is None or finish < begin:
             continue
         change += finish - begin
         covered += end - start
@@ -171,7 +221,7 @@ def _resource_metrics(
 ) -> dict[str, Any]:
     inside = _within(samples, intervals)
     reasons: dict[str, str] = {}
-    for item in samples:
+    for item in inside:
         for key, reason in item["errors"].items():
             reasons.setdefault(key, reason)
 
@@ -243,7 +293,7 @@ def _resource_metrics(
 
 
 IDLE_CPU_WARNING_PERCENT = 10.0
-PHASE_ORDER = ("idle", "load", "settle", "loaded_idle", "unload")
+PHASE_ORDER = ("idle", "load", "settle", "loaded_idle", "unload", "after_unload")
 SYSTEM_PHASE_METRICS = (
     "system_cpu_busy_percent",
     "system_available_min_gib",
@@ -263,7 +313,7 @@ SERVER_PHASE_METRICS = (
     "ram_file_peak_gib",
     "proc_vram_peak_gib",
 )
-SYSTEM_ONLY_PHASES = ("idle", "unload")
+SYSTEM_ONLY_PHASES = ("idle", "unload", "after_unload")
 
 
 def _phases(
@@ -293,17 +343,17 @@ def _phases(
             entry["note"] = item["note"]
         entry["metrics"] = metrics
         entries[name] = entry
-    idle, unload = entries.get("idle"), entries.get("unload")
-    if idle and unload:
+    idle, after = entries.get("idle"), entries.get("after_unload")
+    if idle and after:
         for key, label, sign in (
             ("vram_peak_gib", "vram_vs_idle_gib", 1),
             ("system_available_min_gib", "available_ram_vs_idle_gib", -1),
         ):
-            before, after = idle["metrics"][key]["value"], unload["metrics"][key]["value"]
-            unload["metrics"][label] = (
+            before, later = idle["metrics"][key]["value"], after["metrics"][key]["value"]
+            after["metrics"][label] = (
                 schema.unavailable(f"{key} was not measured in both phases")
-                if before is None or after is None
-                else _measured(sign * (after - before), "GiB", "unload minus idle phase")
+                if before is None or later is None
+                else _measured(sign * (later - before), "GiB", "after-unload minus idle phase")
             )
     return list(entries.values())
 
@@ -357,7 +407,21 @@ def build_results(raw: RawRun) -> dict[str, Any]:
     for record in raw.requests:
         if record.get("phase") == "case":
             grouped.setdefault(record["case"], []).append(record)
-    document["cases"] = [_case_entry(case, records, kind) for case, records in grouped.items()]
+    aligned: engine_log.Alignment | None = None
+    if kind != "strata":
+        engine_reason = f"engine timings are not parsed for {kind}"
+    elif raw.engine_log is None:
+        engine_reason = "no engine log was recorded for this run"
+    else:
+        engine_reason = ""
+        parsed = engine_log.parse_strata(raw.engine_log)
+        aligned = engine_log.align(raw.requests, parsed)
+        if not parsed:
+            aligned, engine_reason = None, "the engine log has no per-request lines"
+    document["cases"] = [
+        _case_entry(case, records, kind, aligned, engine_reason)
+        for case, records in grouped.items()
+    ]
     document["resources"] = []
     for case, records in grouped.items():
         intervals = [

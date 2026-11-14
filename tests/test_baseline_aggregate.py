@@ -48,9 +48,10 @@ def request(case: str, run: int = 1, **fields: Any) -> dict[str, Any]:
 def results(
     requests: list[dict[str, Any]],
     samples: list[dict[str, Any]] | None = None,
+    engine_log: str | None = None,
     **meta_extra: Any,
 ) -> dict[str, Any]:
-    document = build_results(RawRun(meta(**meta_extra), requests, samples or []))
+    document = build_results(RawRun(meta(**meta_extra), requests, samples or [], engine_log))
     schema.validate_results(document)
     return document
 
@@ -235,6 +236,27 @@ def test_resources_report_system_cpu_busy_percent_from_tick_counters() -> None:
     assert metrics["system_cpu_busy_percent"]["unit"] == "%"
 
 
+def test_resources_use_the_covered_span_when_the_target_appears_inside_the_window() -> None:
+    samples = [sample(float(t), cpu_usec=2_000_000 * t) for t in range(2, 7)]
+
+    metrics = resources_of(results(requests_between(1.0, 5.0), samples))
+
+    assert metrics["cpu_cores_avg"]["value"] == pytest.approx(2.0)
+
+
+def test_unavailable_reason_ignores_errors_from_outside_the_window() -> None:
+    samples = [
+        {"t": 20.0, "values": {}, "errors": {"cpu_usec": "FileNotFoundError: gone"}},
+        sample(2.0, mem_bytes=GIB),
+        sample(3.0, mem_bytes=GIB),
+    ]
+
+    metrics = resources_of(results(requests_between(1.5, 3.5), samples))
+
+    assert metrics["cpu_cores_avg"]["value"] is None
+    assert "FileNotFoundError" not in metrics["cpu_cores_avg"]["unavailable"]
+
+
 def test_resources_ignore_peaks_outside_request_intervals() -> None:
     samples = [
         sample(0.5, mem_bytes=9 * GIB),
@@ -417,20 +439,20 @@ def test_phase_without_samples_marks_metrics_unavailable_with_the_phase_name() -
     assert "idle phase" in metric["unavailable"]
 
 
-def test_unload_phase_reports_residue_against_the_idle_phase() -> None:
+def test_after_unload_phase_reports_residue_against_the_idle_phase() -> None:
     samples = [
         sample(1.0, vram_bytes=GIB, sys_available_bytes=60 * GIB),
         sample(9.0, vram_bytes=GIB, sys_available_bytes=60 * GIB),
         sample(21.0, vram_bytes=3 * GIB, sys_available_bytes=58 * GIB),
         sample(29.0, vram_bytes=3 * GIB, sys_available_bytes=58 * GIB),
     ]
-    phases = {"idle": phase(0.0, 10.0), "unload": phase(20.0, 30.0)}
+    phases = {"idle": phase(0.0, 10.0), "after_unload": phase(20.0, 30.0)}
 
     document = results([request("c")], samples, phases=phases)
 
-    unload = next(p for p in document["phases"] if p["id"] == "unload")["metrics"]
-    assert unload["vram_vs_idle_gib"]["value"] == 2.0
-    assert unload["available_ram_vs_idle_gib"]["value"] == 2.0
+    after = next(p for p in document["phases"] if p["id"] == "after_unload")["metrics"]
+    assert after["vram_vs_idle_gib"]["value"] == 2.0
+    assert after["available_ram_vs_idle_gib"]["value"] == 2.0
 
 
 def test_busy_system_during_the_idle_phase_adds_a_boot_warning() -> None:
@@ -474,3 +496,49 @@ def test_legacy_idle_interval_in_meta_becomes_an_idle_phase() -> None:
     document = results([request("c")], samples, idle={"start_s": 0.0, "end_s": 2.0})
 
     assert [p["id"] for p in document["phases"]] == ["idle"]
+
+
+ENGINE_LOG = (
+    "strata serve: prompt 100 tokens = 0 reused + 100 read in 50 ms (2000.0 tok/s), "
+    "51 generated in 500 ms (102.0 tok/s), drafts accepted 30 of 40, 1 checkpoints\n"
+    "strata serve: prompt 200 tokens = 0 reused + 200 read in 100 ms (2000.0 tok/s), "
+    "51 generated in 500 ms (102.0 tok/s), drafts accepted 10 of 40, 1 checkpoints\n"
+)
+
+
+def two_requests() -> list[dict[str, Any]]:
+    first = request("c", 1, usage={"prompt_tokens": 100, "completion_tokens": 51})
+    second = request("c", 2, usage={"prompt_tokens": 200, "completion_tokens": 51})
+    return [first, second]
+
+
+def test_engine_metrics_come_from_the_engine_log_when_it_matches_the_requests() -> None:
+    case = case_of(results(two_requests(), engine_log=ENGINE_LOG), "c")
+
+    assert value(case, "engine_prefill_tok_s") == pytest.approx(300 / 0.15)
+    assert value(case, "engine_decode_tok_s") == pytest.approx(102 / 1.0)
+    assert value(case, "draft_acceptance") == pytest.approx(40 / 80)
+    assert case["metrics"]["engine_decode_tok_s"]["source"] == "engine log (strata serve)"
+
+
+def test_engine_metrics_say_why_when_the_log_does_not_match_the_requests() -> None:
+    mismatched = [request("c", 1, usage={"prompt_tokens": 555, "completion_tokens": 51})]
+
+    case = case_of(results(mismatched, engine_log=ENGINE_LOG), "c")
+
+    assert value(case, "engine_decode_tok_s") is None
+    assert "555" in case["metrics"]["engine_decode_tok_s"]["unavailable"]
+
+
+def test_engine_metrics_are_unavailable_without_an_engine_log() -> None:
+    case = case_of(results(two_requests()), "c")
+
+    assert "no engine log" in case["metrics"]["engine_decode_tok_s"]["unavailable"]
+
+
+def test_engine_metrics_are_unavailable_for_servers_without_a_log_parser() -> None:
+    server = {"kind": "tabbyapi", "model": "m", "context_tokens": 4096}
+
+    case = case_of(results(two_requests(), engine_log=ENGINE_LOG, server=server), "c")
+
+    assert "not parsed for tabbyapi" in case["metrics"]["engine_decode_tok_s"]["unavailable"]

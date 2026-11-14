@@ -291,17 +291,22 @@ class Runner:
             entry: dict[str, Any] = {"start_s": self._clock(), "status": "ok"}
             self._meta["phases"]["unload"] = entry
             self._progress("Stopping the server")
+            stopped = False
             try:
                 control.stop()
                 entry["measures"] = {"time_to_stop_s": self._clock() - entry["start_s"]}
-                if monitoring and not interrupted:
-                    self._stop.wait(self._config.suite.unload_seconds)
+                stopped = True
             except LifecycleError as failure:
                 entry["status"] = "failed"
                 entry["note"] = str(failure)
                 self._problems.append(str(failure))
             finally:
                 entry["end_s"] = self._clock()
+            if stopped and monitoring and not interrupted:
+                after: dict[str, Any] = {"start_s": self._clock(), "status": "ok"}
+                self._meta["phases"]["after_unload"] = after
+                self._stop.wait(self._config.suite.unload_seconds)
+                after["end_s"] = self._clock()
         if monitoring and self._sampler is not None:
             self._sampler.stop()
         if self._cleanup is not None:
@@ -394,12 +399,14 @@ class Runner:
     def _functional_checks(self) -> None:
         self._progress("Running functional checks")
         self._functional("text", self._check_text)
-        self._functional("tools", self._check_tools)
+        self._functional("tools", self._check_tools, requests=2)
         self._functional("vision", self._check_vision)
 
-    def _functional(self, check_id: str, body: Callable[[], dict[str, Any]]) -> None:
+    def _functional(
+        self, check_id: str, body: Callable[[], dict[str, Any]], requests: int = 1
+    ) -> None:
         self._check_stop()
-        record: dict[str, Any] = {"phase": "functional", "case": check_id}
+        record: dict[str, Any] = {"phase": "functional", "case": check_id, "requests": requests}
         record["started_s"] = self._clock()
         try:
             entry = body()

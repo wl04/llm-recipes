@@ -242,6 +242,14 @@ def test_run_skips_a_case_when_counted_input_plus_output_exceeds_the_context(
     assert "does not fit" in case["note"]
 
 
+def test_run_marks_the_tool_check_as_two_requests_for_log_matching(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        _, raw, _ = execute(tmp_path, server)
+
+    counts = {r["case"]: r.get("requests", 1) for r in raw.requests if r["phase"] == "functional"}
+    assert counts == {"text": 1, "tools": 2, "vision": 1}
+
+
 def test_run_uses_distinct_content_for_every_request(tmp_path: Path) -> None:
     with FakeServer() as server:
         execute(tmp_path, server)
@@ -420,9 +428,11 @@ def test_managed_run_goes_through_every_phase_and_stops_the_server_last(tmp_path
     document = results_of(raw)
     assert code == ExitCode.OK
     assert control.calls == ["preflight", "start", "stop"]
-    assert phase_ids(document) == ["idle", "load", "settle", "loaded_idle", "unload"]
+    assert phase_ids(document) == [
+        "idle", "load", "settle", "loaded_idle", "unload", "after_unload"
+    ]  # fmt: skip
     assert all(phase["status"] == "ok" for phase in document["phases"])
-    unload = document["phases"][-1]["metrics"]
+    unload = next(p for p in document["phases"] if p["id"] == "unload")["metrics"]
     assert unload["time_to_stop_s"]["value"] >= 0
     assert raw.meta["container"]["container_id"] == "abc"
     last_request = max(r["ended_s"] for r in raw.requests if "ended_s" in r)
@@ -520,6 +530,7 @@ def test_managed_run_stops_the_server_it_started_when_interrupted(tmp_path: Path
     assert code == ExitCode.INTERRUPTED
     assert control.calls == ["preflight", "start", "stop"]
     assert raw.meta["phases"]["unload"]["status"] == "ok"
+    assert "after_unload" not in raw.meta["phases"]
 
 
 def test_managed_run_reports_a_failed_stop_as_a_problem(tmp_path: Path) -> None:
@@ -530,6 +541,7 @@ def test_managed_run_reports_a_failed_stop_as_a_problem(tmp_path: Path) -> None:
 
     assert code == ExitCode.CHECKS_FAILED
     assert raw.meta["phases"]["unload"]["status"] == "failed"
+    assert "after_unload" not in raw.meta["phases"]
     assert any("sudo docker stop" in problem for problem in raw.meta["problems"])
 
 
@@ -541,6 +553,7 @@ def test_managed_run_leaves_the_server_running_when_asked(tmp_path: Path) -> Non
     assert code == ExitCode.OK
     assert "stop" not in control.calls
     assert "unload" not in raw.meta["phases"]
+    assert "after_unload" not in raw.meta["phases"]
 
 
 def test_managed_run_notes_when_the_server_does_not_settle(tmp_path: Path) -> None:

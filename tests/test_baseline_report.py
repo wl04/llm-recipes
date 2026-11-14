@@ -91,8 +91,8 @@ def test_render_results_block_lists_resources_per_case() -> None:
 def test_render_results_block_collects_reasons_for_unavailable_measurements() -> None:
     text = render()
 
-    assert "context-8k engine_decode_tok_s: server reports no timings" in text
-    assert "context-8k swap_out_pages: /proc/vmstat not readable" in text
+    assert "- engine_decode_tok_s: server reports no timings (context-8k)" in text
+    assert "- swap_out_pages: /proc/vmstat not readable (context-8k)" in text
 
 
 def test_render_results_block_lists_boot_warnings() -> None:
@@ -172,3 +172,19 @@ def test_render_results_block_omits_phase_section_without_phases() -> None:
     del document["phases"]
 
     assert "### Phases" not in render(document)
+
+
+def test_render_results_block_groups_the_same_unavailable_reason_across_cases() -> None:
+    document = sample_results()
+    second = {
+        "id": "context-32k",
+        "status": "ok",
+        "runs": 1,
+        "metrics": {"engine_decode_tok_s": schema.unavailable("server reports no timings")},
+    }
+    document["cases"].append(second)
+
+    text = render(document)
+
+    assert "- engine_decode_tok_s: server reports no timings (context-8k, context-32k)" in text
+    assert text.count("server reports no timings") == 1

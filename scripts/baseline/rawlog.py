@@ -14,6 +14,7 @@ from typing import Any
 META = "meta.json"
 REQUESTS = "requests.jsonl"
 SAMPLES = "samples.jsonl"
+ENGINE_LOG = "server-logs/engine.log"
 
 
 class RunWriter:
@@ -58,6 +59,7 @@ class RawRun:
     meta: dict[str, Any]
     requests: list[dict[str, Any]]
     samples: list[dict[str, Any]]
+    engine_log: str | None = None
 
 
 def _read_lines(path: Path) -> list[dict[str, Any]]:
@@ -85,8 +87,10 @@ def read_run(directory: Path) -> RawRun:
         meta = json.loads((directory / META).read_text())
     except (OSError, json.JSONDecodeError) as error:
         raise ValueError(f"{directory} has no readable {META}") from error
+    log = directory / ENGINE_LOG
     return RawRun(
         meta=meta,
         requests=_read_lines(directory / REQUESTS),
         samples=_read_lines(directory / SAMPLES),
+        engine_log=log.read_text(errors="replace") if log.is_file() else None,
     )

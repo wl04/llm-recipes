@@ -57,7 +57,7 @@ def test_managed_run_writes_results_summary_and_raw_files(
     document = json.loads((output / "results.json").read_text())
     schema.validate_results(document)
     assert [p["id"] for p in document["phases"]] == [
-        "idle", "load", "settle", "loaded_idle", "unload"
+        "idle", "load", "settle", "loaded_idle", "unload", "after_unload"
     ]  # fmt: skip
     assert "## Baseline results" in (output / "summary.md").read_text()
     captured = capsys.readouterr()

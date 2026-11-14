@@ -13,6 +13,7 @@ CASE_COLUMNS = (
     ("client_decode_tok_s", "Decode, client (tok/s)", True),
     ("engine_prefill_tok_s", "Prefill, engine (tok/s)", False),
     ("engine_decode_tok_s", "Decode, engine (tok/s)", False),
+    ("draft_acceptance", "Draft acceptance", False),
 )
 RESOURCE_COLUMNS = (
     ("cpu_cores_avg", "CPU (cores)"),
@@ -191,13 +192,19 @@ def _resources(entries: list[dict[str, Any]]) -> list[str]:
 
 
 def _unavailable(document: dict[str, Any]) -> list[str]:
-    reasons = []
+    grouped: dict[tuple[str, str], list[str]] = {}
     sources = [(f"{c['id']}", c.get("metrics", {})) for c in document["cases"]]
     sources += [(f"{r['case']}", r.get("metrics", {})) for r in document.get("resources", [])]
     for owner, metrics in sources:
         for name, metric in metrics.items():
             if metric["value"] is None:
-                reasons.append(f"- {_cell(owner)} {_cell(name)}: {_cell(metric['unavailable'])}")
+                owners = grouped.setdefault((name, metric["unavailable"]), [])
+                if owner not in owners:
+                    owners.append(owner)
+    reasons = [
+        f"- {_cell(name)}: {_cell(reason)} ({_cell(', '.join(owners))})"
+        for (name, reason), owners in grouped.items()
+    ]
     return ["", "### Unavailable measurements", "", *reasons] if reasons else []
 
 

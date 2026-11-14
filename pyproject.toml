@@ -15,6 +15,8 @@ target-version = "py312"
 select = ["E", "F", "I", "UP", "B", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
+# Real engine log lines are kept verbatim as test fixtures.
+"tests/test_baseline_engine_log.py" = ["E501"]
 # Container build scripts import and validate after runtime lock checks by design.
 "runtimes/*/container/*.py" = ["E402", "I001"]
 

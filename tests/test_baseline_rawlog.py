@@ -38,6 +38,22 @@ def test_write_meta_replaces_previous_content(tmp_path: Path) -> None:
     assert not list((tmp_path / "run").glob("*.tmp"))
 
 
+def test_read_run_includes_the_server_engine_log_when_present(tmp_path: Path) -> None:
+    writer = rawlog.RunWriter(tmp_path / "run")
+    writer.write_meta({"recipe": "r"})
+    (tmp_path / "run" / "server-logs").mkdir()
+    (tmp_path / "run" / "server-logs" / "engine.log").write_text("line\n")
+
+    assert rawlog.read_run(tmp_path / "run").engine_log == "line\n"
+
+
+def test_read_run_has_no_engine_log_when_the_server_wrote_none(tmp_path: Path) -> None:
+    writer = rawlog.RunWriter(tmp_path / "run")
+    writer.write_meta({"recipe": "r"})
+
+    assert rawlog.read_run(tmp_path / "run").engine_log is None
+
+
 def test_read_run_ignores_a_truncated_final_line(tmp_path: Path) -> None:
     writer = rawlog.RunWriter(tmp_path / "run")
     writer.write_meta({"recipe": "r"})

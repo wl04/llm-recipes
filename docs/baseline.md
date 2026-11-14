@@ -30,7 +30,8 @@ Each phase is sampled and reported separately:
 | settle | Waits until system CPU (under 15%) and server CPU (under 0.25 cores) stay low for 10 s, for at most 120 s. A note is added if it does not settle. |
 | loaded idle | 10 s with the model loaded and the server quiet: the model's resting footprint. |
 | suite | Functional checks (text, forced tool call, vision), an adaptive warmup of up to four requests, the 8K case repeated five times, three sustained-generation tasks, then 32K, 64K, and 120K contexts. Each case after the 8K probe is a single observation. Cases whose input plus output cannot fit the context are skipped. |
-| unload | The server is stopped and the machine observed for 10 s. Records time to stop and whether VRAM and available RAM returned to the idle level, which exposes leaks. |
+| unload | The server is stopped. Records time to stop. |
+| after unload | 10 s of observation once the server has stopped. Records whether VRAM and available RAM returned to the idle level, which exposes leaks. |
 
 Every request has distinct content. Prompts are sized with the server's tokenizer route before they are sent (Strata: `/v1/messages/count_tokens`), because characters per token varied from 2.5 to 4.5 across the corpus in the first pilot. Servers without a known route fall back to calibrating from the previous request's reported token count, which is less exact; the run records which method was used. The thresholds above are provisional until the workstation pilot.
 
@@ -48,7 +49,7 @@ Only the settle, loaded-idle, and suite phases are recorded in this mode, becaus
 ### Current limits
 
 - Thinking is disabled by default only for Strata (`reasoning_effort: none`). For other servers set the server's own field with `--request-extra`; the result records whether the default applied.
-- Engine-reported timings are not parsed yet, so the engine prefill and decode columns are unavailable. Client timings are measured for every server.
+- Engine-reported timings come from the server's own log, which the runner keeps in `server-logs/engine.log`. Only the Strata log format is parsed (prefill and decode speed, draft acceptance), matched to the requests in order; a mismatch stops the matching and says why. For TabbyAPI and LM Studio those columns are unavailable. Client timings are measured for every server. Engine prefill speed is only meaningful for long prompts.
 - The long contexts are built from the interpreter's standard-library source (PSF-licensed code), so comparisons assume the same Python version.
 - The image-token setting is not detected; note it yourself when it matters for the vision scores.
 - Thresholds are provisional until the workstation pilot: GPU more than 5% busy at start, system CPU more than 10% busy during the idle phase, the settle limits above, and a 10% warmup tolerance. Load average is recorded but does not warn.
