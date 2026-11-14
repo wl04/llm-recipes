@@ -16,6 +16,7 @@ RUN_STATUSES = ("complete", "interrupted", "failed")
 SERVER_KINDS = ("strata", "tabbyapi", "lmstudio")
 CASE_STATUSES = ("ok", "insufficient_sample", "failed", "skipped")
 FUNCTIONAL_STATUSES = ("pass", "fail", "unparsed", "skipped")
+PHASE_STATUSES = ("ok", "failed", "skipped", "interrupted")
 REQUIRED_KEYS = ("schema_version", "suite_version", "recipe", "run", "server", "cases")
 
 
@@ -125,6 +126,11 @@ def validate_results(document: object) -> None:
         if type(warmup.get("converged")) is not bool:
             raise ValueError("warmup.converged must be true or false")
         _validate_metrics(warmup.get("metrics", {}), "warmup.metrics")
+    for index, entry in enumerate(_sequence(data.get("phases", []), "phases")):
+        item = _mapping(entry, f"phases[{index}]")
+        _text(item.get("id"), f"phases[{index}].id")
+        _choice(item.get("status"), PHASE_STATUSES, f"phases[{index}].status")
+        _validate_metrics(item.get("metrics", {}), f"phases[{index}].metrics")
     case_ids: set[str] = set()
     for index, entry in enumerate(_sequence(data["cases"], "cases")):
         name = f"cases[{index}]"

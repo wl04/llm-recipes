@@ -150,3 +150,25 @@ def test_render_results_block_keeps_precision_for_sub_second_latency() -> None:
     document["cases"][0]["metrics"]["first_output_s"] = schema.measured(0.0123, "s", "client")
 
     assert "0.012" in row_of(render(document), "context-8k")
+
+
+def test_render_results_block_shows_phase_table_and_extra_measures() -> None:
+    document = sample_results()
+    document["phases"][1]["metrics"]["vram_vs_idle_gib"] = schema.measured(0.25, "GiB", "x")
+
+    text = render(document)
+
+    assert "### Phases" in text
+    idle = row_of(text, "idle")
+    assert idle[1] == "ok"
+    assert "30" in idle
+    assert "2.50" in idle
+    assert "- load: time to ready 94.20 s" in text
+    assert "- load: vram vs idle 0.250 GiB" in text
+
+
+def test_render_results_block_omits_phase_section_without_phases() -> None:
+    document = sample_results()
+    del document["phases"]
+
+    assert "### Phases" not in render(document)

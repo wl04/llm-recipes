@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 from baseline import schema, vision
 from baseline.aggregate import build_results
+from baseline.lifecycle import LifecycleError, StartedServer
 from baseline.rawlog import RawRun, RunWriter, read_run
 from baseline.runner import RunConfig, Runner, converged
 from baseline.sampler import Sampler, Source
@@ -16,6 +17,7 @@ from baseline.schema import ExitCode
 from baseline.sources import Reading
 from baseline.workloads import Document, SuiteConfig
 from fake_server import FakeServer
+from test_baseline_sources import make_cgroup
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITE = SuiteConfig(
@@ -30,6 +32,15 @@ SUITE = SuiteConfig(
     warmup_tolerance=0.5,
     warmup_output=6,
     idle_seconds=0.03,
+    load_timeout_s=3.0,
+    ready_poll_s=0.01,
+    settle_seconds=0.03,
+    settle_max_seconds=0.5,
+    settle_poll_s=0.01,
+    settle_system_cpu_percent=100.0,
+    settle_server_cpu_cores=100.0,
+    loaded_idle_seconds=0.03,
+    unload_seconds=0.03,
     sample_interval_s=0.005,
     request_timeout_s=10,
 )
@@ -47,6 +58,45 @@ class Telemetry:
         return Reading(values={"cpu_usec": self.reads * 1000.0, "mem_bytes": 2.0**30})
 
 
+class FakeControl:
+    """A server control that records calls and can fail or delay at each step."""
+
+    def __init__(self, tmp_path: Path, server: FakeServer | None = None) -> None:
+        self.calls: list[str] = []
+        self.server = server
+        self.cgroup = make_cgroup(tmp_path / "server-cgroup")
+        self.ready_after_s = 0.0
+        self.preflight_error: str | None = None
+        self.start_error: str | None = None
+        self.stop_error: str | None = None
+        self.running = True
+
+    def preflight(self) -> None:
+        self.calls.append("preflight")
+        if self.preflight_error:
+            raise LifecycleError(self.preflight_error)
+
+    def start(self) -> StartedServer:
+        self.calls.append("start")
+        if self.start_error:
+            raise LifecycleError(self.start_error)
+        if self.server is not None and self.ready_after_s:
+            served = self.server.models
+            self.server.models = []
+            threading.Timer(
+                self.ready_after_s, lambda: setattr(self.server, "models", served)
+            ).start()
+        return StartedServer(self.cgroup, {"instance": "baseline", "container_id": "abc"})
+
+    def is_running(self) -> bool:
+        return self.running
+
+    def stop(self) -> None:
+        self.calls.append("stop")
+        if self.stop_error:
+            raise LifecycleError(self.stop_error)
+
+
 def execute(
     tmp_path: Path,
     server: FakeServer,
@@ -55,6 +105,8 @@ def execute(
     suite: SuiteConfig = SUITE,
     context_tokens: int = 2048,
     stop: threading.Event | None = None,
+    control: FakeControl | None = None,
+    keep_running: bool = False,
 ) -> tuple[ExitCode, RawRun, Sampler]:
     writer = RunWriter(tmp_path / "run")
     sampler = Sampler(
@@ -76,8 +128,9 @@ def execute(
         image_is_default=True,
         target={"memory_key": "mem_bytes", "memory_label": "fake", "cpu_label": "fake"},
         meta_extra={"boot": {"metrics": {}, "warnings": ["noted"]}},
+        keep_running=keep_running,
     )
-    code = Runner(config, writer, sampler, stop=stop).run()
+    code = Runner(config, writer, sampler, stop=stop, control=control).run()
     return code, read_run(writer.directory), sampler
 
 
@@ -218,7 +271,9 @@ def test_run_attributes_samples_to_each_case_while_requests_block(tmp_path: Path
     for entry in document["resources"]:
         assert entry["metrics"]["sample_count"]["value"] >= 2
         assert entry["metrics"]["cpu_cores_avg"]["value"] is not None
-    assert document["boot"]["metrics"]["idle_cpu_cores_avg"]["value"] is not None
+    phases = {phase["id"]: phase for phase in document["phases"]}
+    assert list(phases) == ["settle", "loaded_idle"]
+    assert phases["loaded_idle"]["metrics"]["cpu_cores_avg"]["value"] is not None
 
 
 def test_run_records_a_failed_request_and_continues_with_the_rest(tmp_path: Path) -> None:
@@ -351,3 +406,149 @@ def test_run_records_the_request_policy_and_unconfigured_thinking(tmp_path: Path
 )
 def test_converged_compares_the_last_two_rates(rates: list[float | None], expected: bool) -> None:
     assert converged(rates, tolerance=0.10) is expected
+
+
+def phase_ids(document: dict[str, Any]) -> list[str]:
+    return [phase["id"] for phase in document["phases"]]
+
+
+def test_managed_run_goes_through_every_phase_and_stops_the_server_last(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        control = FakeControl(tmp_path, server)
+        code, raw, _ = execute(tmp_path, server, control=control)
+
+    document = results_of(raw)
+    assert code == ExitCode.OK
+    assert control.calls == ["preflight", "start", "stop"]
+    assert phase_ids(document) == ["idle", "load", "settle", "loaded_idle", "unload"]
+    assert all(phase["status"] == "ok" for phase in document["phases"])
+    unload = document["phases"][-1]["metrics"]
+    assert unload["time_to_stop_s"]["value"] >= 0
+    assert raw.meta["container"]["container_id"] == "abc"
+    last_request = max(r["ended_s"] for r in raw.requests if "ended_s" in r)
+    assert raw.meta["phases"]["unload"]["start_s"] >= last_request
+
+
+def test_managed_run_waits_for_the_server_to_become_ready_and_times_the_load(
+    tmp_path: Path,
+) -> None:
+    with FakeServer() as server:
+        control = FakeControl(tmp_path, server)
+        control.ready_after_s = 0.15
+        code, raw, _ = execute(tmp_path, server, control=control)
+
+    load = next(p for p in results_of(raw)["phases"] if p["id"] == "load")
+    assert code == ExitCode.OK
+    assert load["metrics"]["time_to_ready_s"]["value"] >= 0.14
+
+
+def test_managed_run_samples_only_system_sources_until_the_server_exists(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        control = FakeControl(tmp_path, server)
+        _, raw, _ = execute(tmp_path, server, control=control)
+
+    load_start = raw.meta["phases"]["load"]["start_s"]
+    before = [s for s in raw.samples if s["t"] < load_start]
+    after = [s for s in raw.samples if s["t"] > load_start]
+    assert before and all("mem_anon_bytes" not in s["values"] for s in before)
+    assert any("mem_anon_bytes" in s["values"] for s in after)
+    assert raw.meta["target"]["memory_label"] == "cgroup memory.current"
+
+
+def test_managed_run_stops_before_starting_when_preflight_fails(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        control = FakeControl(tmp_path, server)
+        control.preflight_error = "Launcher instance(s) already running: coding"
+        code, raw, _ = execute(tmp_path, server, control=control)
+
+    assert code == ExitCode.PREFLIGHT_FAILED
+    assert control.calls == ["preflight"]
+    assert raw.samples == []
+    assert "already running" in raw.meta["run"]["error"]
+
+
+def test_managed_run_reports_a_failed_start_and_still_stops(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        control = FakeControl(tmp_path, server)
+        control.start_error = "Docker could not start the server: port is already allocated"
+        code, raw, _ = execute(tmp_path, server, control=control)
+
+    document = results_of(raw)
+    assert code == ExitCode.PREFLIGHT_FAILED
+    assert control.calls == ["preflight", "start", "stop"]
+    assert next(p for p in document["phases"] if p["id"] == "load")["status"] == "failed"
+    assert "port is already allocated" in raw.meta["run"]["error"]
+    assert server.requests == []
+
+
+def test_managed_run_fails_when_the_server_never_becomes_ready(tmp_path: Path) -> None:
+    suite = SuiteConfig(**{**SUITE.__dict__, "load_timeout_s": 0.2})
+    with FakeServer() as server:
+        server.models = []
+        control = FakeControl(tmp_path, server)
+        code, raw, _ = execute(tmp_path, server, control=control, suite=suite)
+
+    assert code == ExitCode.PREFLIGHT_FAILED
+    assert "ready" in raw.meta["run"]["error"]
+    assert control.calls[-1] == "stop"
+
+
+def test_managed_run_fails_fast_when_the_container_dies_while_loading(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        server.models = []
+        control = FakeControl(tmp_path, server)
+        control.running = False
+        code, raw, _ = execute(tmp_path, server, control=control)
+
+    assert code == ExitCode.PREFLIGHT_FAILED
+    assert "stopped while loading" in raw.meta["run"]["error"]
+
+
+def test_managed_run_stops_the_server_it_started_when_interrupted(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        server.behave = lambda p: "hang" if "t1-8k-1." in str(p["messages"][0]["content"]) else None
+        control = FakeControl(tmp_path, server)
+        timer = threading.Timer(
+            1.0, lambda: signal.pthread_kill(threading.main_thread().ident or 0, signal.SIGINT)
+        )
+        timer.start()
+        try:
+            code, raw, _ = execute(tmp_path, server, control=control)
+        finally:
+            timer.cancel()
+
+    assert code == ExitCode.INTERRUPTED
+    assert control.calls == ["preflight", "start", "stop"]
+    assert raw.meta["phases"]["unload"]["status"] == "ok"
+
+
+def test_managed_run_reports_a_failed_stop_as_a_problem(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        control = FakeControl(tmp_path, server)
+        control.stop_error = "Stop it yourself with: sudo docker stop llm-recipes-baseline"
+        code, raw, _ = execute(tmp_path, server, control=control)
+
+    assert code == ExitCode.CHECKS_FAILED
+    assert raw.meta["phases"]["unload"]["status"] == "failed"
+    assert any("sudo docker stop" in problem for problem in raw.meta["problems"])
+
+
+def test_managed_run_leaves_the_server_running_when_asked(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        control = FakeControl(tmp_path, server)
+        code, raw, _ = execute(tmp_path, server, control=control, keep_running=True)
+
+    assert code == ExitCode.OK
+    assert "stop" not in control.calls
+    assert "unload" not in raw.meta["phases"]
+
+
+def test_managed_run_notes_when_the_server_does_not_settle(tmp_path: Path) -> None:
+    suite = SuiteConfig(**{**SUITE.__dict__, "settle_server_cpu_cores": -1.0})
+    with FakeServer() as server:
+        control = FakeControl(tmp_path, server)
+        code, raw, _ = execute(tmp_path, server, control=control, suite=suite)
+
+    settle = next(p for p in results_of(raw)["phases"] if p["id"] == "settle")
+    assert code == ExitCode.OK
+    assert "did not settle" in settle["note"]

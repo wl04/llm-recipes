@@ -235,30 +235,6 @@ def test_resources_report_system_cpu_busy_percent_from_tick_counters() -> None:
     assert metrics["system_cpu_busy_percent"]["unit"] == "%"
 
 
-def test_busy_system_during_idle_reference_adds_a_boot_warning() -> None:
-    samples = [
-        sample(0.0, cpu_busy_ticks=0, cpu_total_ticks=0),
-        sample(2.0, cpu_busy_ticks=500, cpu_total_ticks=1000),
-    ]
-    boot: dict[str, Any] = {"metrics": {}, "warnings": []}
-
-    document = results([request("c")], samples, boot=boot, idle={"start_s": 0.0, "end_s": 2.0})
-
-    assert any("50.0%" in warning for warning in document["boot"]["warnings"])
-
-
-def test_quiet_system_during_idle_reference_adds_no_boot_warning() -> None:
-    samples = [
-        sample(0.0, cpu_busy_ticks=0, cpu_total_ticks=0),
-        sample(2.0, cpu_busy_ticks=20, cpu_total_ticks=1000),
-    ]
-    boot: dict[str, Any] = {"metrics": {}, "warnings": []}
-
-    document = results([request("c")], samples, boot=boot, idle={"start_s": 0.0, "end_s": 2.0})
-
-    assert document["boot"]["warnings"] == []
-
-
 def test_resources_ignore_peaks_outside_request_intervals() -> None:
     samples = [
         sample(0.5, mem_bytes=9 * GIB),
@@ -371,18 +347,6 @@ def test_resources_cover_only_cases_that_ran_requests() -> None:
     assert [entry["case"] for entry in document["resources"]] == ["c"]
 
 
-def test_boot_state_includes_idle_reference_measured_before_requests() -> None:
-    samples = [
-        sample(0.0, mem_bytes=GIB, vram_bytes=GIB),
-        sample(2.0, mem_bytes=GIB, vram_bytes=GIB),
-    ]
-    boot: dict[str, Any] = {"metrics": {}, "warnings": []}
-
-    document = results([request("c")], samples, boot=boot, idle={"start_s": 0.0, "end_s": 2.0})
-
-    assert document["boot"]["metrics"]["idle_vram_peak_gib"]["value"] == 1.0
-
-
 def test_resources_report_anonymous_and_file_memory_peaks_inside_requests() -> None:
     samples = [
         sample(2.0, mem_bytes=5 * GIB, mem_anon_bytes=GIB, mem_file_bytes=4 * GIB),
@@ -401,3 +365,112 @@ def test_resources_omit_cases_where_no_request_succeeded() -> None:
     document = results([request("c"), failed], [sample(12.0, mem_bytes=GIB)])
 
     assert [entry["case"] for entry in document["resources"]] == ["c"]
+
+
+def phase(start: float, end: float, status: str = "ok", **extra: Any) -> dict[str, Any]:
+    return {"start_s": start, "end_s": end, "status": status, **extra}
+
+
+def test_phases_are_reported_in_run_order_with_status_and_duration() -> None:
+    phases = {
+        "load": phase(10.0, 40.0, measures={"time_to_ready_s": 25.5}),
+        "idle": phase(0.0, 10.0),
+    }
+
+    document = results([request("c")], [sample(5.0, vram_bytes=GIB)], phases=phases)
+
+    assert [p["id"] for p in document["phases"]] == ["idle", "load"]
+    assert document["phases"][0]["metrics"]["duration_s"]["value"] == 10.0
+    assert document["phases"][1]["metrics"]["time_to_ready_s"]["value"] == 25.5
+
+
+def test_idle_phase_reports_system_metrics_only() -> None:
+    samples = [sample(1.0, vram_bytes=GIB, cpu_usec=0), sample(9.0, vram_bytes=GIB, cpu_usec=1)]
+
+    document = results([request("c")], samples, phases={"idle": phase(0.0, 10.0)})
+
+    metrics = document["phases"][0]["metrics"]
+    assert metrics["vram_peak_gib"]["value"] == 1.0
+    assert "cpu_cores_avg" not in metrics
+    assert "ram_peak_gib" not in metrics
+
+
+def test_loaded_phases_report_server_metrics_too() -> None:
+    samples = [
+        sample(1.0, cpu_usec=0, mem_bytes=2 * GIB, proc_vram_bytes=3 * GIB),
+        sample(3.0, cpu_usec=2_000_000, mem_bytes=3 * GIB, proc_vram_bytes=3 * GIB),
+    ]
+
+    document = results([request("c")], samples, phases={"loaded_idle": phase(1.0, 3.0)})
+
+    metrics = document["phases"][0]["metrics"]
+    assert metrics["cpu_cores_avg"]["value"] == pytest.approx(1.0)
+    assert metrics["ram_peak_gib"]["value"] == 3.0
+    assert metrics["proc_vram_peak_gib"]["value"] == 3.0
+
+
+def test_phase_without_samples_marks_metrics_unavailable_with_the_phase_name() -> None:
+    document = results([request("c")], [], phases={"idle": phase(0.0, 10.0)})
+
+    metric = document["phases"][0]["metrics"]["vram_peak_gib"]
+    assert metric["value"] is None
+    assert "idle phase" in metric["unavailable"]
+
+
+def test_unload_phase_reports_residue_against_the_idle_phase() -> None:
+    samples = [
+        sample(1.0, vram_bytes=GIB, sys_available_bytes=60 * GIB),
+        sample(9.0, vram_bytes=GIB, sys_available_bytes=60 * GIB),
+        sample(21.0, vram_bytes=3 * GIB, sys_available_bytes=58 * GIB),
+        sample(29.0, vram_bytes=3 * GIB, sys_available_bytes=58 * GIB),
+    ]
+    phases = {"idle": phase(0.0, 10.0), "unload": phase(20.0, 30.0)}
+
+    document = results([request("c")], samples, phases=phases)
+
+    unload = next(p for p in document["phases"] if p["id"] == "unload")["metrics"]
+    assert unload["vram_vs_idle_gib"]["value"] == 2.0
+    assert unload["available_ram_vs_idle_gib"]["value"] == 2.0
+
+
+def test_busy_system_during_the_idle_phase_adds_a_boot_warning() -> None:
+    samples = [
+        sample(0.0, cpu_busy_ticks=0, cpu_total_ticks=0),
+        sample(2.0, cpu_busy_ticks=500, cpu_total_ticks=1000),
+    ]
+    boot: dict[str, Any] = {"metrics": {}, "warnings": []}
+
+    document = results([request("c")], samples, boot=boot, phases={"idle": phase(0.0, 2.0)})
+
+    assert any("50.0%" in warning for warning in document["boot"]["warnings"])
+
+
+def test_quiet_system_during_the_idle_phase_adds_no_boot_warning() -> None:
+    samples = [
+        sample(0.0, cpu_busy_ticks=0, cpu_total_ticks=0),
+        sample(2.0, cpu_busy_ticks=20, cpu_total_ticks=1000),
+    ]
+    boot: dict[str, Any] = {"metrics": {}, "warnings": []}
+
+    document = results([request("c")], samples, boot=boot, phases={"idle": phase(0.0, 2.0)})
+
+    assert document["boot"]["warnings"] == []
+
+
+def test_failed_phase_keeps_its_note() -> None:
+    phases = {"load": phase(0.0, 5.0, "failed", note="Container exited")}
+
+    document = results([request("c")], [], phases=phases)
+
+    assert (document["phases"][0]["status"], document["phases"][0]["note"]) == (
+        "failed",
+        "Container exited",
+    )
+
+
+def test_legacy_idle_interval_in_meta_becomes_an_idle_phase() -> None:
+    samples = [sample(0.0, vram_bytes=GIB), sample(2.0, vram_bytes=GIB)]
+
+    document = results([request("c")], samples, idle={"start_s": 0.0, "end_s": 2.0})
+
+    assert [p["id"] for p in document["phases"]] == ["idle"]

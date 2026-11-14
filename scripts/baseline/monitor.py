@@ -16,6 +16,34 @@ class Monitoring:
     target: dict[str, Any]
 
 
+def target_sources(
+    cgroup: Path,
+    gpu_address: str | None,
+    proc: Path = Path("/proc"),
+) -> tuple[list[Source], dict[str, Any]]:
+    """Sources for a server's cgroup, and how its memory and CPU are labeled.
+
+    A run adds these to a running sampler once the server exists. Server VRAM comes from the DRM
+    fdinfo of the cgroup's current processes, so processes that start later are followed.
+    """
+    added = [Source("cgroup", lambda: sources.read_cgroup(cgroup), sources.CGROUP_KEYS)]
+    if gpu_address is not None:
+        address = gpu_address
+        added.append(
+            Source(
+                "process-vram",
+                lambda: sources.read_drm_vram(sources.cgroup_pids(cgroup), address, proc),
+                ("proc_vram_bytes",),
+            )
+        )
+    target = {
+        "memory_key": "mem_bytes",
+        "memory_label": "cgroup memory.current",
+        "cpu_label": "cgroup cpu.stat",
+    }
+    return added, target
+
+
 def build_monitoring(
     *,
     cgroup: Path | None,

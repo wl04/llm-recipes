@@ -2,6 +2,7 @@
 
 import threading
 import time
+from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -9,6 +10,7 @@ from typing import Any
 from baseline.sources import Reading
 
 Sink = Callable[[dict[str, Any]], None]
+RECENT_SAMPLES = 4096
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,7 @@ class Sampler:
     ) -> None:
         self._sources = list(sources)
         self._lock = threading.Lock()
+        self._recent: deque[dict[str, Any]] = deque(maxlen=RECENT_SAMPLES)
         self._interval = interval_s
         self._sink = sink
         self._clock = clock
@@ -66,11 +69,23 @@ class Sampler:
             values.update(reading.values)
             errors.update(reading.errors)
         self._tick += 1
+        sample = {"t": taken, "values": values, "errors": errors}
+        with self._lock:
+            self._recent.append(sample)
         try:
-            self._sink({"t": taken, "values": values, "errors": errors})
+            self._sink(sample)
         except Exception as error:  # a full disk must not silently end monitoring either
             self.failures += 1
             self.last_failure = repr(error)
+
+    def recent(self, seconds: float) -> list[dict[str, Any]]:
+        """Samples from the last ``seconds`` before the newest one, oldest first."""
+        with self._lock:
+            samples = list(self._recent)
+        if not samples:
+            return []
+        cutoff = samples[-1]["t"] - seconds
+        return [sample for sample in samples if sample["t"] >= cutoff]
 
     def add_sources(self, sources: list[Source]) -> None:
         """Poll more sources from the next sample on, for example once the server exists."""

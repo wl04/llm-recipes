@@ -8,11 +8,11 @@ from pathlib import Path
 
 from doctor import diagnose
 from launcher import (
-    LaunchOptions,
     discover_recipes,
     gpu_groups,
     lifecycle_command,
     prepare_start,
+    resolve_launch_options,
     run_command,
     running_command,
     start_command,
@@ -88,17 +88,18 @@ def main() -> int:
             return int(any(item.status == "FAIL" for item in findings))
         name = args.name if args.name is not None else recipe.name
         state = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
-        options = LaunchOptions(
-            name,
-            args.models.expanduser().resolve(),
-            (args.logs if args.logs is not None else state / "llm-recipes" / name)
+        options = resolve_launch_options(
+            recipe,
+            name=name,
+            models=args.models.expanduser().resolve(),
+            logs=(args.logs if args.logs is not None else state / "llm-recipes" / name)
             .expanduser()
             .resolve(),
-            recipe.context if args.context is None else args.context,
-            recipe.draft if args.draft is None else args.draft,
-            recipe.vision if args.vision is None else args.vision,
-            recipe.port if args.port is None else args.port,
-            args.detach,
+            context=args.context,
+            draft=args.draft,
+            vision=args.vision,
+            port=args.port,
+            detached=args.detach,
         )
         # Validate the plan before host-device access or directory creation.
         command = start_command(recipe, options, groups=[], uid=os.getuid(), gid=os.getgid())

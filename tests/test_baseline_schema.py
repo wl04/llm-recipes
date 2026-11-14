@@ -50,6 +50,8 @@ def test_validate_results_preserves_unavailable_metric_through_serialization() -
         (("cases", 0, "runs"), -1, "cases[0].runs"),
         (("functional", 0, "status"), "maybe", "functional[0].status"),
         (("resources", 0, "case"), "missing-case", "resources[0].case"),
+        (("phases", 0, "status"), "maybe", "phases[0].status"),
+        (("phases", 1, "id"), "", "phases[1].id"),
         (("warmup", "converged"), "yes", "warmup.converged"),
         (("warmup", "requests"), -1, "warmup.requests"),
         (("boot", "warnings"), "text", "boot.warnings"),

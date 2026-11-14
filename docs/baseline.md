@@ -2,30 +2,48 @@
 
 This page defines the baseline runner's result format and measurement rules and how to run it. The runner is implemented in `scripts/baseline/`; the [implementation plan](../plans/unified-baseline.md) tracks the remaining workstation validation.
 
-One execution per recipe produces one baseline. The runner attaches to a server you have already started and never starts, stops, or reconfigures it.
+One execution per recipe produces one baseline. For a container recipe the runner owns the server for the duration: it records the machine at rest, starts the server through the launcher, measures the load, runs the suite, and stops the server, so every baseline starts from a known state.
 
 ## Running
 
-Start the server first, preferably from a freshly booted machine with nothing else running. For a launcher recipe:
+Reboot if you can, stop other servers (`python3 scripts/launch.py ps`, then `stop <instance>`), and close applications that use the GPU. Then, from the repository root:
 
 ```bash
-python3 scripts/run_baseline.py run <recipe> --instance <instance> \
-  --model <served-model-id> --output "$HOME/Models/llm-recipes/baselines/<run-name>"
+sudo -v
+python3 scripts/run_baseline.py run <recipe>
 ```
 
-For a desktop server such as LM Studio, pass the endpoint, context, and process:
+The launcher uses `sudo docker`, so authenticate first. The runner starts the container as instance `baseline`, with the recipe's launch defaults; `--context`, `--draft`, `--vision`, `--port`, and `--models` override them. It refuses to start when diagnostics fail, when another launcher instance is running, or when the GPU already holds more than 2 GiB.
+
+Results go to `~/Models/llm-recipes/baselines/<recipe>/<date-time>/` (under `--models`, or `--output` for any new directory outside the repository), and the server's logs go to `server-logs/` inside it. Progress goes to stderr and a one-line result to stdout. Ctrl+C or SIGTERM stops the suite, stops the server the runner started, and keeps what was recorded. `--keep-running` leaves the server running afterwards, for debugging.
+
+The run directory holds `meta.json`, `requests.jsonl`, `samples.jsonl`, the server logs, and the rendered `results.json` and draft `summary.md`. `python3 scripts/run_baseline.py render <run-dir>` rebuilds the rendered files from the raw ones, for example after an interrupted run, and keeps the text you wrote in `summary.md`. To publish, create the numbered experiment folder, copy `summary.md` and `results.json` into it, fill in `profile.yaml`, and run the generator.
+
+### Phases
+
+Each phase is sampled and reported separately:
+
+| Phase | What happens |
+|---|---|
+| idle | Nothing loaded; 30 s of system-wide readings: CPU, memory, swap, GPU memory, power, temperature. A busy system here (more than 10% CPU) adds a warning. |
+| load | The server starts and is polled until it serves a model, with a 30-minute timeout. Records time to ready and the load's peaks, including the cold-cache cost after a reboot. |
+| settle | Waits until system CPU (under 15%) and server CPU (under 0.25 cores) stay low for 10 s, for at most 120 s. A note is added if it does not settle. |
+| loaded idle | 10 s with the model loaded and the server quiet: the model's resting footprint. |
+| suite | Functional checks (text, forced tool call, vision), an adaptive warmup of up to four requests, the 8K case repeated five times, three sustained-generation tasks, then 32K, 64K, and 120K contexts. Each case after the 8K probe is a single observation. Cases whose input plus output cannot fit the context are skipped. |
+| unload | The server is stopped and the machine observed for 10 s. Records time to stop and whether VRAM and available RAM returned to the idle level, which exposes leaks. |
+
+Every request has distinct content. Prompts are sized with the server's tokenizer route before they are sent (Strata: `/v1/messages/count_tokens`), because characters per token varied from 2.5 to 4.5 across the corpus in the first pilot. Servers without a known route fall back to calibrating from the previous request's reported token count, which is less exact; the run records which method was used. The thresholds above are provisional until the workstation pilot.
+
+### Desktop apps
+
+Desktop apps such as LM Studio are not started by the runner yet; a guided mode with confirmations is planned. Until then, start the app, load the model with the settings in the recipe's `configuration.md`, start its server, and run:
 
 ```bash
 python3 scripts/run_baseline.py run <recipe> --base-url http://127.0.0.1:<port>/v1 \
-  --model <served-model-id> --context <tokens> --pid <server-pid> \
-  --output "$HOME/Models/llm-recipes/baselines/<run-name>"
+  --model <served-model-id> --context <tokens> --pid <server-pid>
 ```
 
-`--output` must be a new directory outside the repository. Progress goes to stderr and a one-line result to stdout. Ctrl+C or SIGTERM stops the run, keeps what was recorded, and leaves the server running. `--instance` resolves the container with `sudo -n docker`, so authenticate with `sudo -v` first. `--pid` can be any process of the app: the runner measures its whole systemd scope (GNOME gives each application its own, such as `app-<name>-<pid>.scope`), lists the processes in it, and warns when the scope is shared, for example when the app was started from a terminal. Other options: `--gpu-pci` (default: the AMD GPU with the most VRAM), `--no-gpu`, `--image`, `--server-kind`, and `--request-extra` (a JSON object merged into every request).
-
-The run directory holds `meta.json`, `requests.jsonl`, `samples.jsonl`, and the rendered `results.json` and draft `summary.md`. `python3 scripts/run_baseline.py render <run-dir>` rebuilds the rendered files from the raw ones, for example after an interrupted run, and keeps the text you wrote in `summary.md`. To publish, create the numbered experiment folder, copy `summary.md` and `results.json` into it, fill in `profile.yaml`, and run the generator.
-
-On the Strata Unsloth recipe a full run takes about four to five minutes. The suite runs in a fixed order: a 5-second idle reference, functional checks (text, forced tool call, vision), an adaptive warmup of up to four requests, the 8K case repeated five times, three sustained-generation tasks, then 32K, 64K, and 120K contexts. Each case after the 8K probe is a single observation. Cases whose input plus output cannot fit the context are recorded as skipped. Every request has distinct content. Prompts are sized with the server's tokenizer route before they are sent (Strata: `/v1/messages/count_tokens`), because characters per token varied from 2.5 to 4.5 across the corpus in the first pilot. Servers without a known route fall back to calibrating from the previous request's reported token count, which is less exact; the run records which method was used.
+Only the settle, loaded-idle, and suite phases are recorded in this mode, because the idle machine and the load were not observed. `--pid` can be any process of the app: the runner measures its whole systemd scope (GNOME gives each application its own, such as `app-<name>-<pid>.scope`), lists the processes in it, and warns when the scope is shared, for example when the app was started from a terminal. Other options: `--gpu-pci` (default: the AMD GPU with the most VRAM), `--no-gpu`, `--image`, `--server-kind`, and `--request-extra` (a JSON object merged into every request).
 
 ### Current limits
 
@@ -33,7 +51,7 @@ On the Strata Unsloth recipe a full run takes about four to five minutes. The su
 - Engine-reported timings are not parsed yet, so the engine prefill and decode columns are unavailable. Client timings are measured for every server.
 - The long contexts are built from the interpreter's standard-library source (PSF-licensed code), so comparisons assume the same Python version.
 - The image-token setting is not detected; note it yourself when it matters for the vision scores.
-- Warning thresholds are provisional: the GPU more than 5% busy at start, system CPU more than 10% busy during the idle reference, and a 10% warmup tolerance. Load average is recorded but does not warn, because it still includes the server's own start-up.
+- Thresholds are provisional until the workstation pilot: GPU more than 5% busy at start, system CPU more than 10% busy during the idle phase, the settle limits above, and a 10% warmup tolerance. Load average is recorded but does not warn.
 - The tokenizer route and the server's reported usage can differ by a few tens of tokens (about 0.5% at 8K on Strata); the table shows the server-reported count.
 
 ## Result document
@@ -70,9 +88,9 @@ The client decode rate is `(completion_tokens - 1) / (last output - first output
 | Code | Meaning |
 |---|---|
 | 0 | Run completed and the report was written. |
-| 1 | Run completed with failed functional checks or failed requests. |
+| 1 | Run completed with failed functional checks or requests, or the server could not be stopped. |
 | 2 | Invalid arguments or configuration. |
-| 3 | Preflight failed: server unreachable, model mismatch, or no non-interactive access to resolve the container. |
+| 3 | Preflight or start-up failed: diagnostics, another running instance, a busy GPU, a server that did not start or become ready, a model mismatch, or no non-interactive `sudo`. |
 | 130 | Interrupted. Partial output is kept. |
 
 ## Server capabilities
@@ -91,11 +109,11 @@ Verified on the target workstation (RX 9070 XT at `0000:03:00.0`, plus an iGPU a
 | System memory, swap activity | `/proc/meminfo`, `/proc/vmstat` |
 | Process allocations | DRM fdinfo (`drm-memory-vram`) of the processes in the server's cgroup, one value per DRM client on the target GPU. Read at every sample. |
 
-Resolving a container uses `sudo -n docker`, as the launcher does, once at start. Device memory is device-wide and is not added to cgroup or process figures.
+The launcher's `sudo docker` commands run non-interactively (`sudo -n`), so an expired `sudo` timestamp fails the run at start instead of prompting mid-run. Device memory is device-wide and is not added to cgroup or process figures.
 
 ## Desktop recipes
 
-Desktop recipes (for example LM Studio) have no launch manifest. The runner resolves the recipe by folder name for identity and output naming, and requires the endpoint, model, context, server process ID, and GPU address as options.
+Desktop recipes (for example LM Studio) have no launch manifest. The runner resolves the recipe by folder name for identity and output naming, and requires the endpoint and context; `--pid` selects the app's cgroup.
 
 ## Experiment profile
 

@@ -255,7 +255,7 @@ Implementation notes (stage 2, implemented):
 - Per-process VRAM is read from DRM fdinfo of the server's cgroup, and desktop apps are measured through their cgroup like containers; no external utility and no process-tree code remain. Device-wide figures come from sysfs.
 - Still open for the workstation pilot: warmup tolerance, quiet-system thresholds, the minimum sustained output length, observer overhead, and the image-token setting.
 
-### 2b. Simplify telemetry (revision)
+### 2b. Simplify telemetry (revision, implemented)
 
 - Read per-process VRAM from DRM fdinfo and remove the `amdgpu_top` child; compare against `amdgpu_top` once on the workstation.
 - Use a cgroup target for desktop apps and remove the process-tree source.
@@ -263,11 +263,11 @@ Implementation notes (stage 2, implemented):
 
 Acceptance: no external telemetry utility; container and desktop targets share one reader; fake-tree tests cover fdinfo parsing and the cgroup resolution.
 
-### 2c. Phase model and managed container runs (revision)
+### 2c. Phase model and managed container runs (revision, implemented)
 
 - Add the idle, load, settle, loaded-idle, and unload phases to the runner, the raw records, the results contract, and the report.
 - Start and stop container servers through the launcher functions, with the single-instance and free-GPU checks and the cleanup rules above.
-- Replace the setup-guide baseline blocks with the managed command (`--models`, `--logs`, and launch options; no `--instance`).
+- Replace the setup-guide baseline blocks with the managed command: `run <recipe>` with the output folder resolved from the defaults (`<models>/baselines/<recipe>/<date-time>`), server logs inside it, and launch options only where they differ from the manifest.
 
 Acceptance: a test with a fake launcher and fake server covers start, readiness timeout, a failed start, Ctrl+C during the load and during the suite, a failed stop, and phase attribution.
 

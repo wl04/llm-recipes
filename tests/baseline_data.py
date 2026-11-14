@@ -17,6 +17,26 @@ def sample_results() -> dict[str, Any]:
             "metrics": {"uptime_s": schema.measured(540, "s", "/proc/uptime")},
             "warnings": ["Another process was using the GPU at start"],
         },
+        "phases": [
+            {
+                "id": "idle",
+                "status": "ok",
+                "metrics": {
+                    "duration_s": schema.measured(30, "s", "client monotonic clock"),
+                    "system_cpu_busy_percent": schema.measured(2.5, "%", "/proc/stat"),
+                    "vram_peak_gib": schema.measured(0.17, "GiB", "amdgpu sysfs"),
+                },
+            },
+            {
+                "id": "load",
+                "status": "ok",
+                "metrics": {
+                    "duration_s": schema.measured(96.5, "s", "client monotonic clock"),
+                    "time_to_ready_s": schema.measured(94.2, "s", "client monotonic clock"),
+                    "cpu_cores_avg": schema.unavailable("cpu_usec was not reported"),
+                },
+            },
+        ],
         "functional": [
             {"id": "text", "status": "pass"},
             {

@@ -11,8 +11,8 @@ def write(path: Path, text: str) -> None:
     path.write_text(text)
 
 
-def make_cgroup(root: Path, *, swap: bool = True) -> Path:
-    cgroup = root / "docker-abc.scope"
+def make_cgroup(root: Path, *, swap: bool = True, name: str = "docker-abc.scope") -> Path:
+    cgroup = root / name
     write(cgroup / "cpu.stat", "usage_usec 2500000\nuser_usec 2000000\nsystem_usec 500000\n")
     write(cgroup / "memory.current", "4096000\n")
     write(cgroup / "memory.stat", "anon 3000000\nfile 1000000\nkernel 96000\n")

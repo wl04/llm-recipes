@@ -36,6 +36,10 @@ NOISE_LABELS = (
     ("noise_first_output_spread", "first output"),
     ("noise_decode_spread", "decode rate"),
 )
+PHASE_SYSTEM_DETAILS = (
+    "ram_anon_peak_gib", "ram_file_peak_gib", "proc_vram_peak_gib", "gtt_peak_gib",
+    "gpu_busy_avg_percent", "gpu_temp_max_c", "swap_in_pages", "swap_out_pages",
+)  # fmt: skip
 MISSING = "—"
 
 
@@ -93,6 +97,43 @@ def _boot(boot: dict[str, Any]) -> list[str]:
         lines += [*_table(["Measurement", "Value"], rows), ""]
     lines += [f"- {_cell(note)}" for note in boot.get("warnings", [])]
     return lines
+
+
+PHASE_COLUMNS = (
+    ("duration_s", "Duration (s)"),
+    ("system_cpu_busy_percent", "System CPU busy (%)"),
+    ("cpu_cores_avg", "Server CPU (cores)"),
+    ("ram_peak_gib", "Server RAM peak (GiB)"),
+    ("system_available_min_gib", "System available min (GiB)"),
+    ("vram_peak_gib", "VRAM peak (GiB)"),
+    ("gpu_power_avg_w", "GPU power avg (W)"),
+)
+
+
+def _phases(phases: list[dict[str, Any]]) -> list[str]:
+    shown = {key for key, _ in PHASE_COLUMNS}
+    rows = [
+        [
+            _cell(phase["id"]),
+            _cell(phase["status"]),
+            *(_number(phase["metrics"].get(key)) for key, _ in PHASE_COLUMNS),
+        ]
+        for phase in phases
+    ]
+    header = ["Phase", "Status", *(title for _, title in PHASE_COLUMNS)]
+    lines = ["", "### Phases", "", *_table(header, rows)]
+    extras = []
+    for phase in phases:
+        if phase.get("note"):
+            extras.append(f"- {_cell(phase['id'])}: {_cell(phase['note'])}")
+        for key, metric in phase["metrics"].items():
+            if key in shown or key.startswith("sample") or metric["value"] is None:
+                continue
+            if key in PHASE_SYSTEM_DETAILS:
+                continue
+            label = key.removesuffix("_s").removesuffix("_gib").replace("_", " ")
+            extras.append(f"- {_cell(phase['id'])}: {label} {_number(metric)} {metric['unit']}")
+    return lines + (["", *extras] if extras else [])
 
 
 def _warmup(warmup: dict[str, Any]) -> list[str]:
@@ -177,10 +218,12 @@ def render_results_block(document: dict[str, Any]) -> str:
     ]
     if document.get("functional"):
         lines += _functional(document["functional"])
-    if "warmup" in document:
-        lines += _warmup(document["warmup"])
     if "boot" in document:
         lines += _boot(document["boot"])
+    if document.get("phases"):
+        lines += _phases(document["phases"])
+    if "warmup" in document:
+        lines += _warmup(document["warmup"])
     lines += _cases(document["cases"])
     if document.get("resources"):
         lines += _resources(document["resources"])

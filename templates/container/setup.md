@@ -43,18 +43,14 @@ Use stderr for helper progress so saved JSON remains parseable. Use the shared `
 
 ## Baseline
 
-Provide a copy-and-paste block that records one baseline for this recipe. Run it from the repository root once the server is ready, ideally on a freshly booted machine with nothing else running. The runner resolves the container with `sudo -n docker`, so authenticate first. Use the instance name, served model ID, and context from the launch command above, and pass `--context` when the launch command overrides the manifest. State whether thinking is disabled by default for this server (see the [baseline guide](../../docs/baseline.md#current-limits)). For example:
+Provide a copy-and-paste block that records one baseline for this recipe. The runner starts and stops the server itself, so tell the reader to stop other servers first and to run `sudo -v`. Add launch options only where the launch command above differs from the manifest defaults (for example `--context` and `--vision`). State whether thinking is disabled by default for this server (see the [baseline guide](../../docs/baseline.md#current-limits)). For example:
 
 ```bash
-curl -fsS http://127.0.0.1:<port>/<readiness-route>   # repeat until it succeeds
 sudo -v
-python3 scripts/run_baseline.py run <recipe> \
-  --instance coding \
-  --model <served-model-id> \
-  --output "$HOME/Models/llm-recipes/baselines/<instance>-$(date +%F-%H%M)"
+python3 scripts/run_baseline.py run <recipe>
 ```
 
-Link the [baseline guide](../../docs/baseline.md) for what is measured, the output files, and how to publish a result.
+Link the [baseline guide](../../docs/baseline.md) for the phases, the output location, and how to publish a result.
 
 ## Pi
 

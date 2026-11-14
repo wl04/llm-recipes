@@ -68,3 +68,25 @@ def test_server_vram_follows_processes_that_join_the_cgroup_later(tmp_path: Path
     (cgroup / "cgroup.procs").write_text("4242\n")
 
     assert source.read().values == {"proc_vram_bytes": 7 * 1048576}
+
+
+def test_target_sources_add_cgroup_and_server_vram_to_a_running_monitor(tmp_path: Path) -> None:
+    gpu = "0000:03:00.0"
+    cgroup = make_cgroup(tmp_path / "cg")
+    (cgroup / "cgroup.procs").write_text("4242\n")
+    make_drm_client(tmp_path / "proc", 4242, 3, pdev=gpu, client=9, vram="7 MiB")
+
+    added, target = monitor.target_sources(cgroup, gpu, proc=tmp_path / "proc")
+
+    assert [source.name for source in added] == ["cgroup", "process-vram"]
+    assert target == {
+        "memory_key": "mem_bytes",
+        "memory_label": "cgroup memory.current",
+        "cpu_label": "cgroup cpu.stat",
+    }
+
+
+def test_target_sources_without_gpu_has_only_the_cgroup(tmp_path: Path) -> None:
+    added, _ = monitor.target_sources(make_cgroup(tmp_path / "cg"), None)
+
+    assert [source.name for source in added] == ["cgroup"]

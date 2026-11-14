@@ -9,13 +9,15 @@ import dataclasses
 import hashlib
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 from urllib.request import urlopen
 
-from baseline import api, functional, schema, stats, vision, workloads
+from baseline import api, functional, monitor, phases, schema, stats, vision, workloads
+from baseline.lifecycle import LifecycleError, StartedServer
 from baseline.rawlog import RunWriter
 from baseline.sampler import Sampler
 from baseline.schema import ExitCode
@@ -26,6 +28,18 @@ PROBE_CASE = "context-8k"
 CALIBRATION_TOKENS = 1024
 VISION_OUTPUT_TOKENS = 512
 FUNCTIONAL_OUTPUT_TOKENS = 256
+
+
+class ServerControl(Protocol):
+    """Starts and stops the server a run measures."""
+
+    def preflight(self) -> None: ...
+
+    def start(self) -> StartedServer: ...
+
+    def is_running(self) -> bool: ...
+
+    def stop(self) -> None: ...
 
 
 class PreflightError(Exception):
@@ -54,6 +68,8 @@ class RunConfig:
     request_extra: dict[str, Any] = field(default_factory=dict)
     target: dict[str, Any] = field(default_factory=dict)
     meta_extra: dict[str, Any] = field(default_factory=dict)
+    gpu_address: str | None = None
+    keep_running: bool = False
 
 
 def converged(rates: list[float | None], tolerance: float) -> bool:
@@ -84,6 +100,7 @@ class Runner:
         opener: Callable[..., Any] = urlopen,
         progress: Callable[[str], None] = lambda message: None,
         cleanup: Callable[[], None] | None = None,
+        control: ServerControl | None = None,
     ) -> None:
         self._config = config
         self._writer = writer
@@ -93,6 +110,8 @@ class Runner:
         self._opener = opener
         self._progress = progress
         self._cleanup = cleanup
+        self._control = control
+        self._start_attempted = False
         self._model = config.model or ""
         self._chars_per_token = workloads.INITIAL_CHARS_PER_TOKEN
         self._count_failed = False
@@ -118,6 +137,7 @@ class Runner:
                 "thinking_disabled_by_default": workloads.thinking_configured(config.kind),
             },
             "target": config.target,
+            "phases": {},
             "workload": {
                 "suite": dataclasses.asdict(config.suite),
                 "corpus_files": len(config.corpus),
@@ -148,20 +168,25 @@ class Runner:
         monitoring = False
         try:
             try:
-                self._preflight()
-            except PreflightError as failure:
+                if self._control is not None:
+                    self._control.preflight()
+                else:
+                    self._check_server()
+            except (PreflightError, LifecycleError) as failure:
                 status, code, error = "failed", ExitCode.PREFLIGHT_FAILED, str(failure)
             else:
                 if self._sampler is not None:
                     self._sampler.start()
                     monitoring = True
-                self._workloads()
+                self._phases_and_workloads()
         except (KeyboardInterrupt, Interrupted):
             status, code = "interrupted", ExitCode.INTERRUPTED
+        except (PreflightError, LifecycleError) as failure:
+            status, code, error = "failed", ExitCode.PREFLIGHT_FAILED, str(failure)
         except Exception as failure:  # keep what was recorded and say what broke
             status, code, error = "failed", ExitCode.CHECKS_FAILED, repr(failure)
         finally:
-            self._finish(monitoring)
+            self._shutdown(monitoring, interrupted=status == "interrupted")
         if code == ExitCode.OK and self._problems:
             code = ExitCode.CHECKS_FAILED
         self._meta["run"] = {"id": self._config.run_id, "status": status}
@@ -172,22 +197,127 @@ class Runner:
         self._save_meta()
         return code
 
-    def _finish(self, monitoring: bool) -> None:
+    @contextmanager
+    def _phase(self, name: str) -> Iterator[dict[str, Any]]:
+        """Record a phase's interval and outcome in the meta file, even when it raises."""
+        entry: dict[str, Any] = {"start_s": self._clock(), "status": "interrupted"}
+        self._meta["phases"][name] = entry
+        self._progress(f"Phase: {name}")
+        try:
+            yield entry
+            entry["status"] = "ok"
+        except (KeyboardInterrupt, Interrupted):
+            raise
+        except Exception as failure:
+            entry["status"] = "failed"
+            entry.setdefault("note", str(failure))
+            raise
+        finally:
+            entry["end_s"] = self._clock()
+            self._save_meta()
+
+    def _phases_and_workloads(self) -> None:
+        if self._control is not None:
+            with self._phase("idle"):
+                self._wait(self._config.suite.idle_seconds)
+            self._start_server()
+        with self._phase("settle") as entry:
+            self._settle(entry)
+        with self._phase("loaded_idle"):
+            self._wait(self._config.suite.loaded_idle_seconds)
+        self._workloads()
+
+    def _wait(self, seconds: float) -> None:
+        if seconds > 0 and self._stop.wait(seconds):
+            raise Interrupted
+
+    def _start_server(self) -> None:
+        """Start the server, join its cgroup to the monitoring, and wait until it serves."""
+        assert self._control is not None
+        suite = self._config.suite
+        with self._phase("load") as entry:
+            self._start_attempted = True
+            started = self._control.start()
+            self._meta["container"] = started.meta
+            added, target = monitor.target_sources(started.cgroup, self._config.gpu_address)
+            self._meta["target"] = target
+            if self._sampler is not None:
+                self._sampler.add_sources(added)
+            begun = self._clock()
+            while True:
+                self._check_stop()
+                if self._served_models():
+                    break
+                if self._clock() - begun > suite.load_timeout_s:
+                    raise PreflightError(
+                        f"The server was not ready within {suite.load_timeout_s:g} s"
+                    )
+                if not self._control.is_running():
+                    raise PreflightError(
+                        "The server container stopped while loading; see the server logs"
+                    )
+                self._stop.wait(suite.ready_poll_s)
+            entry["measures"] = {"time_to_ready_s": self._clock() - begun}
+            self._choose_model(self._served_models())
+        self._save_meta()
+
+    def _settle(self, entry: dict[str, Any]) -> None:
+        suite, sampler = self._config.suite, self._sampler
+        if sampler is None:
+            return
+        begun = self._clock()
+        while True:
+            self._check_stop()
+            verdict = phases.settled(
+                sampler.recent(suite.settle_seconds + 2 * suite.sample_interval_s),
+                window_s=suite.settle_seconds,
+                system_cpu_max=suite.settle_system_cpu_percent,
+                server_cpu_max=suite.settle_server_cpu_cores,
+            )
+            if verdict:
+                return
+            if self._clock() - begun > suite.settle_max_seconds:
+                entry["note"] = (
+                    f"The machine did not settle within {suite.settle_max_seconds:g} s; "
+                    "later phases may include start-up activity"
+                )
+                return
+            self._stop.wait(suite.settle_poll_s)
+
+    def _shutdown(self, monitoring: bool, *, interrupted: bool) -> None:
+        """Stop what the runner started, observe the machine afterwards, and end monitoring."""
+        control = self._control
+        if control is not None and self._start_attempted and not self._config.keep_running:
+            entry: dict[str, Any] = {"start_s": self._clock(), "status": "ok"}
+            self._meta["phases"]["unload"] = entry
+            self._progress("Stopping the server")
+            try:
+                control.stop()
+                entry["measures"] = {"time_to_stop_s": self._clock() - entry["start_s"]}
+                if monitoring and not interrupted:
+                    self._stop.wait(self._config.suite.unload_seconds)
+            except LifecycleError as failure:
+                entry["status"] = "failed"
+                entry["note"] = str(failure)
+                self._problems.append(str(failure))
+            finally:
+                entry["end_s"] = self._clock()
         if monitoring and self._sampler is not None:
             self._sampler.stop()
         if self._cleanup is not None:
             self._cleanup()
 
-    def _preflight(self) -> None:
-        self._progress("Checking the server")
+    def _served_models(self) -> list[str]:
         try:
             data = api.post_json(
                 self._config.base_url, "/v1/models", None, timeout=30, opener=self._opener
             )
-        except api.ApiError as error:
-            raise PreflightError(str(error)) from error
+        except api.ApiError:
+            return []
         entries = data.get("data", [])
-        served = [m["id"] for m in entries if isinstance(m, dict) and "id" in m]
+        return [m["id"] for m in entries if isinstance(m, dict) and "id" in m]
+
+    def _choose_model(self, served: list[str]) -> None:
         if self._config.model is None:
             if len(served) != 1:
                 listing = ", ".join(served) or "none"
@@ -203,24 +333,24 @@ class Runner:
         self._meta["server"]["model"] = self._model
         self._save_meta()
 
+    def _check_server(self) -> None:
+        """Attach mode: the server must already be up and serve the expected model."""
+        self._progress("Checking the server")
+        try:
+            data = api.post_json(
+                self._config.base_url, "/v1/models", None, timeout=30, opener=self._opener
+            )
+        except api.ApiError as error:
+            raise PreflightError(str(error)) from error
+        entries = data.get("data", [])
+        self._choose_model([m["id"] for m in entries if isinstance(m, dict) and "id" in m])
+
     def _workloads(self) -> None:
-        self._idle()
         self._functional_checks()
         self._warmup()
         self._probe()
         self._sustained()
         self._contexts()
-
-    def _idle(self) -> None:
-        seconds = self._config.suite.idle_seconds
-        if seconds <= 0:
-            return
-        self._progress("Recording the idle reference")
-        start = self._clock()
-        if self._stop.wait(seconds):
-            raise Interrupted
-        self._meta["idle"] = {"start_s": start, "end_s": self._clock()}
-        self._save_meta()
 
     def _payload(
         self,

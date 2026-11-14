@@ -243,17 +243,69 @@ def _resource_metrics(
 
 
 IDLE_CPU_WARNING_PERCENT = 10.0
-IDLE_METRICS = (
-    "cpu_cores_avg",
+PHASE_ORDER = ("idle", "load", "settle", "loaded_idle", "unload")
+SYSTEM_PHASE_METRICS = (
     "system_cpu_busy_percent",
-    "ram_peak_gib",
     "system_available_min_gib",
     "vram_peak_gib",
     "gtt_peak_gib",
     "gpu_busy_avg_percent",
     "gpu_power_avg_w",
     "gpu_temp_max_c",
+    "swap_in_pages",
+    "swap_out_pages",
+    "sample_count",
 )
+SERVER_PHASE_METRICS = (
+    "cpu_cores_avg",
+    "ram_peak_gib",
+    "ram_anon_peak_gib",
+    "ram_file_peak_gib",
+    "proc_vram_peak_gib",
+)
+SYSTEM_ONLY_PHASES = ("idle", "unload")
+
+
+def _phases(
+    meta: dict[str, Any], samples: list[dict[str, Any]], target: dict[str, Any]
+) -> list[dict[str, Any]]:
+    recorded = dict(meta.get("phases", {}))
+    if "idle" in meta and "idle" not in recorded:
+        recorded["idle"] = {
+            "start_s": meta["idle"]["start_s"],
+            "end_s": meta["idle"]["end_s"],
+            "status": "ok",
+        }
+    entries: dict[str, dict[str, Any]] = {}
+    for name in [n for n in PHASE_ORDER if n in recorded]:
+        item = recorded[name]
+        window = [(item["start_s"], item["end_s"])]
+        everything = _resource_metrics(samples, window, target, f"the {name} phase")
+        names = SYSTEM_PHASE_METRICS + (() if name in SYSTEM_ONLY_PHASES else SERVER_PHASE_METRICS)
+        metrics: dict[str, Any] = {
+            "duration_s": _measured(item["end_s"] - item["start_s"], "s", CLIENT_SOURCE)
+        }
+        metrics.update({key: everything[key] for key in names})
+        for key, value in item.get("measures", {}).items():
+            metrics[key] = _measured(value, "s", CLIENT_SOURCE)
+        entry: dict[str, Any] = {"id": name, "status": item.get("status", "ok")}
+        if item.get("note"):
+            entry["note"] = item["note"]
+        entry["metrics"] = metrics
+        entries[name] = entry
+    idle, unload = entries.get("idle"), entries.get("unload")
+    if idle and unload:
+        for key, label, sign in (
+            ("vram_peak_gib", "vram_vs_idle_gib", 1),
+            ("system_available_min_gib", "available_ram_vs_idle_gib", -1),
+        ):
+            before, after = idle["metrics"][key]["value"], unload["metrics"][key]["value"]
+            unload["metrics"][label] = (
+                schema.unavailable(f"{key} was not measured in both phases")
+                if before is None or after is None
+                else _measured(sign * (after - before), "GiB", "unload minus idle phase")
+            )
+    return list(entries.values())
 
 
 def build_results(raw: RawRun) -> dict[str, Any]:
@@ -274,23 +326,20 @@ def build_results(raw: RawRun) -> dict[str, Any]:
     }
     if "policy" in meta:
         document["policy"] = meta["policy"]
+    phases = _phases(meta, samples, target)
     boot = meta.get("boot")
-    idle = meta.get("idle")
-    if boot is not None or idle is not None:
-        metrics = dict((boot or {}).get("metrics", {}))
-        if idle:
-            reference = _resource_metrics(
-                samples, [(idle["start_s"], idle["end_s"])], target, "the idle reference"
-            )
-            metrics.update({f"idle_{name}": reference[name] for name in IDLE_METRICS})
+    if boot is not None or phases:
         warnings = list((boot or {}).get("warnings", []))
-        busy = metrics.get("idle_system_cpu_busy_percent", {}).get("value")
+        idle = next((p for p in phases if p["id"] == "idle"), None)
+        busy = idle["metrics"]["system_cpu_busy_percent"]["value"] if idle else None
         if busy is not None and busy > IDLE_CPU_WARNING_PERCENT:
             warnings.append(
-                f"System CPU was {busy:.1f}% busy during the idle reference; "
+                f"System CPU was {busy:.1f}% busy during the idle phase; "
                 "the machine may not have been quiet"
             )
-        document["boot"] = {"metrics": metrics, "warnings": warnings}
+        document["boot"] = {"metrics": dict((boot or {}).get("metrics", {})), "warnings": warnings}
+    if phases:
+        document["phases"] = phases
     document["functional"] = [
         r["functional"] for r in raw.requests if r.get("phase") == "functional"
     ]

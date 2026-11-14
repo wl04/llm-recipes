@@ -62,18 +62,14 @@ Each helper checks the loaded model ID before generation. The block stops on fai
 
 ## Baseline
 
-Record one baseline once the server is ready, ideally on a freshly booted machine with nothing else running. Run from the repository root. `sudo -v` is needed because the runner resolves the container with `sudo -n docker`.
+Record one baseline for this recipe, ideally right after a reboot with nothing else running. Stop any server first (`python3 scripts/launch.py ps`, then `stop <instance>`) and close applications that use the GPU: the runner starts its own server (instance `baseline`), records the idle machine and the load, runs the suite, and stops the server again. `sudo -v` is needed because the launcher uses `sudo docker`. Run from the repository root:
 
 ```bash
-curl -fsS http://127.0.0.1:8080/health   # repeat until it succeeds
 sudo -v
-python3 scripts/run_baseline.py run qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram \
-  --instance strata-unsloth \
-  --model qwen3.8-flash-next-ud-iq3_xxs \
-  --output "$HOME/Models/llm-recipes/baselines/strata-unsloth-$(date +%F-%H%M)"
+python3 scripts/run_baseline.py run qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram
 ```
 
-Thinking is disabled by default for this server. The output directory receives `results.json`, a draft `summary.md`, and the raw records. See the [baseline guide](../../docs/baseline.md) for what is measured and how to publish a result.
+Thinking is disabled by default for this server. Results and the server logs go to `~/Models/llm-recipes/baselines/<recipe>/<date-time>/`; the command prints the path. See the [baseline guide](../../docs/baseline.md) for the phases, the output files, and how to publish a result.
 
 ## Pi
 

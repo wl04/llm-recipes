@@ -151,3 +151,22 @@ def test_sources_added_while_running_are_polled_from_the_next_sample() -> None:
 
     assert "late" not in samples[0]["values"]
     assert samples[1]["values"]["late"] == 1.0
+
+
+def test_recent_returns_only_samples_within_the_window_before_the_latest() -> None:
+    times = iter([0.0, 5.0, 9.0, 10.0])
+    sampler = Sampler(
+        [Source("c", Counter(), ("counter",))], 60, lambda sample: None, lambda: next(times)
+    )
+    for _ in range(4):
+        sampler.sample_once()
+
+    window = sampler.recent(5.0)
+
+    assert [sample["t"] for sample in window] == [5.0, 9.0, 10.0]
+
+
+def test_recent_is_empty_before_any_sample() -> None:
+    sampler = Sampler([], 60, lambda sample: None)
+
+    assert sampler.recent(5.0) == []

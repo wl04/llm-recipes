@@ -125,7 +125,16 @@ class SuiteConfig:
     warmup_max: int = 4
     warmup_tolerance: float = 0.10
     warmup_output: int = 64
-    idle_seconds: float = 5.0
+    idle_seconds: float = 30.0
+    load_timeout_s: float = 1800.0
+    ready_poll_s: float = 2.0
+    settle_seconds: float = 10.0
+    settle_max_seconds: float = 120.0
+    settle_poll_s: float = 1.0
+    settle_system_cpu_percent: float = 15.0
+    settle_server_cpu_cores: float = 0.25
+    loaded_idle_seconds: float = 10.0
+    unload_seconds: float = 10.0
     sample_interval_s: float = 0.5
     request_timeout_s: float = 3600.0
 

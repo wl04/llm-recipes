@@ -60,6 +60,31 @@ def validate_options(options: LaunchOptions, adapter: str = "tabbyapi") -> None:
         raise ValueError(f"{adapter}: draft must be on/off; vision must be {visions[adapter]}")
 
 
+def resolve_launch_options(
+    recipe: Recipe,
+    *,
+    name: str,
+    models: Path,
+    logs: Path,
+    context: int | None = None,
+    draft: str | None = None,
+    vision: str | None = None,
+    port: int | None = None,
+    detached: bool = False,
+) -> LaunchOptions:
+    """Fill unset launch options from the recipe's manifest defaults."""
+    return LaunchOptions(
+        name,
+        models,
+        logs,
+        recipe.context if context is None else context,
+        recipe.draft if draft is None else draft,
+        recipe.vision if vision is None else vision,
+        recipe.port if port is None else port,
+        detached,
+    )
+
+
 def discover_recipes(directory: Path) -> dict[str, Recipe]:
     """Read recipe-local manifests; reject malformed or unsupported definitions."""
     recipes = {}
