@@ -5,21 +5,12 @@ take, the reason. A missing sensor or permission therefore becomes an unavailabl
 cause, never a zero. Paths are parameters so tests can read fake trees.
 """
 
-import json
-import os
-import signal
-import subprocess
-import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
-CLOCK_TICKS = os.sysconf("SC_CLK_TCK")
-PAGE_SIZE = os.sysconf("SC_PAGE_SIZE")
 CGROUP_KEYS = ("cpu_usec", "mem_bytes", "mem_anon_bytes", "mem_file_bytes", "swap_bytes")
 GPU_KEYS = ("gpu_busy_percent", "vram_bytes", "gtt_bytes", "gpu_power_uw", "gpu_temp_mc")
-MIB = 1024 * 1024
 AMD_VENDOR = "0x1002"
 
 
@@ -71,89 +62,6 @@ def cgroup_pids(path: Path) -> set[int]:
         return {int(item) for item in (path / "cgroup.procs").read_text().split()}
     except (OSError, ValueError):
         return set()
-
-
-def _stat_fields(proc: Path, pid: int) -> list[str]:
-    text = (proc / str(pid) / "stat").read_text()
-    return text.rsplit(")", 1)[1].split()
-
-
-class ProcessTree:
-    """A server process and its descendants, guarded against PID reuse."""
-
-    def __init__(self, pid: int, proc: Path = Path("/proc")) -> None:
-        self._pid = pid
-        self._proc = proc
-        self._start = _stat_fields(proc, pid)[19]
-
-    def pids(self) -> set[int]:
-        """The root process and its current descendants; empty if the root restarted or exited."""
-        children: dict[int, list[int]] = {}
-        try:
-            if _stat_fields(self._proc, self._pid)[19] != self._start:
-                return set()
-        except (OSError, IndexError):
-            return set()
-        for entry in self._proc.iterdir():
-            if not entry.name.isdigit():
-                continue
-            try:
-                parent = int(_stat_fields(self._proc, int(entry.name))[1])
-            except (OSError, IndexError, ValueError):
-                continue
-            children.setdefault(parent, []).append(int(entry.name))
-        found, pending = set(), [self._pid]
-        while pending:
-            pid = pending.pop()
-            if pid not in found:
-                found.add(pid)
-                pending.extend(children.get(pid, []))
-        return found
-
-    def _members(self, keys: tuple[str, ...], reading: Reading) -> set[int] | None:
-        members = self.pids()
-        if not members:
-            for key in keys:
-                reading.errors[key] = "server process exited or restarted"
-            return None
-        return members
-
-    def read_basic(self) -> Reading:
-        """Summed CPU time and resident memory over the tree."""
-        reading = Reading()
-        members = self._members(("cpu_usec", "mem_rss_bytes"), reading)
-        if members is None:
-            return reading
-
-        def cpu() -> float:
-            ticks = 0
-            for pid in members:
-                fields = _stat_fields(self._proc, pid)
-                ticks += int(fields[11]) + int(fields[12])
-            return ticks * 1_000_000 // CLOCK_TICKS
-
-        def rss() -> float:
-            return sum(
-                int((self._proc / str(p) / "statm").read_text().split()[1]) * PAGE_SIZE
-                for p in members
-            )
-
-        reading.take("cpu_usec", cpu)
-        reading.take("mem_rss_bytes", rss)
-        return reading
-
-    def read_pss(self) -> Reading:
-        """Proportional set size over the tree; walks page tables, so sample it sparingly."""
-        reading = Reading()
-        members = self._members(("mem_pss_bytes",), reading)
-        if members is None:
-            return reading
-
-        def pss() -> float:
-            return sum(_keyed(self._proc / str(p) / "smaps_rollup")["Pss"] * 1024 for p in members)
-
-        reading.take("mem_pss_bytes", pss)
-        return reading
 
 
 def _cpu_ticks(path: Path) -> tuple[int, int]:
@@ -224,114 +132,47 @@ def find_gpu(pci_root: Path = Path("/sys/bus/pci/devices")) -> tuple[str, list[s
     return found[0][1], [name for _, name in found]
 
 
-def parse_top_line(line: str) -> dict[int, int]:
-    """Per-process VRAM in bytes from one ``amdgpu_top --json`` document."""
-    try:
-        data: Any = json.loads(line)
-        fdinfo = data["devices"][0]["fdinfo"]
-    except (json.JSONDecodeError, KeyError, IndexError, TypeError) as error:
-        raise SourceError(f"Unexpected amdgpu_top output: {type(error).__name__}") from error
-    usage: dict[int, int] = {}
-    for pid, entry in fdinfo.items():
-        try:
-            vram = entry["usage"]["usage"]["VRAM"]
-        except (KeyError, TypeError):
-            continue
-        if isinstance(vram, dict) and isinstance(vram.get("value"), int | float):
-            usage[int(pid)] = int(vram["value"] * MIB)
-    return usage
+def _kib(value: str) -> int:
+    """Bytes from a fdinfo size such as ``15756212 KiB``."""
+    amount, _, unit = value.partition(" ")
+    scale = {"": 1, "B": 1, "KiB": 1024, "MiB": 1024**2, "GiB": 1024**3}[unit.strip()]
+    return int(amount) * scale
 
 
-class TopReader:
-    """A long-lived ``amdgpu_top`` JSON stream; keeps the latest per-process VRAM.
+def read_drm_vram(pids: set[int], address: str, proc: Path = Path("/proc")) -> Reading:
+    """VRAM held on one GPU by the given processes, read from DRM fdinfo.
 
-    The child runs in its own session so it can be stopped with its process group, and ``stop``
-    must be called even when the runner is interrupted.
+    Each DRM client is counted once even when several descriptors share it. A process that
+    exits while being read is skipped. A process whose fdinfo is readable but holds no client
+    on this device uses no VRAM there (zero); if no fdinfo could be read at all, the result is
+    an error rather than a zero.
     """
-
-    def __init__(self, address: str, interval_ms: int, executable: str = "amdgpu_top") -> None:
-        self._command = [
-            executable, "-J", "-s", str(interval_ms), "-n", "0",
-            "--pci", address, "--no-pc", "-u", "1",
-        ]  # fmt: skip
-        self._process: subprocess.Popen[str] | None = None
-        self._lock = threading.Lock()
-        self._latest: dict[int, int] | None = None
-        self._failure: str | None = None
-        self._exited = False
-
-    def start(self) -> None:
-        """Start the child; a failure to start is reported later by ``latest``."""
-        try:
-            process = subprocess.Popen(
-                self._command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-                text=True,
-                start_new_session=True,
-            )
-        except OSError as error:
-            self._failure, self._exited = f"amdgpu_top could not start: {error}", True
-            return
-        self._process = process
-        threading.Thread(target=self._pump, args=(process,), daemon=True).start()
-
-    def _pump(self, process: "subprocess.Popen[str]") -> None:
-        for line in process.stdout or []:
-            try:
-                parsed = parse_top_line(line)
-            except SourceError as error:
-                with self._lock:
-                    self._failure = str(error)
-                continue
-            with self._lock:
-                self._latest, self._failure = parsed, None
-        with self._lock:
-            self._exited = True
-
-    def latest(self) -> dict[int, int]:
-        """Latest per-process VRAM in bytes.
-
-        Raises:
-            SourceError: no usable data has arrived, or the child exited.
-        """
-        with self._lock:
-            if self._latest is None:
-                raise SourceError(self._failure or "amdgpu_top has produced no data yet")
-            if self._exited:
-                raise SourceError("amdgpu_top exited")
-            return dict(self._latest)
-
-    def stop(self, grace_s: float = 2.0) -> None:
-        """Stop the child and its process group; safe to call repeatedly."""
-        process = self._process
-        if process is None or process.poll() is not None:
-            return
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
-            process.wait(timeout=grace_s)
-        except subprocess.TimeoutExpired:
-            os.killpg(process.pid, signal.SIGKILL)
-            process.wait()
-        except ProcessLookupError:
-            pass
-
-
-def read_process_vram(top: TopReader, pids: Callable[[], set[int]]) -> Reading:
-    """Per-process VRAM summed over the server's processes; refreshes lag by the fdinfo interval."""
     reading = Reading()
-    try:
-        usage = top.latest()
-    except SourceError as error:
-        reading.errors["proc_vram_bytes"] = str(error)
-        return reading
-    members = pids()
-    if not members:
+    if not pids:
         reading.errors["proc_vram_bytes"] = "no server processes to attribute"
         return reading
-    listed = members & usage.keys()
-    if not listed:
-        reading.errors["proc_vram_bytes"] = "server processes not yet listed by amdgpu_top fdinfo"
+    clients: dict[str, int] = {}
+    readable = False
+    for pid in pids:
+        try:
+            descriptors = list((proc / str(pid) / "fdinfo").iterdir())
+        except OSError:
+            continue
+        readable = True
+        for descriptor in descriptors:
+            try:
+                fields = dict(
+                    line.split(":\t", 1)
+                    for line in descriptor.read_text().splitlines()
+                    if ":\t" in line
+                )
+                if fields.get("drm-driver") != "amdgpu" or fields.get("drm-pdev") != address:
+                    continue
+                clients[fields["drm-client-id"]] = _kib(fields.get("drm-memory-vram", "0 KiB"))
+            except (OSError, KeyError, ValueError):
+                continue
+    if not readable:
+        reading.errors["proc_vram_bytes"] = "fdinfo of the server processes is not readable"
         return reading
-    reading.values["proc_vram_bytes"] = sum(usage[pid] for pid in listed)
+    reading.values["proc_vram_bytes"] = sum(clients.values())
     return reading

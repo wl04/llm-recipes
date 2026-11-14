@@ -139,3 +139,15 @@ def test_start_twice_is_rejected() -> None:
             sampler.start()
     finally:
         sampler.stop()
+
+
+def test_sources_added_while_running_are_polled_from_the_next_sample() -> None:
+    sampler, samples = collect([Source("c", Counter(), ("counter",))], interval_s=60)
+    sampler.start()
+    sampler.add_sources([Source("late", lambda: Reading(values={"late": 1.0}), ("late",))])
+
+    sampler.sample_once()
+    sampler.stop()
+
+    assert "late" not in samples[0]["values"]
+    assert samples[1]["values"]["late"] == 1.0

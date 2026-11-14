@@ -1,9 +1,5 @@
 """Telemetry readers over fake /proc, /sys, and cgroup trees."""
 
-import json
-import stat
-import sys
-import time
 from pathlib import Path
 
 import pytest
@@ -23,13 +19,6 @@ def make_cgroup(root: Path, *, swap: bool = True) -> Path:
     if swap:
         write(cgroup / "memory.swap.current", "2048\n")
     return cgroup
-
-
-def make_process(proc: Path, pid: int, ppid: int, cpu_ticks: int, start: int, pages: int) -> None:
-    fields = ["S", str(ppid)] + ["0"] * 9 + [str(cpu_ticks), "0"] + ["0"] * 6 + [str(start)]
-    write(proc / str(pid) / "stat", f"{pid} (my proc) " + " ".join(fields) + " 0 0\n")
-    write(proc / str(pid) / "statm", f"1000 {pages} 0 0 0 0 0\n")
-    write(proc / str(pid) / "smaps_rollup", f"Rss: {pages * 4} kB\nPss: {pages * 2} kB\n")
 
 
 def test_read_cgroup_returns_values(tmp_path: Path) -> None:
@@ -58,65 +47,6 @@ def test_read_cgroup_reports_every_key_when_directory_is_gone(tmp_path: Path) ->
 
     assert reading.values == {}
     assert set(reading.errors) == set(sources.CGROUP_KEYS)
-
-
-def test_process_tree_sums_cpu_and_rss_over_descendants(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(sources, "PAGE_SIZE", 4096)
-    monkeypatch.setattr(sources, "CLOCK_TICKS", 100)
-    make_process(tmp_path, 10, 1, cpu_ticks=100, start=5, pages=100)
-    make_process(tmp_path, 11, 10, cpu_ticks=50, start=6, pages=50)
-    make_process(tmp_path, 12, 11, cpu_ticks=25, start=7, pages=25)
-    make_process(tmp_path, 99, 1, cpu_ticks=999, start=8, pages=999)
-    tree = sources.ProcessTree(10, proc=tmp_path)
-
-    reading = tree.read_basic()
-
-    assert reading.values["cpu_usec"] == 1_750_000
-    assert reading.values["mem_rss_bytes"] == 175 * 4096
-    assert tree.pids() == {10, 11, 12}
-
-
-def test_process_tree_reads_pss_when_smaps_rollup_is_readable(tmp_path: Path) -> None:
-    make_process(tmp_path, 10, 1, cpu_ticks=1, start=5, pages=100)
-    make_process(tmp_path, 11, 10, cpu_ticks=1, start=6, pages=50)
-
-    reading = sources.ProcessTree(10, proc=tmp_path).read_pss()
-
-    assert reading.values["mem_pss_bytes"] == (200 + 100) * 1024
-
-
-def test_process_tree_reports_unreadable_pss_as_error(tmp_path: Path) -> None:
-    make_process(tmp_path, 10, 1, cpu_ticks=1, start=5, pages=100)
-    (tmp_path / "10" / "smaps_rollup").unlink()
-
-    reading = sources.ProcessTree(10, proc=tmp_path).read_pss()
-
-    assert reading.values == {}
-    assert "smaps_rollup" in reading.errors["mem_pss_bytes"]
-
-
-def test_process_tree_rejects_reused_pid(tmp_path: Path) -> None:
-    make_process(tmp_path, 10, 1, cpu_ticks=1, start=5, pages=1)
-    tree = sources.ProcessTree(10, proc=tmp_path)
-    make_process(tmp_path, 10, 1, cpu_ticks=1, start=77, pages=1)
-
-    reading = tree.read_basic()
-
-    assert reading.values == {}
-    assert "restarted" in reading.errors["cpu_usec"]
-
-
-def test_process_tree_reports_exited_process(tmp_path: Path) -> None:
-    make_process(tmp_path, 10, 1, cpu_ticks=1, start=5, pages=1)
-    tree = sources.ProcessTree(10, proc=tmp_path)
-    for name in ("stat", "statm", "smaps_rollup"):
-        (tmp_path / "10" / name).unlink()
-
-    reading = tree.read_basic()
-
-    assert "cpu_usec" in reading.errors
 
 
 def test_read_system_reports_memory_swap_and_swap_activity(tmp_path: Path) -> None:
@@ -201,103 +131,79 @@ def test_find_gpu_rejects_machine_without_amd_gpu(tmp_path: Path) -> None:
         sources.find_gpu(tmp_path)
 
 
-def test_parse_top_line_sums_process_vram_per_pid_in_bytes() -> None:
-    line = json.dumps(
-        {
-            "devices": [
-                {
-                    "fdinfo": {
-                        "100": {
-                            "name": "a",
-                            "usage": {"name": "a", "usage": {"VRAM": {"unit": "MiB", "value": 2}}},
-                        },
-                        "200": {
-                            "name": "b",
-                            "usage": {"name": "b", "usage": {"VRAM": {"unit": "MiB", "value": 5}}},
-                        },
-                        "300": {"name": "c", "usage": {"name": "c", "usage": {"VRAM": None}}},
-                    }
-                }
-            ]
-        }
+def make_drm_client(
+    proc: Path, pid: int, fd: int, *, pdev: str, client: int, vram: str, driver: str = "amdgpu"
+) -> None:
+    write(
+        proc / str(pid) / "fdinfo" / str(fd),
+        f"pos:\t0\ndrm-driver:\t{driver}\ndrm-pdev:\t{pdev}\ndrm-client-id:\t{client}\n"
+        f"drm-total-vram:\t{vram}\ndrm-memory-vram:\t{vram}\n",
     )
 
-    assert sources.parse_top_line(line) == {100: 2 * 1048576, 200: 5 * 1048576}
+
+def test_read_drm_vram_sums_clients_of_the_server_processes_in_bytes(tmp_path: Path) -> None:
+    gpu = "0000:03:00.0"
+    make_drm_client(tmp_path, 10, 5, pdev=gpu, client=1, vram="15756212 KiB")
+    make_drm_client(tmp_path, 11, 7, pdev=gpu, client=2, vram="2 MiB")
+
+    reading = sources.read_drm_vram({10, 11}, gpu, tmp_path)
+
+    assert reading.values == {"proc_vram_bytes": 15756212 * 1024 + 2 * 1024 * 1024}
+    assert reading.errors == {}
 
 
-@pytest.mark.parametrize("line", ["not json", "{}", '{"devices": []}'])
-def test_parse_top_line_rejects_unexpected_output(line: str) -> None:
-    with pytest.raises(sources.SourceError):
-        sources.parse_top_line(line)
+def test_read_drm_vram_counts_a_client_once_when_several_descriptors_share_it(
+    tmp_path: Path,
+) -> None:
+    gpu = "0000:03:00.0"
+    make_drm_client(tmp_path, 10, 5, pdev=gpu, client=1, vram="100 KiB")
+    make_drm_client(tmp_path, 10, 6, pdev=gpu, client=1, vram="100 KiB")
+
+    reading = sources.read_drm_vram({10}, gpu, tmp_path)
+
+    assert reading.values["proc_vram_bytes"] == 100 * 1024
 
 
-FAKE_TOP = """#!{python}
-import json, sys, time
-doc = {{"devices": [{{"fdinfo": {{"4242": {{"name": "srv", "usage": {{"name": "srv",
-    "usage": {{"VRAM": {{"unit": "MiB", "value": 7}}}}}}}}}}}}]}}
-print(json.dumps(doc), flush=True)
-time.sleep(60)
-"""
+def test_read_drm_vram_ignores_other_devices_and_other_drivers(tmp_path: Path) -> None:
+    gpu = "0000:03:00.0"
+    make_drm_client(tmp_path, 10, 5, pdev="0000:12:00.0", client=1, vram="999 KiB")
+    make_drm_client(tmp_path, 10, 6, pdev=gpu, client=2, vram="999 KiB", driver="i915")
+    make_drm_client(tmp_path, 10, 7, pdev=gpu, client=3, vram="4 KiB")
+
+    reading = sources.read_drm_vram({10}, gpu, tmp_path)
+
+    assert reading.values["proc_vram_bytes"] == 4 * 1024
 
 
-def fake_top(tmp_path: Path) -> str:
-    script = tmp_path / "fake_top.py"
-    script.write_text(FAKE_TOP.format(python=sys.executable))
-    script.chmod(script.stat().st_mode | stat.S_IEXEC)
-    return str(script)
+def test_read_drm_vram_reports_zero_for_a_readable_process_that_does_not_use_the_gpu(
+    tmp_path: Path,
+) -> None:
+    write(tmp_path / "10" / "fdinfo" / "0", "pos:\t0\nflags:\t02\n")
+
+    reading = sources.read_drm_vram({10}, "0000:03:00.0", tmp_path)
+
+    assert reading.values == {"proc_vram_bytes": 0}
 
 
-def wait_for(condition: object, timeout_s: float = 5.0) -> None:
-    deadline = time.monotonic() + timeout_s
-    while time.monotonic() < deadline:
-        if condition():  # type: ignore[operator]
-            return
-        time.sleep(0.02)
-    raise AssertionError("condition not met in time")
+def test_read_drm_vram_reports_unreadable_fdinfo_as_error_not_zero(tmp_path: Path) -> None:
+    reading = sources.read_drm_vram({10}, "0000:03:00.0", tmp_path)
+
+    assert reading.values == {}
+    assert "fdinfo" in reading.errors["proc_vram_bytes"]
 
 
-def available(top: sources.TopReader) -> bool:
-    try:
-        top.latest()
-    except sources.SourceError:
-        return False
-    return True
+def test_read_drm_vram_without_server_processes_is_an_error(tmp_path: Path) -> None:
+    reading = sources.read_drm_vram(set(), "0000:03:00.0", tmp_path)
+
+    assert "no server processes" in reading.errors["proc_vram_bytes"]
 
 
-def test_top_reader_exposes_latest_process_vram_and_stops_its_child(tmp_path: Path) -> None:
-    top = sources.TopReader("0000:03:00.0", 100, executable=fake_top(tmp_path))
-    top.start()
-    try:
-        wait_for(lambda: available(top))
+def test_read_drm_vram_skips_processes_that_exit_between_listing_and_reading(
+    tmp_path: Path,
+) -> None:
+    gpu = "0000:03:00.0"
+    make_drm_client(tmp_path, 10, 5, pdev=gpu, client=1, vram="8 KiB")
 
-        usage = top.latest()
-        process = top._process
+    reading = sources.read_drm_vram({10, 99}, gpu, tmp_path)
 
-        assert usage == {4242: 7 * 1048576}
-        assert process is not None and process.poll() is None
-    finally:
-        top.stop()
-    assert process.poll() is not None
-
-
-def test_top_reader_reports_missing_executable_as_source_error(tmp_path: Path) -> None:
-    top = sources.TopReader("0000:03:00.0", 100, executable=str(tmp_path / "absent"))
-    top.start()
-
-    with pytest.raises(sources.SourceError, match="could not start"):
-        top.latest()
-
-
-def test_read_process_vram_sums_only_server_processes(tmp_path: Path) -> None:
-    top = sources.TopReader("0000:03:00.0", 100, executable=fake_top(tmp_path))
-    top.start()
-    try:
-        wait_for(lambda: available(top))
-
-        reading = sources.read_process_vram(top, lambda: {4242, 1})
-        missing = sources.read_process_vram(top, lambda: {1})
-    finally:
-        top.stop()
-
-    assert reading.values == {"proc_vram_bytes": 7 * 1048576}
-    assert "not yet listed" in missing.errors["proc_vram_bytes"]
+    assert reading.values["proc_vram_bytes"] == 8 * 1024

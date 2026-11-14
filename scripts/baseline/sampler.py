@@ -36,7 +36,8 @@ class Sampler:
         sink: Sink,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
-        self._sources = sources
+        self._sources = list(sources)
+        self._lock = threading.Lock()
         self._interval = interval_s
         self._sink = sink
         self._clock = clock
@@ -51,7 +52,9 @@ class Sampler:
         values: dict[str, float] = {}
         errors: dict[str, str] = {}
         taken = self._clock()
-        for source in self._sources:
+        with self._lock:
+            current = list(self._sources)
+        for source in current:
             if self._tick % source.every:
                 continue
             try:
@@ -68,6 +71,11 @@ class Sampler:
         except Exception as error:  # a full disk must not silently end monitoring either
             self.failures += 1
             self.last_failure = repr(error)
+
+    def add_sources(self, sources: list[Source]) -> None:
+        """Poll more sources from the next sample on, for example once the server exists."""
+        with self._lock:
+            self._sources.extend(sources)
 
     def start(self) -> None:
         """Take the first sample, then sample in the background."""

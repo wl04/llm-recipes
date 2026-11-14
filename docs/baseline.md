@@ -21,7 +21,7 @@ python3 scripts/run_baseline.py run <recipe> --base-url http://127.0.0.1:<port>/
   --output "$HOME/Models/llm-recipes/baselines/<run-name>"
 ```
 
-`--output` must be a new directory outside the repository. Progress goes to stderr and a one-line result to stdout. Ctrl+C or SIGTERM stops the run, keeps what was recorded, and leaves the server running. `--instance` resolves the container with `sudo -n docker`, so authenticate with `sudo -v` first. Other options: `--gpu-pci` (default: the AMD GPU with the most VRAM), `--no-gpu`, `--image`, `--server-kind`, and `--request-extra` (a JSON object merged into every request).
+`--output` must be a new directory outside the repository. Progress goes to stderr and a one-line result to stdout. Ctrl+C or SIGTERM stops the run, keeps what was recorded, and leaves the server running. `--instance` resolves the container with `sudo -n docker`, so authenticate with `sudo -v` first. `--pid` can be any process of the app: the runner measures its whole systemd scope (GNOME gives each application its own, such as `app-<name>-<pid>.scope`), lists the processes in it, and warns when the scope is shared, for example when the app was started from a terminal. Other options: `--gpu-pci` (default: the AMD GPU with the most VRAM), `--no-gpu`, `--image`, `--server-kind`, and `--request-extra` (a JSON object merged into every request).
 
 The run directory holds `meta.json`, `requests.jsonl`, `samples.jsonl`, and the rendered `results.json` and draft `summary.md`. `python3 scripts/run_baseline.py render <run-dir>` rebuilds the rendered files from the raw ones, for example after an interrupted run, and keeps the text you wrote in `summary.md`. To publish, create the numbered experiment folder, copy `summary.md` and `results.json` into it, fill in `profile.yaml`, and run the generator.
 
@@ -89,7 +89,7 @@ Verified on the target workstation (RX 9070 XT at `0000:03:00.0`, plus an iGPU a
 | GPU power, temperature | `hwmon` in the same device directory (`power1_average`, `temp1_input`) |
 | Container CPU, memory, swap | cgroup v2 files, readable without privileges once the container's cgroup path is known |
 | System memory, swap activity | `/proc/meminfo`, `/proc/vmstat` |
-| Process allocations | `amdgpu_top` 0.11.5 JSON (`-J`, `-s <ms>`, `-n 0`, `--pci`) with `--no-pc` to avoid its performance counters; one long-lived child that the runner always stops. Its process index refreshes about once a second. |
+| Process allocations | DRM fdinfo (`drm-memory-vram`) of the processes in the server's cgroup, one value per DRM client on the target GPU. Read at every sample. |
 
 Resolving a container uses `sudo -n docker`, as the launcher does, once at start. Device memory is device-wide and is not added to cgroup or process figures.
 

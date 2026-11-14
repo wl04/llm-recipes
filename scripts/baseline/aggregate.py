@@ -225,7 +225,9 @@ def _resource_metrics(
         ),
         "vram_peak_gib": peak("vram_bytes", GIB, "GiB", f"{sysfs} mem_info_vram_used", max),
         "gtt_peak_gib": peak("gtt_bytes", GIB, "GiB", f"{sysfs} mem_info_gtt_used", max),
-        "proc_vram_peak_gib": peak("proc_vram_bytes", GIB, "GiB", "amdgpu_top fdinfo", max),
+        "proc_vram_peak_gib": peak(
+            "proc_vram_bytes", GIB, "GiB", "DRM fdinfo (drm-memory-vram)", max
+        ),
         "gpu_busy_avg_percent": mean("gpu_busy_percent", 1, "%", f"{sysfs} gpu_busy_percent"),
         "gpu_power_avg_w": mean("gpu_power_uw", 1_000_000, "W", f"{sysfs} hwmon power1_average"),
         "gpu_temp_max_c": peak("gpu_temp_mc", 1000, "C", f"{sysfs} hwmon temp1_input", max),

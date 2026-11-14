@@ -10,9 +10,19 @@ from baseline import cli, host, schema
 from baseline.schema import ExitCode
 from fake_server import FakeServer
 from test_baseline_runner import SUITE
+from test_baseline_sources import make_cgroup
 
 ROOT = Path(__file__).resolve().parents[1]
 RECIPE = "qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram"
+
+
+@pytest.fixture(autouse=True)
+def fake_server_scope(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Resolve any --pid to a fake application scope so tests do not read the real cgroup."""
+    cgroup = make_cgroup(tmp_path / "cgroups")
+    (cgroup / "cgroup.procs").write_text(f"{os.getpid()}\n")
+    monkeypatch.setattr(host, "cgroup_path_of", lambda pid: cgroup)
+    return cgroup
 
 
 def run_cli(

@@ -164,18 +164,17 @@ Start with a 500 ms sampling interval. Validate overhead and sample coverage on 
 | Container CPU | cgroup v2 `cpu.stat` deltas | CPU seconds divided by wall seconds, expressed as average cores consumed |
 | Container RAM | `memory.current`, `memory.stat` | Total charged memory plus anonymous/file-cache breakdown; not process RSS |
 | Container swap | `memory.swap.current` | Occupancy and change during the workload |
-| Desktop process CPU/RAM | `/proc` process tree, optionally psutil | Track server workers; sum CPU; use PSS where readable to avoid shared-memory double counting, otherwise clearly label RSS |
+| Desktop app CPU/RAM | The app's systemd scope (cgroup v2), found from its process ID | Same files and caveats as a container; the scope must hold only the app, which the runner lists and checks |
 | System RAM | `/proc/meminfo` | Minimum available RAM and sampled system-used memory with formula recorded |
 | System swap activity | `/proc/vmstat` counter deltas | Swap-in/out activity; distinct from swap occupancy |
 | GPU memory (device) | AMD sysfs (`mem_info_vram_used`, `mem_info_gtt_used`) | Device VRAM/GTT, which includes other processes using the device |
-| GPU memory (process) | `amdgpu_top` JSON fdinfo | Process allocations where readable; refresh lags by the fdinfo process-index interval |
+| GPU memory (process) | DRM fdinfo of the cgroup's processes (`drm-memory-vram`) | One value per DRM client on the target device; read at every sample, so no refresh lag |
 | GPU load/power/temperature | AMD sysfs (`gpu_busy_percent`, hwmon) | Active-period average and sampled maximum, with units; power sensors may already be firmware-averaged |
 
 Resolve a container through launcher labels once at start, using non-interactive `sudo docker` like the launcher, and read its host PID and cgroup path. After that read cgroup and `/proc` files without privileges, so an expired sudo timestamp cannot end monitoring mid-run. Fail early if non-interactive access is unavailable. Resolve the GPU by PCI address, not adapter enumeration order; this workstation also has an iGPU. For process monitoring, guard against PID reuse and worker changes. Record telemetry tool versions and detected devices.
 
-Use sysfs as the primary GPU source: it is cheap and has no extra dependency. Verify the files exist for the target GPU. Use one long-lived `amdgpu_top --json` process for per-process allocations only. Installed `amdgpu_top` 0.11.5 provides `-J`, `-s <ms>`, `-n 0` (continuous), `--pci`, and `-u` (fdinfo process-index refresh, default 5 s); pin and probe the version, because the JSON schema is not a stable contract. Disable or avoid its performance counters (`--no-pc`): reading them may deactivate the GPU's power saving, which would perturb clocks and power during measurement. Avoid parsing interactive `top` output.
+Use sysfs as the primary GPU source: it is cheap and has no extra dependency. Verify the files exist for the target GPU. Read per-process allocations from the DRM fdinfo of the server's processes instead of running a utility; no external telemetry tool is needed. On the workstation this matched `amdgpu_top` 0.11.5 to rounding for 13 processes. It avoids the utility's performance counters, which may deactivate the GPU's power saving and perturb clocks and power.
 
-Reading PSS from `/proc/<pid>/smaps_rollup` walks page tables and can stall a process with large mappings. Sample PSS at a slower interval than other metrics and include it in the overhead check.
 
 Treat container and device metrics as different scopes. Do not add RSS, cgroup charges, pinned memory estimates, and VRAM together. Driver-accounted allocations and file mappings can have subtle accounting behavior. Record sample count, gaps, and collection errors. A missing permission or sensor produces an unavailable metric, not zero.
 
@@ -253,7 +252,7 @@ Implementation notes (stage 2, implemented):
 - Prompts are fitted to the token target with the server's tokenizer route (Strata `/v1/messages/count_tokens`), which counts without running the prompt, so no measured prompt warms the cache. Servers without a known route fall back to calibrating from the previous request's reported tokens. The first Unsloth pilot showed why: characters per token ranged from 2.5 to 4.5 across the corpus, so a single early calibration put the 120K prompt at 141K tokens.
 - Thinking is disabled by default only for Strata, the one server with a verified field. Others need `--request-extra`, and the result records whether the default applied.
 - Engine-reported timings are not parsed yet; those metrics are unavailable with that reason.
-- Per-process VRAM comes from one `amdgpu_top` child that the runner always stops; device-wide figures come from sysfs.
+- Per-process VRAM is read from DRM fdinfo of the server's cgroup, and desktop apps are measured through their cgroup like containers; no external utility and no process-tree code remain. Device-wide figures come from sysfs.
 - Still open for the workstation pilot: warmup tolerance, quiet-system thresholds, the minimum sustained output length, observer overhead, and the image-token setting.
 
 ### 2b. Simplify telemetry (revision)

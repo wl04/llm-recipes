@@ -3,7 +3,6 @@
 import argparse
 import json
 import platform
-import shutil
 import signal
 import sys
 import threading
@@ -86,10 +85,6 @@ def _recipe_kind(recipe: Recipe | None, requested: str | None) -> str:
 
 def _versions() -> dict[str, Any]:
     versions: dict[str, Any] = {"python": platform.python_version(), "kernel": platform.release()}
-    executable = shutil.which("amdgpu_top")
-    if executable:
-        result = host.run_command([executable, "-V"])
-        versions["amdgpu_top"] = result.stdout.strip() or "unknown"
     return versions
 
 
@@ -135,13 +130,11 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
     try:
         gpu_address, candidates = (None, []) if args.no_gpu else _find_gpu(args.gpu_pci)
         container = host.resolve_container(args.instance) if args.instance else None
-        monitoring = monitor.build_monitoring(
-            cgroup=container.cgroup if container else None,
-            pid=args.pid,
-            gpu_address=gpu_address,
-            interval_ms=int(suite.sample_interval_s * 1000),
-            top_executable=shutil.which("amdgpu_top"),
-        )
+        cgroup = container.cgroup if container else None
+        if args.pid is not None:
+            cgroup = host.cgroup_path_of(args.pid)
+            _check_scope(cgroup)
+        monitoring = monitor.build_monitoring(cgroup=cgroup, gpu_address=gpu_address)
     except (host.HostError, SourceError) as error:
         print(f"Preflight failed: {error}", file=sys.stderr)
         return ExitCode.PREFLIGHT_FAILED
@@ -179,9 +172,7 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
     )
     sampler = Sampler(monitoring.sources, suite.sample_interval_s, writer.append_sample)
     stop = threading.Event()
-    runner = Runner(
-        config, writer, sampler, stop=stop, progress=_progress, cleanup=monitoring.cleanup
-    )
+    runner = Runner(config, writer, sampler, stop=stop, progress=_progress)
     if recipe is not None and not args.instance and args.pid is None:
         _progress("No --instance given: container CPU and memory will be unavailable")
     previous = signal.signal(signal.SIGTERM, _terminate)
@@ -196,6 +187,24 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
         return code if code != ExitCode.OK else ExitCode.CHECKS_FAILED
     print(f"Baseline written to {writer.directory} (results: {results.name}, summary.md)")
     return code
+
+
+def _check_scope(cgroup: Path) -> None:
+    """Say what a desktop app's cgroup contains, so shared scopes are noticed."""
+    names = sorted({_comm(pid) for pid in sources.cgroup_pids(cgroup)})
+    _progress(f"Measuring cgroup {cgroup.name}: {', '.join(names) or 'no readable processes'}")
+    if not cgroup.name.startswith(("app-", "docker-")):
+        _progress(
+            "Warning: the server is not in its own application scope; CPU and memory "
+            "include everything in that cgroup"
+        )
+
+
+def _comm(pid: int) -> str:
+    try:
+        return (Path("/proc") / str(pid) / "comm").read_text().strip()
+    except OSError:
+        return str(pid)
 
 
 def _terminate(signum: int, frame: object) -> None:
