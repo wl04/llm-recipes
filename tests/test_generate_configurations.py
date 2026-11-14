@@ -8,6 +8,8 @@ from typing import Any
 import generate_configurations as gen
 import pytest
 import yaml
+from baseline import schema
+from baseline_data import sample_results
 
 CAPTION = "Test Model / FMT / Test GPU / 8 GB VRAM"
 SLUG = "test-model-fmt-test-gpu-8-gb-vram"
@@ -306,3 +308,115 @@ def test_rows_displays_release_and_image_tag_names(value: str, expected: str) ->
     assert list(gen.rows({"version": value}, {"version": "Version"})) == [
         f"| Version | {expected} |"
     ]
+
+
+RESULTS_START = "<!-- BEGIN GENERATED RESULTS -->"
+RESULTS_END = "<!-- END GENERATED RESULTS -->"
+BASELINE_SUMMARY = (
+    "# 002 · 2026-01-02 — Baseline\n\nAuthored intro.\n\n"
+    + RESULTS_START
+    + "\n\n"
+    + RESULTS_END
+    + "\n\n## Observations\n\nAuthored observations.\n"
+)
+
+
+def write_baseline_experiment(root: Path, summary: str = BASELINE_SUMMARY) -> Path:
+    write_recipe_tree(root)
+    result = root / "recipes" / SLUG / "002-2026-01-02-baseline"
+    result.mkdir()
+    (result / "profile.yaml").write_text(PROFILE.format(caption=CAPTION))
+    (result / "configuration.md").write_text(CONFIGURATION)
+    (result / "summary.md").write_text(summary)
+    (result / "results.json").write_text(schema.dump_results(sample_results()))
+    return result
+
+
+def test_main_renders_results_into_summary_and_preserves_authored_text(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result = write_baseline_experiment(tmp_path)
+
+    exit_code = run_main(monkeypatch, tmp_path)
+
+    summary = (result / "summary.md").read_text()
+    assert exit_code == 0
+    assert "## Baseline results" in summary
+    assert "| context-8k |" in summary
+    assert "Authored intro." in summary
+    assert "Authored observations." in summary
+
+
+def test_main_check_mode_is_idempotent_after_results_generation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_baseline_experiment(tmp_path)
+    run_main(monkeypatch, tmp_path)
+
+    assert run_main(monkeypatch, tmp_path, "--check") == 0
+
+
+def test_main_check_mode_reports_stale_results_and_writes_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result = write_baseline_experiment(tmp_path)
+    run_main(monkeypatch, tmp_path)
+    document = sample_results()
+    document["cases"][0]["metrics"]["input_tokens"]["value"] = 9000
+    (result / "results.json").write_text(schema.dump_results(document))
+    before = (result / "summary.md").read_text()
+
+    exit_code = run_main(monkeypatch, tmp_path, "--check")
+
+    assert exit_code == 1
+    assert (result / "summary.md").read_text() == before
+
+
+def test_main_fails_when_results_exist_but_summary_has_no_markers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_baseline_experiment(tmp_path, summary="# 002 · 2026-01-02 — Baseline\n")
+
+    assert run_main(monkeypatch, tmp_path) == 2
+
+
+def test_main_fails_when_results_json_violates_contract(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result = write_baseline_experiment(tmp_path)
+    (result / "results.json").write_text('{"schema_version": 1}')
+
+    assert run_main(monkeypatch, tmp_path) == 2
+
+
+def test_main_fails_when_results_json_is_not_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result = write_baseline_experiment(tmp_path)
+    (result / "results.json").write_text("not json")
+
+    assert run_main(monkeypatch, tmp_path) == 2
+
+
+def test_main_validates_results_before_writing_any_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result = write_baseline_experiment(tmp_path)
+    (result / "results.json").write_text("{}")
+    original = configuration_path(tmp_path).read_text()
+
+    run_main(monkeypatch, tmp_path)
+
+    assert configuration_path(tmp_path).read_text() == original
+
+
+def test_render_links_results_data_when_experiment_has_results(tmp_path: Path) -> None:
+    result = write_baseline_experiment(tmp_path)
+
+    assert "[Results data](results.json)" in gen.render(result)
+
+
+def test_render_omits_results_data_link_without_results(tmp_path: Path) -> None:
+    recipe = write_recipe_tree(tmp_path)
+
+    assert "results.json" not in gen.render(recipe / "001-2026-01-01-test")

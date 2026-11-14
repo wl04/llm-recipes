@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Render configuration guides and recipe experiment indexes."""
+"""Render configuration guides, baseline result tables, and recipe experiment indexes."""
 
 import argparse
 import html
+import json
 import os
 import re
 import sys
@@ -11,12 +12,15 @@ from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 import yaml
+from baseline import report
 
 ROOT = Path(__file__).resolve().parents[1]
 START = "<!-- BEGIN GENERATED CONFIGURATIONS -->"
 END = "<!-- END GENERATED CONFIGURATIONS -->"
 INDEX_START = "<!-- BEGIN GENERATED EXPERIMENTS -->"
 INDEX_END = "<!-- END GENERATED EXPERIMENTS -->"
+RESULTS_START = "<!-- BEGIN GENERATED RESULTS -->"
+RESULTS_END = "<!-- END GENERATED RESULTS -->"
 
 
 def cell(value: object) -> str:
@@ -120,6 +124,8 @@ def render(result: Path) -> str:
     if (result.parent / "setup.md").is_file():
         links.append("[Build and run](../setup.md)")
     links.append("[Profile YAML](profile.yaml)")
+    if (result / "results.json").is_file():
+        links.append("[Results data](results.json)")
     lines += ["---", "", " · ".join(links), ""]
     return "\n".join(lines).rstrip() + "\n"
 
@@ -146,6 +152,26 @@ def update(result: Path) -> tuple[Path, str, str]:
     before, rest = original.split(START)
     _, after = rest.split(END)
     return path, original, before + START + "\n\n" + render(result) + "\n" + END + after
+
+
+def update_results(result: Path) -> tuple[Path, str, str]:
+    """Render the experiment's ``results.json`` into the marked block of its ``summary.md``."""
+    data_path = result / "results.json"
+    try:
+        document = json.loads(data_path.read_text())
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{data_path}: not valid JSON") from error
+    try:
+        block = report.render_results_block(document)
+    except ValueError as error:
+        raise ValueError(f"{data_path}: {error}") from error
+    path = result / "summary.md"
+    original = path.read_text()
+    if original.count(RESULTS_START) != 1 or original.count(RESULTS_END) != 1:
+        raise ValueError(f"{path}: expected exactly one pair of results markers")
+    before, rest = original.split(RESULTS_START)
+    _, after = rest.split(RESULTS_END)
+    return path, original, before + RESULTS_START + "\n\n" + block + "\n" + RESULTS_END + after
 
 
 def update_index(recipe: Path) -> tuple[Path, str, str]:
@@ -187,6 +213,9 @@ def main() -> int:
     try:
         profiles = sorted((ROOT / "recipes").glob("*/*/profile.yaml"))
         changes = [update(p.parent) for p in profiles]
+        changes += [
+            update_results(p.parent) for p in profiles if (p.parent / "results.json").is_file()
+        ]
         changes += [update_index(recipe) for recipe in sorted({p.parent.parent for p in profiles})]
     except (ValueError, OSError, yaml.YAMLError) as exc:
         print(exc, file=sys.stderr)

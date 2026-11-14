@@ -8,6 +8,8 @@ from urllib.parse import urlsplit
 import generate_configurations as gen
 import pytest
 import yaml
+from baseline import schema
+from baseline_data import sample_results
 from launcher import discover_recipes
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,3 +81,21 @@ def test_templates_generate_current_guides_for_new_recipe(tmp_path: Path, contai
     assert gen.update_index(recipe)[1] == gen.update_index(recipe)[2]
     assert ("[Build and run](../setup.md)" in rendered) == container
     assert "[Configuration](001-2026-11-13-check/configuration.md)" in rendered_index
+
+
+def test_baseline_summary_template_renders_results_and_is_index_compatible(tmp_path: Path) -> None:
+    recipe = tmp_path / "model-format-hardware-memory"
+    shutil.copytree(ROOT / "templates/recipe", recipe)
+    result = recipe / "002-2026-11-13-baseline"
+    (recipe / "NNN-YYYY-MM-DD-description").rename(result)
+    template = (recipe / "baseline-summary.md").read_text()
+    (result / "summary.md").write_text(template.replace("NNN · YYYY-MM-DD", "002 · 2026-11-13"))
+    (result / "results.json").write_text(schema.dump_results(sample_results()))
+
+    path, _, rendered = gen.update_results(result)
+    path.write_text(rendered)
+
+    assert gen.update_results(result)[1] == gen.update_results(result)[2]
+    assert "## Baseline results" in rendered
+    assert "## Observations" in rendered
+    assert gen.update_index(recipe)[2].count("002 · 2026-11-13 — Baseline") == 1

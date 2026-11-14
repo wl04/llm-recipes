@@ -19,6 +19,8 @@ recipes/<model-format-hardware-memory>/
 
 For another result, copy the three files from `templates/recipe/NNN-YYYY-MM-DD-description/` into a new numbered result folder. The existing result remains a snapshot of its configuration.
 
+A baseline experiment holds the output of the baseline runner instead of a hand-written statistics report. Name it `NNN-YYYY-MM-DD-baseline`, adding a suffix when its configuration differs from the recipe default. Copy `templates/recipe/baseline-summary.md` to `summary.md`, place the run's `results.json` beside it, and fill in `profile.yaml`. The generator renders `results.json` into the marked results block of `summary.md` and leaves your observations alone; `--check` fails when `results.json` has changed but the block has not been regenerated. See the [baseline contract](baseline.md) for the result format.
+
 Write a brief current-state description in `recipe.md` and keep its experiment markers. The generator builds its experiment table from report titles, ordered by folder number descending, and links to each configuration and summary. For container recipes, add a prominent setup link and a footer link to the shared runtime guide.
 
 For example, three experiments in one recipe can be:

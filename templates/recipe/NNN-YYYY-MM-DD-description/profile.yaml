@@ -13,8 +13,8 @@ os:
   kernel: null
   kernel_driver: null
 software:
-  harness: null
-  harness_version: null
+  harness: null # Baseline runs: llm-recipes baseline runner
+  harness_version: null # Baseline runs: full commit URL of this repository
   server: null
   server_version: null
   engine: null
@@ -33,6 +33,8 @@ model:
   artifacts: []
 settings:
   Speculative decoding: null # Effective settings used for this result
+  Workload suite: null # Baseline runs: the suite version from results.json
+  Request policy: null # Baseline runs: sampling and thinking settings of the requests
 
 # Display labels keyed by dotted YAML path.
 labels:
@@ -69,3 +71,5 @@ labels:
   model.artifacts: Model files
   settings: Inference settings
   settings.Speculative decoding: Speculative decoding
+  settings.Workload suite: Workload suite
+  settings.Request policy: Request policy

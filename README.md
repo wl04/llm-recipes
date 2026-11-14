@@ -29,6 +29,7 @@ recipes/<model-format-hardware-memory>/
     profile.yaml       # Hardware, software, model, and settings
     configuration.md   # Generated from this experiment's profile
     summary.md         # Workload, statistics, and observations
+    results.json       # Optional: baseline measurements rendered into summary.md
     assets/            # Optional screenshots used in the report
 ```
 
@@ -56,4 +57,4 @@ Different models or independently maintained quantizations have separate recipes
 
 ---
 
-[Adding recipes and results](docs/authoring.md) · [Launcher guide](docs/launcher.md) · [Pi setup](docs/clients/pi.md) · [Development](docs/project-instructions.md)
+[Adding recipes and results](docs/authoring.md) · [Launcher guide](docs/launcher.md) · [Baseline contract](docs/baseline.md) · [Pi setup](docs/clients/pi.md) · [Development](docs/project-instructions.md)
