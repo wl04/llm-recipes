@@ -37,7 +37,7 @@ The helper validates `config/tabby.yml` against the pinned TabbyAPI schema, veri
 
 ## Checks and clients
 
-The recipe setup guide supplies short and long generation commands with an explicit `--model`.
+Recipe setup guides use the [baseline runner](../baseline.md); these helpers remain for ad hoc checks with an explicit `--model`.
 
 `--base-url` defaults to `http://127.0.0.1:5000/v1`. The short check sends a coding prompt with greedy sampling and 128 output tokens. The long check uses the server tokenizer for approximately 130k input tokens and verifies the reported count; its fresh identifier avoids reuse of the previous prompt prefix. Default long-check context is 131,072. Use `--prompt-tokens`, `--context`, and `--output-tokens` to change it.
 

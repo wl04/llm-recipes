@@ -24,33 +24,16 @@ python3 scripts/launch.py logs coding --follow
 
 Include the API address and readiness check. Link `config/launch.json` and native settings. Explain any differences between the command and manifest defaults.
 
-## Checks
-
-Provide a Bash block that waits for readiness, displays the loaded model ID, and saves each supported check to a fresh directory. Use the runtime's actual endpoints and helpers; include tools, vision, and long context when supported. Keep input plus output within the configured context. For example:
-
-```bash
-(
-  set -euo pipefail
-  out=$(mktemp -d "${TMPDIR:-/tmp}/recipe-checks-$(date +%F)-XXXXXX")
-  echo "Saving checks to $out"
-  # Insert readiness and loaded-model commands for this API server.
-  # Insert each check with its explicit model ID, piping JSON stdout to:
-  #   tee "$out/<check>.json"
-)
-```
-
-Use stderr for helper progress so saved JSON remains parseable. Use the shared `assets/checks/amdgpu-top.png` as the vision input when supported, with an optional `--image` override; link [baseline reading details](../../docs/vision-check.md). The subshell keeps shell options local; `pipefail` propagates failures through `tee`. Link the runtime guide for check behavior and token limits. Outputs stay outside the repository; record the relevant statistics and observations in the experiment summary.
-
 ## Baseline
 
-Provide a copy-and-paste block that records one baseline for this recipe. The runner starts and stops the server itself, so tell the reader to stop other servers first and to run `sudo -v`. Add launch options only where the launch command above differs from the manifest defaults (for example `--context` and `--vision`). State whether thinking is disabled by default for this server (see the [baseline guide](../../docs/baseline.md#current-limits)). For example:
+Run from the repository root:
 
 ```bash
 sudo -v
 python3 scripts/run_baseline.py run <recipe>
 ```
 
-Link the [baseline guide](../../docs/baseline.md) for the phases, the output location, and how to publish a result.
+Add launch options only where the launch command above differs from the manifest defaults (for example `--context` and `--vision`). State whether thinking is disabled by default for this server (see the [baseline guide](../../docs/baseline.md#current-limits)) and link the guide for preconditions, the phases, the output location, and how to publish a result. Do not repeat the guide's instructions here. Do not link results from this page: the setup guide is read before any experiment exists.
 
 ## Pi
 

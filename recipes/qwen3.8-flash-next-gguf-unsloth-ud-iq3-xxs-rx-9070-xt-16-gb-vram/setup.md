@@ -4,7 +4,7 @@
 
 Build and check the shared [Strata runtime](../../docs/runtimes/strata.md#build-and-check).
 
-Allow at least **110 GB additional free disk space** for 83.63 GB of target shards, the projector, MTP preparation, and pack outputs. Expert weights total **46.84 GiB**, about **7.38 GB more RAM** than the ISTA setup. With 64 GB RAM, close memory-heavy applications and watch RAM, swap, and VRAM during loading and long-context checks. The [initial checks](001-2026-11-14-initial-checks/summary.md) completed text, tools, vision, and near-120K input generation.
+Allow at least **110 GB additional free disk space** for 83.63 GB of target shards, the projector, MTP preparation, and pack outputs. Expert weights total **46.84 GiB**, about **7.38 GB more RAM** than the ISTA setup. With 64 GB RAM, close memory-heavy applications and watch RAM, swap, and VRAM during loading and long-context checks.
 
 ## Prepare models
 
@@ -37,39 +37,16 @@ Readiness: `curl -f http://127.0.0.1:8080/health`. The API is `http://127.0.0.1:
 
 [Launch defaults](config/launch.json): 131,072 context tokens, MTP on, CPU vision. [Native settings](config/strata.json) contain sampling, cache, and image-token settings; restart after editing them.
 
-## Checks
-
-Run this Bash block from the repository root after startup. Vision uses the shared [amdgpu_top screenshot](../../assets/checks/amdgpu-top.png); use `--image /path/to/image.png` to check another image.
-
-```bash
-(
-  set -euo pipefail
-  out=$(mktemp -d "${TMPDIR:-/tmp}/strata-checks-$(date +%F)-XXXXXX")
-  check=runtimes/strata/scripts/check_generation.py
-  model=qwen3.8-flash-next-ud-iq3_xxs
-  echo "Saving checks to $out"
-
-  curl -fsS http://127.0.0.1:8080/health | tee "$out/health.txt"
-  curl -fsS http://127.0.0.1:8080/v1/models | python3 -m json.tool | tee "$out/models.json"
-  python3 "$check" text --model "$model" | tee "$out/text.json"
-  python3 "$check" tools --model "$model" | tee "$out/tools.json"
-  python3 "$check" vision --model "$model" | tee "$out/vision.json"
-  python3 "$check" long --model "$model" --input-tokens 120000 | tee "$out/long.json"
-)
-```
-
-Each helper checks the loaded model ID before generation. The block stops on failure and saves outputs in a fresh temporary directory. Keep any files needed for analysis before clearing temporary storage; summarize results in a numbered experiment. See [check behavior](../../docs/runtimes/strata.md#checks-and-clients) for sampling, token limits, and interpreting the output.
-
 ## Baseline
 
-Record one baseline for this recipe, ideally right after a reboot with nothing else running. Stop any server first (`python3 scripts/launch.py ps`, then `stop <instance>`) and close applications that use the GPU: the runner starts its own server (instance `baseline`), records the idle machine and the load, runs the suite, and stops the server again. `sudo -v` is needed because the launcher uses `sudo docker`. Run from the repository root:
+Run from the repository root:
 
 ```bash
 sudo -v
 python3 scripts/run_baseline.py run qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram
 ```
 
-Thinking is disabled by default for this server. Results and the server logs go to `~/Models/llm-recipes/baselines/<recipe>/<date-time>/`; the command prints the path. See the [baseline guide](../../docs/baseline.md) for the phases, the output files, and how to publish a result.
+Thinking is disabled by default for this server. Results and the server logs go to `~/Models/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
 
 ## Pi
 

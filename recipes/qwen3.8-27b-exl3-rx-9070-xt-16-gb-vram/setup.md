@@ -27,7 +27,7 @@ The optional third argument selects an external model directory, defaulting to `
 
 See [preparation and retry behavior](../../docs/runtimes/exllamav3-tabbyapi.md#preparation).
 
-## Launch and check
+## Launch
 
 ```bash
 python3 scripts/launch.py doctor qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
@@ -38,18 +38,13 @@ python3 scripts/launch.py start qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
 python3 scripts/launch.py logs coding --follow
 ```
 
-API: `http://127.0.0.1:5000/v1`; browser chat: `/ui/`; model status: `/ui/status`. Wait for model readiness, then run:
-
-```bash
-python3 runtimes/exllamav3-tabbyapi/scripts/check_generation.py --model qwen3.8-27b-exl3-3bpw
-python3 runtimes/exllamav3-tabbyapi/scripts/check_long_context.py --model qwen3.8-27b-exl3-3bpw
-```
+API: `http://127.0.0.1:5000/v1`; browser chat: `/ui/`; model status: `/ui/status`; the API serves `qwen3.8-27b-exl3-3bpw`.
 
 The manifest defaults to a 4,096-token context, drafting on and vision off; the launch command above overrides context and vision. Edit [tabby.yml](config/tabby.yml) for sampling and other native defaults. Thinking is enabled by default, and clients control effort and reasoning budget.
 
 ## Baseline
 
-Record one baseline for this recipe, ideally right after a reboot with nothing else running. Stop any server first (`python3 scripts/launch.py ps`, then `stop <instance>`) and close applications that use the GPU: the runner starts its own server (instance `baseline`), records the idle machine and the load, runs the suite, and stops the server again. `sudo -v` is needed because the launcher uses `sudo docker`. Run from the repository root:
+Run from the repository root:
 
 ```bash
 sudo -v
@@ -58,7 +53,7 @@ python3 scripts/run_baseline.py run qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
   --vision on
 ```
 
-The options match the launch command above, because the manifest defaults to a 4,096-token context with vision off. Thinking is enabled by default on this server and the baseline does not yet know TabbyAPI's field for disabling it: the measured output then includes reasoning, and `--request-extra '<json>'` can supply the field. Results and the server logs go to `~/Models/llm-recipes/baselines/<recipe>/<date-time>/`; the command prints the path. See the [baseline guide](../../docs/baseline.md) for the phases, the output files, and how to publish a result.
+The options match the launch command above, because the manifest defaults to a 4,096-token context with vision off. Thinking is enabled by default on this server and the baseline does not yet know TabbyAPI's field for disabling it: the measured output then includes reasoning, and `--request-extra '<json>'` can supply the field. Results and the server logs go to `~/Models/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
 
 ## Pi
 
