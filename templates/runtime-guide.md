@@ -14,9 +14,9 @@ Describe the preparation helper, model lock schema, verification, resumability, 
 
 Describe how `/runtime/scripts/serve.py --recipe /recipe` reads native settings, validates prepared files, and starts the API server. Document engine-specific overrides, GPU selection, file logs, and retention. Link the launcher guide for common mounts and lifecycle behavior.
 
-## Checks and clients
+## Baseline and clients
 
-Describe the reusable generation checks and their required model argument. Describe engine-specific reasoning support. Link to shared Pi setup for installation and metadata alignment; recipe-specific provider configuration belongs in each recipe.
+Describe how the [baseline runner](../baseline.md) uses this server: readiness, request fields (token limit, thinking control), the token-count route, usage and cached-token reporting, and where engine timings come from. Mention any ad hoc check helpers in one line. Describe engine-specific reasoning support. Link to shared Pi setup for installation and metadata alignment; recipe-specific provider configuration belongs in each recipe.
 
 ---
 

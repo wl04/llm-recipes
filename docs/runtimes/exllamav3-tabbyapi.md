@@ -35,13 +35,11 @@ The helper validates `config/tabby.yml` against the pinned TabbyAPI schema, veri
 
 `--vision on|off` selects GPU-resident vision, `--draft on|off` controls the configured draft, and `--context` sets sequence and cache capacity. Native sampling values remain in the recipe. Entries with `force: false` supply defaults; explicit request values take precedence. The default host API port is 5000; the UI is `/ui/` and status is `/ui/status`.
 
-## Checks and clients
+## Baseline and clients
 
-Recipe setup guides use the [baseline runner](../baseline.md); these helpers remain for ad hoc checks with an explicit `--model`.
+The [baseline runner](../baseline.md) is the way to check and measure a TabbyAPI recipe; the recipe's setup guide has the command. TabbyAPI has not been baselined yet, so these details are still to be recorded against a real run: whether `/v1/models` lists the model only once it is loaded (the runner treats a listed model as ready), whether streamed usage and cached tokens are reported, the token-count route, and the request field that disables thinking, which `--request-extra` supplies meanwhile. Engine timings are unavailable for this server until its log format is recorded.
 
-`--base-url` defaults to `http://127.0.0.1:5000/v1`. The short check sends a coding prompt with greedy sampling and 128 output tokens. The long check uses the server tokenizer for approximately 130k input tokens and verifies the reported count; its fresh identifier avoids reuse of the previous prompt prefix. Default long-check context is 131,072. Use `--prompt-tokens`, `--context`, and `--output-tokens` to change it.
-
-Record cached tokens alongside prefill measurements. First requests can include compilation overhead. Both checks print output, timing, and usage. The long timeout is one hour; a timed-out server request may still be running.
+`check_generation.py` and `check_long_context.py` remain for quick manual checks with an explicit `--model`. `--base-url` defaults to `http://127.0.0.1:5000/v1`. The short check sends a coding prompt with greedy sampling and 128 output tokens. The long check uses the server tokenizer for approximately 130k input tokens and verifies the reported count; its fresh identifier avoids reuse of the previous prompt prefix. The default long-check context is 131,072; `--prompt-tokens`, `--context`, and `--output-tokens` change it. Both print output, timing, and usage, and the long timeout is one hour; a timed-out server request may still be running.
 
 Use [Pi setup](../clients/pi.md) and the recipe's provider configuration.
 

@@ -42,11 +42,19 @@ The [launcher](../launcher.md#shared-runtimes) provides the mounts and entry poi
 
 The serving helper checks the completion receipt against the selected model and runtime locks, checks all shard sizes and required artifacts, selects the RX 9070 XT, and creates a temporary native configuration. `--context`, `--draft`, and `--vision cpu|off` override that recipe's defaults. The GPU-resident KV setting is capped at 32,768 cells by this integration. The API is published on host loopback; offline mode disables external fetching. Readiness is `/health`.
 
-`server.log` retains API console output; `engine.log` contains engine and vision messages. Both append in the selected host log directory and survive container removal. Rotate them while the server is stopped. The wrapper forwards stop signals and preserves the server exit status.
+`server.log` retains API console output; `engine.log` contains engine and vision messages. Both append in the selected host log directory and survive container removal. Rotate them while the server is stopped. A baseline run points them at its own output directory. The wrapper forwards stop signals and preserves the server exit status.
 
-## Checks and clients
+## Baseline and clients
 
-Use `runtimes/strata/scripts/check_generation.py` with `text`, `tools`, `vision`, or `long`, and an explicit `--model` matching the selected recipe. `--base-url` defaults to `http://127.0.0.1:8080`. Vision defaults to the shared [amdgpu_top screenshot](../../assets/checks/amdgpu-top.png), resolved relative to the script so it works from any directory. Use `--image` for another PNG or JPEG. See [baseline reading details](../vision-check.md). The checks use temperature zero and disable thinking. The long check counts input through the Anthropic endpoint before generation; keep input plus output below the configured context. The long check reserves 128 output tokens by default. Inspect image answers against the input screenshot; record measured results using the [authoring guide](../authoring.md). Recipe setup guides use the [baseline runner](../baseline.md) instead; these helpers remain for ad hoc checks. Helpers write result JSON to stdout and progress to stderr. The API responses for streamed text and Anthropic long context do not provide separate prefill/decode timings in the saved output; engine logs can supply additional measurements.
+The [baseline runner](../baseline.md) is the way to check and measure a Strata recipe; the recipe's setup guide has the command. It relies on this server as follows:
+
+- **Readiness:** `/health` answers once the server is up; the runner polls `/v1/models` until a model is listed, then checks that it is the expected one.
+- **Requests:** OpenAI-compatible chat completions, streamed with `stream_options.include_usage`, limited with `max_completion_tokens`, and with thinking disabled through `reasoning_effort: none`.
+- **Prompt sizing:** `POST /v1/messages/count_tokens` counts a prompt without running it, so no measured prompt warms the cache. Its count ran about 40 tokens above the usage the server reports at 8K input; the reports use the server's usage.
+- **Cache:** usage reports cached input tokens.
+- **Engine timings:** the engine log holds one line per completion, such as `strata serve: prompt 24 tokens = 0 reused + 24 read in 315 ms (76.3 tok/s), 120 generated in 1233 ms (97.3 tok/s), drafts accepted 86 of 94, 1 checkpoints`. The runner keeps the log in the run's `server-logs/` and matches the lines to its requests to report engine prefill and decode speed and draft acceptance.
+
+`runtimes/strata/scripts/check_generation.py` (`text`, `tools`, `vision`, `long`) remains for quick manual checks against a running server; it needs an explicit `--model` and defaults to `http://127.0.0.1:8080`. See its `--help`.
 
 Pi uses OpenAI-compatible chat completions. The frontend supports streaming, tool calls/results, embedded images, and `max_completion_tokens`. `low` and `medium` reasoning map directly; `high` and `xhigh` map to the model's `xhigh`. `off: none` disables thinking; `minimal` also disables it in this revision. See [Pi setup](../clients/pi.md) for installation and client configuration.
 
