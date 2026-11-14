@@ -17,6 +17,8 @@ CASE_COLUMNS = (
 RESOURCE_COLUMNS = (
     ("cpu_cores_avg", "CPU (cores)"),
     ("ram_peak_gib", "Peak RAM (GiB)"),
+    ("ram_anon_peak_gib", "Peak anon RAM (GiB)"),
+    ("ram_file_peak_gib", "Peak file cache (GiB)"),
     ("system_available_min_gib", "Min available RAM (GiB)"),
     ("vram_peak_gib", "Peak VRAM (GiB)"),
     ("gtt_peak_gib", "Peak GTT (GiB)"),

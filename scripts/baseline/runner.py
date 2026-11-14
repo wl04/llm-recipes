@@ -95,7 +95,7 @@ class Runner:
         self._cleanup = cleanup
         self._model = config.model or ""
         self._chars_per_token = workloads.INITIAL_CHARS_PER_TOKEN
-        self._calibrated = False
+        self._count_failed = False
         self._problems: list[str] = []
         self._meta: dict[str, Any] = self._initial_meta()
 
@@ -125,7 +125,6 @@ class Runner:
                     "".join(f"{d.name}\n{d.text}" for d in config.corpus).encode()
                 ).hexdigest(),
                 "chars_per_token": workloads.INITIAL_CHARS_PER_TOKEN,
-                "chars_per_token_source": "initial",
             },
         }
         for key, value in config.meta_extra.items():
@@ -390,17 +389,56 @@ class Runner:
             return None if result is None or not result.text else result
         return result
 
+    def _count_tokens(self, text: str) -> int | None:
+        """Count a prompt with the server's tokenizer route, without running the prompt."""
+        route = workloads.TOKEN_COUNT_ROUTE.get(self._config.kind)
+        if route is None or self._count_failed:
+            return None
+        body = {
+            "model": self._model,
+            "max_tokens": 1,
+            "messages": [{"role": "user", "content": text}],
+        }
+        try:
+            reply = api.post_json(
+                self._config.base_url,
+                route,
+                body,
+                timeout=self._config.suite.request_timeout_s,
+                opener=self._opener,
+            )
+            count = reply["input_tokens"]
+            if type(count) is not int or count < 1:
+                raise ValueError("input_tokens is not a positive integer")
+        except (api.ApiError, KeyError, TypeError, ValueError) as error:
+            self._count_failed = True
+            self._progress(f"Token counting is unavailable ({error}); calibrating from usage")
+            self._meta["workload"]["token_counting"] = "calibration from reported usage"
+            self._save_meta()
+            return None
+        self._meta["workload"]["token_counting"] = f"server route {route}"
+        return count
+
     def _prompt_request(
         self, *, phase: str, case: str, run: int, nonce: str, variant: int, tokens: int,
         task: str, max_tokens: int, **extra: Any,
     ) -> api.StreamResult | None:  # fmt: skip
-        prompt = workloads.build_prompt(
-            self._config.corpus,
-            nonce=nonce,
-            variant=variant,
-            target_chars=workloads.target_chars(tokens, self._chars_per_token),
-            task=task,
+        def build(chars: int) -> workloads.Prompt:
+            return workloads.build_prompt(
+                self._config.corpus, nonce=nonce, variant=variant, target_chars=chars, task=task
+            )
+
+        prompt, counted = workloads.fit_prompt(
+            build,
+            lambda candidate: self._count_tokens(candidate.text),
+            tokens,
+            initial_chars=workloads.target_chars(tokens, self._chars_per_token),
         )
+        if counted is not None and counted + max_tokens > self._config.context_tokens:
+            raise ValueError(
+                f"Counted {counted:,} input plus {max_tokens:,} output tokens does not fit "
+                f"the {self._config.context_tokens:,}-token context"
+            )
         result = self._stream_request(
             phase=phase,
             case=case,
@@ -408,19 +446,16 @@ class Runner:
             messages=[{"role": "user", "content": prompt.text}],
             max_tokens=max_tokens,
             requested_input_tokens=tokens,
+            counted_input_tokens=counted,
             chars=prompt.chars,
             content_sha256=prompt.content_sha256,
             prompt_sha256=prompt.prompt_sha256,
             **extra,
         )
-        if result is not None and not self._calibrated and result.usage:
-            used = result.usage.prompt_tokens
-            if used:
-                self._chars_per_token = workloads.calibrate(prompt.chars, used)
-                self._calibrated = True
-                self._meta["workload"]["chars_per_token"] = round(self._chars_per_token, 4)
-                self._meta["workload"]["chars_per_token_source"] = "usage"
-                self._save_meta()
+        if counted is None and result is not None and result.usage and result.usage.prompt_tokens:
+            self._chars_per_token = workloads.calibrate(prompt.chars, result.usage.prompt_tokens)
+            self._meta["workload"]["chars_per_token"] = round(self._chars_per_token, 4)
+            self._save_meta()
         return result
 
     def _warmup(self) -> None:

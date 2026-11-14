@@ -41,6 +41,8 @@ class FakeServer:
         self.chars_per_token = chars_per_token
         self.behave: Callable[[dict[str, Any]], str | None] = lambda payload: None
         self.release = threading.Event()
+        self.counts_tokens = True
+        self.count_requests: list[dict[str, Any]] = []
         self.vision_answer: dict[str, Any] = dict(VISION_ANSWER)
         self.requests: list[dict[str, Any]] = []
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), self._handler())
@@ -90,6 +92,9 @@ class FakeServer:
             def do_POST(self) -> None:
                 length = int(self.headers.get("Content-Length", 0))
                 payload = json.loads(self.rfile.read(length))
+                if self.path == "/v1/messages/count_tokens":
+                    self._count(payload)
+                    return
                 outer.requests.append(payload)
                 behavior = outer.behave(payload)
                 if behavior == "hang":
@@ -99,6 +104,14 @@ class FakeServer:
                     self._json(500, {"error": {"message": "injected failure"}})
                     return
                 self._chat(payload, truncate=behavior == "truncate")
+
+            def _count(self, payload: dict[str, Any]) -> None:
+                if not outer.counts_tokens:
+                    self._json(404, {"error": {"message": "no tokenizer route"}})
+                    return
+                outer.count_requests.append(payload)
+                chars = sum(len(str(m.get("content") or "")) for m in payload["messages"])
+                self._json(200, {"input_tokens": max(1, int(chars / outer.chars_per_token))})
 
             def _chat(self, payload: dict[str, Any], truncate: bool = False) -> None:
                 messages = payload["messages"]

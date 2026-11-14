@@ -218,7 +218,7 @@ Implementation notes (stage 2, implemented):
 
 - The command is `scripts/run_baseline.py`; a `scripts/baseline.py` would collide with the `scripts/baseline/` package.
 - The long contexts are built from the interpreter's standard-library source, which is PSF-licensed and needs no checked-in corpus. The Python version is part of what makes runs comparable.
-- The first warmup request is a roughly 1K-token code-review prompt whose reported token count calibrates prompt length for the later cases, so no measured prompt is also used for counting.
+- Prompts are fitted to the token target with the server's tokenizer route (Strata `/v1/messages/count_tokens`), which counts without running the prompt, so no measured prompt warms the cache. Servers without a known route fall back to calibrating from the previous request's reported tokens. The first Unsloth pilot showed why: characters per token ranged from 2.5 to 4.5 across the corpus, so a single early calibration put the 120K prompt at 141K tokens.
 - Thinking is disabled by default only for Strata, the one server with a verified field. Others need `--request-extra`, and the result records whether the default applied.
 - Engine-reported timings are not parsed yet; those metrics are unavailable with that reason.
 - Per-process VRAM comes from one `amdgpu_top` child that the runner always stops; device-wide figures come from sysfs.

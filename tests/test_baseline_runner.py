@@ -149,6 +149,46 @@ def test_run_calibrates_prompt_length_from_the_servers_reported_tokens(tmp_path:
     assert 170 <= tokens <= 215
 
 
+def test_run_fits_every_probe_prompt_to_the_target_with_the_servers_tokenizer(
+    tmp_path: Path,
+) -> None:
+    with FakeServer(chars_per_token=3.3) as server:
+        _, raw, _ = execute(tmp_path, server)
+
+    probes = [r for r in raw.requests if r.get("case") == "context-8k"]
+    assert len(probes) == 3
+    assert all(190 <= r["counted_input_tokens"] <= 200 for r in probes)
+    assert all(190 <= r["usage"]["prompt_tokens"] <= 200 for r in probes)
+    assert server.count_requests
+    assert raw.meta["workload"]["token_counting"].startswith("server route")
+
+
+def test_run_falls_back_to_calibration_when_the_tokenizer_route_fails(tmp_path: Path) -> None:
+    with FakeServer(chars_per_token=4.0) as server:
+        server.counts_tokens = False
+        code, raw, _ = execute(tmp_path, server)
+
+    document = results_of(raw)
+    later = case_of(document, "context-a")["metrics"]["input_tokens"]["value"]
+    assert code == ExitCode.OK
+    assert raw.meta["workload"]["token_counting"] == "calibration from reported usage"
+    assert 340 <= later <= 420
+
+
+def test_run_skips_a_case_when_counted_input_plus_output_exceeds_the_context(
+    tmp_path: Path,
+) -> None:
+    suite = SuiteConfig(
+        **{**SUITE.__dict__, "contexts": (("context-tight", 400),), "context_output": 1700}
+    )
+    with FakeServer() as server:
+        _, raw, _ = execute(tmp_path, server, suite=suite)
+
+    case = case_of(results_of(raw), "context-tight")
+    assert case["status"] == "skipped"
+    assert "does not fit" in case["note"]
+
+
 def test_run_uses_distinct_content_for_every_request(tmp_path: Path) -> None:
     with FakeServer() as server:
         execute(tmp_path, server)

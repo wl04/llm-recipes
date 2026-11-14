@@ -345,3 +345,23 @@ def test_boot_state_includes_idle_reference_measured_before_requests() -> None:
     document = results([request("c")], samples, boot=boot, idle={"start_s": 0.0, "end_s": 2.0})
 
     assert document["boot"]["metrics"]["idle_vram_peak_gib"]["value"] == 1.0
+
+
+def test_resources_report_anonymous_and_file_memory_peaks_inside_requests() -> None:
+    samples = [
+        sample(2.0, mem_bytes=5 * GIB, mem_anon_bytes=GIB, mem_file_bytes=4 * GIB),
+        sample(3.0, mem_bytes=6 * GIB, mem_anon_bytes=2 * GIB, mem_file_bytes=4 * GIB),
+    ]
+
+    metrics = resources_of(results(requests_between(1.5, 3.5), samples))
+
+    assert metrics["ram_anon_peak_gib"]["value"] == 2.0
+    assert metrics["ram_file_peak_gib"]["value"] == 4.0
+
+
+def test_resources_omit_cases_where_no_request_succeeded() -> None:
+    failed = request("bad", status="failed", error="HTTP 400", usage=None, first_output_s=None)
+
+    document = results([request("c"), failed], [sample(12.0, mem_bytes=GIB)])
+
+    assert [entry["case"] for entry in document["resources"]] == ["c"]

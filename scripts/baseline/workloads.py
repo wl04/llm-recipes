@@ -2,6 +2,7 @@
 
 import hashlib
 import sysconfig
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -12,10 +13,14 @@ MIN_CHARS_PER_TOKEN, MAX_CHARS_PER_TOKEN = 1.5, 8.0
 INITIAL_CHARS_PER_TOKEN = 3.0
 LENGTH_MARGIN = 0.97
 VARIANT_STRIDE = 7
+FIT_TOLERANCE = 0.03
+FIT_ROUNDS = 8
 
 # Verified field names; other servers need their own settings supplied with --request-extra.
 THINKING_OFF: dict[str, dict[str, Any]] = {"strata": {"reasoning_effort": "none"}}
 TOKEN_LIMIT_FIELD = {"strata": "max_completion_tokens"}
+# Servers with a tokenizer route that counts a prompt without running it.
+TOKEN_COUNT_ROUTE = {"strata": "/v1/messages/count_tokens"}
 
 REVIEW_TASK = (
     "Summarize what each file above is responsible for, then list three potential bugs or "
@@ -189,6 +194,44 @@ def build_prompt(
     text = f"{header}{body[:body_chars]}{tail}"
     content = hashlib.sha256((body[:body_chars] + tail).encode()).hexdigest()
     return Prompt(text, len(text), content, hashlib.sha256(text.encode()).hexdigest())
+
+
+def fit_prompt(
+    build: Callable[[int], Prompt],
+    count: Callable[[Prompt], int | None],
+    target_tokens: int,
+    *,
+    initial_chars: int,
+) -> tuple[Prompt, int | None]:
+    """Resize a prompt until its counted tokens land just under ``target_tokens``.
+
+    Characters per token vary with content, so a ratio measured on one prompt does not carry over.
+    Returns the prompt and its counted tokens, or the first prompt and ``None`` when ``count``
+    cannot count. If no round lands under the target, the last prompt is returned and the caller
+    must check its count.
+
+    Raises:
+        ValueError: ``build`` cannot make a prompt of the requested size.
+    """
+    chars = initial_chars
+    best: tuple[Prompt, int] | None = None
+    last: tuple[Prompt, int] | None = None
+    for _ in range(FIT_ROUNDS):
+        prompt = build(chars)
+        tokens = count(prompt)
+        if tokens is None:
+            return prompt, None
+        last = (prompt, tokens)
+        if tokens <= target_tokens:
+            if best is None or tokens > best[1]:
+                best = (prompt, tokens)
+            if tokens >= target_tokens * (1 - FIT_TOLERANCE):
+                return prompt, tokens
+        chars = max(1, int(chars * target_tokens * (1 - FIT_TOLERANCE / 2) / max(tokens, 1)))
+    if best is not None:
+        return best
+    assert last is not None
+    return last
 
 
 def calibrate(prompt_chars: int, prompt_tokens: int) -> float:

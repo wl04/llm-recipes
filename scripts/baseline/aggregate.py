@@ -210,6 +210,8 @@ def _resource_metrics(
     return {
         "cpu_cores_avg": delta("cpu_usec", "cores", cpu, True, 1_000_000),
         "ram_peak_gib": peak(memory_key, GIB, "GiB", memory, max),
+        "ram_anon_peak_gib": peak("mem_anon_bytes", GIB, "GiB", f"{memory} anon", max),
+        "ram_file_peak_gib": peak("mem_file_bytes", GIB, "GiB", f"{memory} file cache", max),
         "system_available_min_gib": peak(
             "sys_available_bytes", GIB, "GiB", "/proc/meminfo MemAvailable", min
         ),
@@ -293,7 +295,7 @@ def build_results(raw: RawRun) -> dict[str, Any]:
         intervals = [
             (r["started_s"], r["ended_s"])
             for r in records
-            if r.get("status") != "skipped" and "started_s" in r and "ended_s" in r
+            if r.get("status") == "ok" and "started_s" in r and "ended_s" in r
         ]
         if intervals:
             metrics = _resource_metrics(samples, intervals, target, "requests")

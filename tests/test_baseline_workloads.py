@@ -178,3 +178,41 @@ def test_default_suite_matches_the_documented_matrix() -> None:
     assert config.noise_runs == 5
     assert config.sustained_output == 2048
     assert config.sample_interval_s == 0.5
+
+
+def irregular_count(prompt: workloads.Prompt) -> int:
+    """A tokenizer stand-in whose chars-per-token ratio drifts with the prompt length."""
+    return int(prompt.chars / (3.0 + (prompt.chars % 17) / 80))
+
+
+def fit(target: int, count: object, initial: int = 3000) -> tuple[workloads.Prompt, int | None]:
+    docs = corpus(60, 6000)
+    return workloads.fit_prompt(
+        lambda chars: workloads.build_prompt(
+            docs, nonce="n", variant=1, target_chars=chars, task="T"
+        ),
+        count,  # type: ignore[arg-type]
+        target,
+        initial_chars=initial,
+    )
+
+
+@pytest.mark.parametrize("target", [500, 2000, 9000])
+def test_fit_prompt_lands_just_under_the_target_token_count(target: int) -> None:
+    _, tokens = fit(target, irregular_count)
+
+    assert tokens is not None
+    assert 0.9 * target <= tokens <= target
+
+
+def test_fit_prompt_returns_unfitted_prompt_when_server_cannot_count() -> None:
+    prompt, tokens = fit(1000, lambda prompt: None, initial=4000)
+
+    assert tokens is None
+    assert prompt.chars == 4000
+
+
+def test_fit_prompt_never_returns_a_prompt_over_the_target_when_it_can_count() -> None:
+    _, tokens = fit(700, lambda prompt: prompt.chars // 3 + 120)
+
+    assert tokens is not None and tokens <= 700
