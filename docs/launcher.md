@@ -20,6 +20,23 @@ Replace `<recipe>` with a directory identifier from `list`. Without `--name`, th
 
 `ps` discovers running instances through Docker labels. `status` reports container state; use the recipe's readiness endpoint or status page to confirm the model has loaded. `status`, `logs`, and `stop` select an instance independently of recipe discovery.
 
+## Diagnose a recipe
+
+```bash
+python3 scripts/launch.py doctor <recipe> --models "$HOME/Models/llm-recipes"
+```
+
+`doctor` reads the recipe defaults and reports `PASS`, `WARN`, `FAIL`, or `SKIP` for:
+
+- Docker daemon access and local image availability.
+- AMD character devices (`/dev/kfd` and `/dev/dri/renderD*`).
+- Native model paths and API port, plus the checked-in Pi model metadata.
+- Preparation receipts, required artifacts, and Strata shard sizes.
+
+It returns 1 if a check fails and 0 otherwise; warnings require review. Docker inspection uses `sudo -n` with a 15-second timeout per command. If sudo authentication has expired, run `sudo -v` yourself and retry. TabbyAPI configuration inspection needs PyYAML; use `.venv/bin/python` after [development setup](project-instructions.md#development-dependencies-and-checks) if the host Python lacks it.
+
+The command creates no directories, downloads nothing, and starts no containers. It checks recipe defaults, not a running instance or launch overrides. It does not inspect your installed Pi settings, rehash weights, verify the image's embedded build lock, execute GPU kernels, or estimate whether the model fits memory. Follow the runtime image check and recipe generation checks for workstation validation.
+
 ## Foreground and background execution
 
 | Command | Behavior | Ctrl+C |

@@ -30,6 +30,8 @@ See [preparation and retry behavior](../../docs/runtimes/exllamav3-tabbyapi.md#p
 ## Launch and check
 
 ```bash
+python3 scripts/launch.py doctor qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
+  --models "$HOME/Models/llm-recipes"
 python3 scripts/launch.py start qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
   --name coding --detach --draft on --vision on --context 131072 \
   --models "$HOME/Models/llm-recipes"

@@ -23,6 +23,7 @@ files = [
     "scripts/generate_configurations.py",
     "scripts/launch.py",
     "scripts/launcher.py",
+    "scripts/doctor.py",
     "runtimes/exllamav3-tabbyapi/scripts/gpu.py",
     "runtimes/exllamav3-tabbyapi/scripts/serve.py",
     "runtimes/exllamav3-tabbyapi/scripts/prepare_models.py",

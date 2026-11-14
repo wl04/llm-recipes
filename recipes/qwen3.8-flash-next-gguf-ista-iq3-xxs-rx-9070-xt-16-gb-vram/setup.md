@@ -23,6 +23,8 @@ The [model lock](config/models.lock.json) selects two target shards, a BF16 CPU 
 Run one model instance at a time on the RX 9070 XT workstation. Stop the other recipe's instance before switching, then:
 
 ```bash
+python3 scripts/launch.py doctor qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram \
+  --models "$HOME/Models/llm-recipes"
 python3 scripts/launch.py start qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram \
   --name strata-coding --detach \
   --draft on --vision cpu --context 131072 \

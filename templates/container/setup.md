@@ -12,6 +12,8 @@ Provide the runtime preparation command with this recipe's directory and externa
 
 ## Launch
 
+After preparation, check the recipe with `python3 scripts/launch.py doctor <recipe> --models "$HOME/Models/llm-recipes"`. Link to [diagnostics](../../docs/launcher.md#diagnose-a-recipe) for check scope and troubleshooting.
+
 Run from the repository root:
 
 ```bash

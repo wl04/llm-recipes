@@ -6,6 +6,7 @@ import os
 import shlex
 from pathlib import Path
 
+from doctor import diagnose
 from launcher import (
     LaunchOptions,
     discover_recipes,
@@ -26,6 +27,9 @@ def parser() -> argparse.ArgumentParser:
     commands = cli.add_subparsers(dest="action", required=True)
     commands.add_parser("list", help="list available recipes")
     commands.add_parser("ps", help="list running launcher instances")
+    doctor = commands.add_parser("doctor", help="read-only host and recipe diagnostics")
+    doctor.add_argument("recipe", help="recipe directory name; see list")
+    doctor.add_argument("--models", type=Path, default=Path.home() / "Models/llm-recipes")
     start = commands.add_parser("start")
     start.add_argument("recipe", help="recipe directory name; see list")
     start.add_argument("--name", help="instance name (default: recipe directory name)")
@@ -56,7 +60,7 @@ def main() -> int:
     try:
         if args.action == "ps":
             return run_command(running_command())
-        if args.action != "start" and args.action != "list":
+        if args.action not in ("start", "list", "doctor"):
             return run_command(
                 lifecycle_command(
                     args.action,
@@ -73,6 +77,15 @@ def main() -> int:
         if args.recipe not in recipes:
             raise ValueError(f"Unknown recipe: {args.recipe}. Use 'list' to see available recipes.")
         recipe = recipes[args.recipe]
+        if args.action == "doctor":
+            findings = diagnose(recipe, args.models.expanduser().resolve())
+            for item in findings:
+                print(f"{item.status}: {item.name}: {item.detail}")
+            print(
+                "Checks use recipe defaults. No GPU execution, image build-pin inspection, "
+                "or weight rehashing performed."
+            )
+            return int(any(item.status == "FAIL" for item in findings))
         name = args.name if args.name is not None else recipe.name
         state = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
         options = LaunchOptions(

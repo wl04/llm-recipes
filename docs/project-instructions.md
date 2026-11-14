@@ -5,6 +5,7 @@
 - `recipes/<recipe>/` contains a recipe entry page (`recipe.md`) and numbered experiment folders (`NNN-YYYY-MM-DD-description`) with `profile.yaml`, generated `configuration.md`, and authored `summary.md`.
 - Container recipes include `setup.md` and `config/` (runtime selection, native settings, model locks, Pi metadata). Shared `runtimes/<runtime>/` directories own `runtime.json`, `container/` build inputs, and `scripts/` for preparation, serving, and checks. Runtime guides live under `docs/runtimes/`.
 - `scripts/launch.py` provides the launcher CLI. `scripts/launcher.py` provides recipe discovery, validation, command planning, and process operations shared by interfaces.
+- `scripts/doctor.py` provides read-only host/configuration/preparation diagnostics for `launch.py doctor`. Docker inspection is bounded and noninteractive; diagnostics must not launch containers or mutate model files.
 - `scripts/generate_configurations.py` generates configuration guides and recipe experiment indexes from `recipes/*/*/profile.yaml`. Its `--check` mode leaves files untouched and exits with code 1 when generated content is outdated.
 - `templates/recipe/` contains recipe and experiment templates. `templates/container/` contains container recipe setup and launch-manifest templates; `templates/runtime/` and `templates/runtime-guide.md` describe shared runtimes. [Authoring guide](authoring.md) describes how to use them.
 - `tests/` contains CPU-only pytest tests that run without Docker, GPUs, or model-weight downloads.
