@@ -20,8 +20,14 @@ RESOURCE_COLUMNS = (
     ("system_available_min_gib", "Min available RAM (GiB)"),
     ("vram_peak_gib", "Peak VRAM (GiB)"),
     ("gtt_peak_gib", "Peak GTT (GiB)"),
+    ("proc_vram_peak_gib", "Peak process VRAM (GiB)"),
+    ("gpu_busy_avg_percent", "GPU busy avg (%)"),
+    ("gpu_power_avg_w", "GPU power avg (W)"),
+    ("gpu_temp_max_c", "GPU temp max (°C)"),
     ("swap_in_pages", "Swap in (pages)"),
     ("swap_out_pages", "Swap out (pages)"),
+    ("sample_count", "Samples"),
+    ("sample_max_gap_s", "Max sample gap (s)"),
 )
 NOISE_LABELS = (
     ("noise_first_output_spread", "first output"),
@@ -40,7 +46,9 @@ def _number(metric: dict[str, Any] | None) -> str:
     value = metric["value"]
     if metric.get("unit") == "ratio":
         return f"{value:.1%}"
-    return f"{value:,}" if isinstance(value, int) else f"{value:,.2f}"
+    if isinstance(value, int):
+        return f"{value:,}"
+    return f"{value:.3f}" if abs(value) < 1 else f"{value:,.2f}"
 
 
 def _table(header: list[str], rows: list[list[str]]) -> list[str]:

@@ -143,3 +143,10 @@ def test_render_results_block_renders_every_metric_the_runner_may_emit() -> None
     text = render(document)
 
     assert "Cached input" in text
+
+
+def test_render_results_block_keeps_precision_for_sub_second_latency() -> None:
+    document = sample_results()
+    document["cases"][0]["metrics"]["first_output_s"] = schema.measured(0.0123, "s", "client")
+
+    assert "0.012" in row_of(render(document), "context-8k")
