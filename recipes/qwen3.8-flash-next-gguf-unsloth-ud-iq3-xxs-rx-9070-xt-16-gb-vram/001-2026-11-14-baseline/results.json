@@ -86,6 +86,11 @@
           "unit": "s",
           "source": "client monotonic clock"
         },
+        "ram_used_peak_gib": {
+          "value": 2.588619,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
+        },
         "system_cpu_busy_percent": {
           "value": 0.343779,
           "unit": "%",
@@ -146,6 +151,11 @@
           "value": 24.304403,
           "unit": "s",
           "source": "client monotonic clock"
+        },
+        "ram_used_peak_gib": {
+          "value": 53.644024,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "system_cpu_busy_percent": {
           "value": 3.140402,
@@ -238,6 +248,11 @@
           "unit": "s",
           "source": "client monotonic clock"
         },
+        "ram_used_peak_gib": {
+          "value": 53.652245,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
+        },
         "system_cpu_busy_percent": {
           "value": 0.324492,
           "unit": "%",
@@ -323,6 +338,11 @@
           "value": 10.000115,
           "unit": "s",
           "source": "client monotonic clock"
+        },
+        "ram_used_peak_gib": {
+          "value": 53.640587,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "system_cpu_busy_percent": {
           "value": 0.669716,
@@ -410,6 +430,11 @@
           "unit": "s",
           "source": "client monotonic clock"
         },
+        "ram_used_peak_gib": {
+          "value": 55.545624,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
+        },
         "system_cpu_busy_percent": {
           "value": 9.34747,
           "unit": "%",
@@ -475,6 +500,11 @@
           "value": 10.000401,
           "unit": "s",
           "source": "client monotonic clock"
+        },
+        "ram_used_peak_gib": {
+          "value": 2.547573,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "system_cpu_busy_percent": {
           "value": 0.46544,
@@ -995,6 +1025,11 @@
           "unit": "GiB",
           "source": "cgroup memory.current"
         },
+        "ram_used_peak_gib": {
+          "value": 55.084961,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
+        },
         "ram_anon_peak_gib": {
           "value": 49.831913,
           "unit": "GiB",
@@ -1079,6 +1114,11 @@
           "value": 53.452301,
           "unit": "GiB",
           "source": "cgroup memory.current"
+        },
+        "ram_used_peak_gib": {
+          "value": 54.855698,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "ram_anon_peak_gib": {
           "value": 49.614037,
@@ -1165,6 +1205,11 @@
           "unit": "GiB",
           "source": "cgroup memory.current"
         },
+        "ram_used_peak_gib": {
+          "value": 55.104149,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
+        },
         "ram_anon_peak_gib": {
           "value": 49.859612,
           "unit": "GiB",
@@ -1249,6 +1294,11 @@
           "value": 53.599495,
           "unit": "GiB",
           "source": "cgroup memory.current"
+        },
+        "ram_used_peak_gib": {
+          "value": 55.002922,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "ram_anon_peak_gib": {
           "value": 49.761078,
@@ -1335,6 +1385,11 @@
           "unit": "GiB",
           "source": "cgroup memory.current"
         },
+        "ram_used_peak_gib": {
+          "value": 55.109394,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
+        },
         "ram_anon_peak_gib": {
           "value": 49.878151,
           "unit": "GiB",
@@ -1420,6 +1475,11 @@
           "unit": "GiB",
           "source": "cgroup memory.current"
         },
+        "ram_used_peak_gib": {
+          "value": 55.306057,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
+        },
         "ram_anon_peak_gib": {
           "value": 50.061176,
           "unit": "GiB",
@@ -1504,6 +1564,11 @@
           "value": 53.652725,
           "unit": "GiB",
           "source": "cgroup memory.current"
+        },
+        "ram_used_peak_gib": {
+          "value": 55.538567,
+          "unit": "GiB",
+          "source": "/proc/meminfo MemTotal-MemAvailable"
         },
         "ram_anon_peak_gib": {
           "value": 50.291698,

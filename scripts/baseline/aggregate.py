@@ -268,6 +268,9 @@ def _resource_metrics(
         "cpu_cores_avg": delta("cpu_usec", "cores", cpu, True, 1_000_000),
         "system_cpu_busy_percent": cpu_busy(),
         "ram_peak_gib": peak(memory_key, GIB, "GiB", memory, max),
+        "ram_used_peak_gib": peak(
+            "sys_used_bytes", GIB, "GiB", "/proc/meminfo MemTotal-MemAvailable", max
+        ),
         "ram_anon_peak_gib": peak("mem_anon_bytes", GIB, "GiB", f"{memory} anon", max),
         "ram_file_peak_gib": peak("mem_file_bytes", GIB, "GiB", f"{memory} file cache", max),
         "system_available_min_gib": peak(
@@ -296,6 +299,7 @@ IDLE_CPU_WARNING_PERCENT = 10.0
 MIN_UNSAMPLED_PHASE_S = 1.0
 PHASE_ORDER = ("idle", "load", "settle", "loaded_idle", "unload", "after_unload")
 SYSTEM_PHASE_METRICS = (
+    "ram_used_peak_gib",
     "system_cpu_busy_percent",
     "system_available_min_gib",
     "vram_peak_gib",

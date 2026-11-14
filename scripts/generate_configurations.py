@@ -154,6 +154,19 @@ def update(result: Path) -> tuple[Path, str, str]:
     return path, original, before + START + "\n\n" + render(result) + "\n" + END + after
 
 
+PLACEHOLDER_TITLE = "# NNN · YYYY-MM-DD"
+FOLDER_NAME = re.compile(r"(\d{3})-(\d{4}-\d{2}-\d{2})-(.+)")
+
+
+def title_for(folder: str) -> str | None:
+    """The report title for a ``NNN-YYYY-MM-DD-description`` folder, or ``None`` if it differs."""
+    match = FOLDER_NAME.fullmatch(folder)
+    if match is None:
+        return None
+    number, date, description = match.groups()
+    return f"# {number} · {date} — {description.replace('-', ' ').capitalize()}"
+
+
 def update_results(result: Path) -> tuple[Path, str, str]:
     """Render the experiment's ``results.json`` into the marked block of its ``summary.md``."""
     data_path = result / "results.json"
@@ -171,10 +184,17 @@ def update_results(result: Path) -> tuple[Path, str, str]:
         raise ValueError(f"{path}: expected exactly one pair of results markers")
     before, rest = original.split(RESULTS_START)
     _, after = rest.split(RESULTS_END)
+    title = title_for(result.name)
+    if title is not None and before.startswith(PLACEHOLDER_TITLE):
+        _, _, remainder = before.partition("\n")
+        before = title + "\n" + remainder
     return path, original, before + RESULTS_START + "\n\n" + block + "\n" + RESULTS_END + after
 
 
-def update_index(recipe: Path) -> tuple[Path, str, str]:
+def update_index(
+    recipe: Path, summaries: Mapping[Path, str] | None = None
+) -> tuple[Path, str, str]:
+    """Rebuild the experiment table; ``summaries`` holds not-yet-written summary texts."""
     path = recipe / "recipe.md"
     original = path.read_text()
     if original.count(INDEX_START) != 1 or original.count(INDEX_END) != 1:
@@ -183,9 +203,10 @@ def update_index(recipe: Path) -> tuple[Path, str, str]:
     for profile in sorted(recipe.glob("*/profile.yaml"), reverse=True):
         result = profile.parent
         summary = result / "summary.md"
-        titles = [
-            line[2:].strip() for line in summary.read_text().splitlines() if line.startswith("# ")
-        ]
+        text = (summaries or {}).get(summary)
+        if text is None:
+            text = summary.read_text()
+        titles = [line[2:].strip() for line in text.splitlines() if line.startswith("# ")]
         if len(titles) != 1:
             raise ValueError(f"{summary}: expected one report title")
         if not (result / "configuration.md").is_file():
@@ -216,7 +237,11 @@ def main() -> int:
         changes += [
             update_results(p.parent) for p in profiles if (p.parent / "results.json").is_file()
         ]
-        changes += [update_index(recipe) for recipe in sorted({p.parent.parent for p in profiles})]
+        summaries = {path: new for path, _, new in changes if path.name == "summary.md"}
+        changes += [
+            update_index(recipe, summaries)
+            for recipe in sorted({p.parent.parent for p in profiles})
+        ]
     except (ValueError, OSError, yaml.YAMLError) as exc:
         print(exc, file=sys.stderr)
         return 2

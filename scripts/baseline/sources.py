@@ -10,7 +10,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 CGROUP_KEYS = ("cpu_usec", "mem_bytes", "mem_anon_bytes", "mem_file_bytes", "swap_bytes")
-GPU_KEYS = ("gpu_busy_percent", "vram_bytes", "gtt_bytes", "gpu_power_uw", "gpu_temp_mc")
+GPU_KEYS = (
+    "gpu_busy_percent",
+    "vram_bytes",
+    "vram_total_bytes",
+    "gtt_bytes",
+    "gpu_power_uw",
+    "gpu_temp_mc",
+)
 AMD_VENDOR = "0x1002"
 
 
@@ -83,8 +90,10 @@ def read_system(proc: Path = Path("/proc")) -> Reading:
         for key in ("sys_available_bytes", "sys_used_bytes", "sys_swap_used_bytes"):
             reading.errors[key] = f"OSError: {error}"
     if info:
+        reading.take("sys_total_bytes", lambda: info["MemTotal"] * 1024)
         reading.take("sys_available_bytes", lambda: info["MemAvailable"] * 1024)
         reading.take("sys_used_bytes", lambda: (info["MemTotal"] - info["MemAvailable"]) * 1024)
+        reading.take("sys_swap_total_bytes", lambda: info["SwapTotal"] * 1024)
         reading.take("sys_swap_used_bytes", lambda: (info["SwapTotal"] - info["SwapFree"]) * 1024)
     reading.take("cpu_busy_ticks", lambda: _cpu_ticks(proc / "stat")[0])
     reading.take("cpu_total_ticks", lambda: _cpu_ticks(proc / "stat")[1])
@@ -105,6 +114,7 @@ def read_gpu(device: Path) -> Reading:
     reading = Reading()
     reading.take("gpu_busy_percent", lambda: _integer(device / "gpu_busy_percent"))
     reading.take("vram_bytes", lambda: _integer(device / "mem_info_vram_used"))
+    reading.take("vram_total_bytes", lambda: _integer(device / "mem_info_vram_total"))
     reading.take("gtt_bytes", lambda: _integer(device / "mem_info_gtt_used"))
     reading.take("gpu_power_uw", lambda: _integer(_hwmon(device, "power1_average")))
     reading.take("gpu_temp_mc", lambda: _integer(_hwmon(device, "temp1_input")))

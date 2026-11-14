@@ -47,8 +47,10 @@ def boot_state(proc: Path, gpu_device: Path | None) -> dict[str, Any]:
         ),
     }
     for key, name, source in (
-        ("sys_available_bytes", "mem_available_gib", "/proc/meminfo MemAvailable"),
+        ("sys_used_bytes", "mem_used_gib", "/proc/meminfo MemTotal-MemAvailable"),
+        ("sys_total_bytes", "mem_total_gib", "/proc/meminfo MemTotal"),
         ("sys_swap_used_bytes", "swap_used_gib", "/proc/meminfo SwapTotal-SwapFree"),
+        ("sys_swap_total_bytes", "swap_total_gib", "/proc/meminfo SwapTotal"),
     ):
         metrics[name] = (
             schema.measured(round(system.values[key] / GIB, 6), "GiB", source)
@@ -61,6 +63,7 @@ def boot_state(proc: Path, gpu_device: Path | None) -> dict[str, Any]:
         for key, name, scale, unit in (
             ("gpu_busy_percent", "gpu_busy_percent", 1, "%"),
             ("vram_bytes", "gpu_vram_used_gib", GIB, "GiB"),
+            ("vram_total_bytes", "gpu_vram_total_gib", GIB, "GiB"),
             ("gpu_power_uw", "gpu_power_w", 1_000_000, "W"),
             ("gpu_temp_mc", "gpu_temp_c", 1000, "C"),
         ):

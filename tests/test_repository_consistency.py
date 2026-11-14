@@ -97,5 +97,4 @@ def test_baseline_summary_template_renders_results_and_is_index_compatible(tmp_p
 
     assert gen.update_results(result)[1] == gen.update_results(result)[2]
     assert "## Baseline results" in rendered
-    assert "## Observations" in rendered
     assert gen.update_index(recipe)[2].count("002 · 2026-11-13 — Baseline") == 1

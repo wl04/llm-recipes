@@ -59,8 +59,10 @@ def test_read_system_reports_memory_swap_and_swap_activity(tmp_path: Path) -> No
     reading = sources.read_system(tmp_path)
 
     assert reading.values == {
+        "sys_total_bytes": 1000 * 1024,
         "sys_available_bytes": 400 * 1024,
         "sys_used_bytes": 600 * 1024,
+        "sys_swap_total_bytes": 200 * 1024,
         "sys_swap_used_bytes": 50 * 1024,
         "pswpin": 7,
         "pswpout": 9,
@@ -96,6 +98,7 @@ def test_read_gpu_reads_load_memory_power_and_temperature(tmp_path: Path) -> Non
     assert reading.values == {
         "gpu_busy_percent": 37,
         "vram_bytes": 1000,
+        "vram_total_bytes": 17_000_000_000,
         "gtt_bytes": 2000,
         "gpu_power_uw": 36_000_000,
         "gpu_temp_mc": 41_000,

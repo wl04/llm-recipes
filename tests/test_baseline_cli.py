@@ -258,14 +258,14 @@ def test_render_rebuilds_results_and_keeps_authored_summary_text(
     with FakeServer() as server:
         run_managed(tmp_path, server, monkeypatch)
     summary = tmp_path / "run" / "summary.md"
-    summary.write_text(summary.read_text().replace("Observations", "My own observations"))
+    summary.write_text(summary.read_text() + "\nMy own notes\n")
     (tmp_path / "run" / "results.json").unlink()
 
     code = cli.main(["render", str(tmp_path / "run")])
 
     assert code == ExitCode.OK
     assert (tmp_path / "run" / "results.json").is_file()
-    assert "My own observations" in summary.read_text()
+    assert "My own notes" in summary.read_text()
 
 
 def test_render_rejects_a_directory_that_is_not_a_run(tmp_path: Path) -> None:

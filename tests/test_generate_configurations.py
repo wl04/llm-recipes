@@ -420,3 +420,53 @@ def test_render_omits_results_data_link_without_results(tmp_path: Path) -> None:
     recipe = write_recipe_tree(tmp_path)
 
     assert "results.json" not in gen.render(recipe / "001-2026-01-01-test")
+
+
+def test_update_results_fills_the_placeholder_title_from_the_folder_name(tmp_path: Path) -> None:
+    summary = BASELINE_SUMMARY.replace(
+        "# 002 · 2026-01-02 — Baseline", "# NNN · YYYY-MM-DD — Baseline"
+    )
+    result = write_baseline_experiment(tmp_path, summary)
+
+    _, _, rendered = gen.update_results(result)
+
+    assert rendered.startswith("# 002 · 2026-01-02 — Baseline\n")
+
+
+def test_update_results_describes_a_variant_from_the_rest_of_the_folder_name(
+    tmp_path: Path,
+) -> None:
+    summary = BASELINE_SUMMARY.replace(
+        "# 002 · 2026-01-02 — Baseline", "# NNN · YYYY-MM-DD — Baseline"
+    )
+    result = write_baseline_experiment(tmp_path, summary)
+    renamed = result.parent / "003-2026-01-03-baseline-draft-off"
+    result.rename(renamed)
+
+    _, _, rendered = gen.update_results(renamed)
+
+    assert rendered.startswith("# 003 · 2026-01-03 — Baseline draft off\n")
+
+
+def test_update_results_keeps_a_title_that_was_edited_by_hand(tmp_path: Path) -> None:
+    summary = BASELINE_SUMMARY.replace("— Baseline", "— My custom title")
+    result = write_baseline_experiment(tmp_path, summary)
+
+    _, _, rendered = gen.update_results(result)
+
+    assert rendered.startswith("# 002 · 2026-01-02 — My custom title\n")
+
+
+def test_main_check_is_current_after_one_generation_that_filled_a_placeholder_title(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    summary = BASELINE_SUMMARY.replace(
+        "# 002 · 2026-01-02 — Baseline", "# NNN · YYYY-MM-DD — Baseline"
+    )
+    write_baseline_experiment(tmp_path, summary)
+
+    run_main(monkeypatch, tmp_path)
+
+    assert run_main(monkeypatch, tmp_path, "--check") == 0
+    index = (tmp_path / "recipes" / SLUG / "recipe.md").read_text()
+    assert "002 · 2026-01-02 — Baseline" in index

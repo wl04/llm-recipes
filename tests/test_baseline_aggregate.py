@@ -553,3 +553,16 @@ def test_phase_too_short_to_sample_reports_only_its_duration() -> None:
     entry = document["phases"][0]
     assert list(entry["metrics"]) == ["duration_s"]
     assert entry["note"].startswith("Already settled")
+
+
+def test_resources_report_peak_system_ram_in_use_inside_the_requests() -> None:
+    samples = [
+        sample(0.5, sys_used_bytes=30 * GIB),
+        sample(2.0, sys_used_bytes=12 * GIB),
+        sample(3.0, sys_used_bytes=14 * GIB),
+    ]
+
+    metrics = resources_of(results(requests_between(1.5, 3.5), samples))
+
+    assert metrics["ram_used_peak_gib"]["value"] == 14.0
+    assert metrics["ram_used_peak_gib"]["unit"] == "GiB"

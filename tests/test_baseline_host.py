@@ -18,7 +18,7 @@ def fake_proc(root: Path, load: str = "0.10 0.20 0.30 1/100 1") -> Path:
     write(
         root / "meminfo",
         "MemTotal: 64000000 kB\nMemAvailable: 60000000 kB\nCached: 2000000 kB\n"
-        "SwapTotal: 100 kB\nSwapFree: 100 kB\n",
+        "SwapTotal: 8000000 kB\nSwapFree: 8000000 kB\n",
     )
     return root
 
@@ -26,6 +26,7 @@ def fake_proc(root: Path, load: str = "0.10 0.20 0.30 1/100 1") -> Path:
 def fake_gpu(root: Path, busy: str = "0") -> Path:
     write(root / "gpu_busy_percent", f"{busy}\n")
     write(root / "mem_info_vram_used", "1000\n")
+    write(root / "mem_info_vram_total", "17000000000\n")
     write(root / "hwmon" / "hwmon1" / "power1_average", "7000000\n")
     write(root / "hwmon" / "hwmon1" / "temp1_input", "28000\n")
     return root
@@ -37,7 +38,11 @@ def test_boot_state_records_uptime_load_memory_and_idle_gpu(tmp_path: Path) -> N
     metrics = {name: metric["value"] for name, metric in state["metrics"].items()}
     assert metrics["uptime_s"] == 540.25
     assert metrics["load_1m"] == 0.1
-    assert metrics["mem_available_gib"] == pytest.approx(60_000_000 / 1024 / 1024)
+    assert metrics["mem_total_gib"] == pytest.approx(64_000_000 / 1024 / 1024)
+    assert metrics["mem_used_gib"] == pytest.approx(4_000_000 / 1024 / 1024)
+    assert metrics["swap_total_gib"] == pytest.approx(8_000_000 / 1024 / 1024)
+    assert metrics["gpu_vram_total_gib"] == pytest.approx(17_000_000_000 / 1024**3)
+    assert "mem_available_gib" not in metrics
     assert metrics["gpu_busy_percent"] == 0
     assert metrics["gpu_temp_c"] == 28
     assert state["warnings"] == []
