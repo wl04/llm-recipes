@@ -6,7 +6,7 @@ Provide one command that checks a running recipe, exercises sustained workloads,
 
 Baseline experiments eventually replace each recipe's initial text, tool, vision, and long-context experiments. Coding-session experiments stay hand-written.
 
-The runner attaches to an already prepared, running server. Downloads, conversion, image builds, and server start/stop remain in the existing setup workflow. Raw outputs stay in a user-selected external directory; experiment profiles and summaries remain the repository's durable records.
+The runner owns the server's lifecycle for the duration of a baseline: it records the machine at rest, starts the server, measures the load, runs the suite, and stops the server (see [Lifecycle-managed runs](#lifecycle-managed-runs)). Downloads, conversion, and image builds remain in the existing setup workflow. Raw outputs stay in a user-selected external directory; experiment profiles and summaries remain the repository's durable records.
 
 The intended conditions are a freshly rebooted machine, the server started by the user, and nothing else running. The runner records the actual conditions instead of requiring them.
 
@@ -34,7 +34,7 @@ Allow explicit endpoint, model, context, GPU, and telemetry overrides for either
 
 Desktop recipes have no `config/launch.json` or runtime manifest, so the current recipe discovery does not find them. The runner resolves a desktop recipe by folder name for identity, output naming, and later profile promotion, and takes the endpoint and process details from options. It does not require launcher manifests or container images for them.
 
-The command performs preflight, starts monitoring, records an idle reference, runs functional checks, warms the server, runs the workloads in a fixed order, closes monitoring, and writes a report. Show progress on stderr and a short result/location message on completion. Partial outputs survive interruption. Ctrl+C, SIGTERM, and runner crashes stop the runner's monitoring children; none of them stops the user's server. An interrupted request may keep generating server-side; the report notes the interruption.
+The command performs preflight, records the idle machine, starts the server, measures the load, waits for it to settle, runs functional checks, warms the server, runs the workloads in a fixed order, stops the server, and writes a report. Show progress on stderr and a short result/location message on completion. Partial outputs survive interruption. Ctrl+C, SIGTERM, and runner crashes stop the runner's monitoring children and the server the runner started, and nothing else. An interrupted request may keep generating server-side until the server stops; the report notes the interruption.
 
 ## Architecture
 
@@ -56,6 +56,38 @@ API servers remain distinct from inference engines. Use shared OpenAI-compatible
 Concurrency model: the main thread issues blocking requests; sampler threads and monitoring child processes run beside it and timestamp samples with the monotonic clock on receipt. Every request has its own deadline in addition to a total run deadline. Specify the model, exit codes, and shutdown behavior in stage 1.
 
 Discover actual capabilities at implementation time against the pinned servers. In particular, verify streaming usage/timing fields, reasoning controls, token-count endpoints, cancellation, and cache controls. Mark unsupported measurements unavailable; do not infer them from unrelated timings.
+
+## Lifecycle-managed runs
+
+The first pilot showed the "idle reference" was taken seconds after the user started the server: VRAM already held the model (15.27 GiB), and the load average still reflected the start-up. That measures a loaded server at rest, not the machine at rest, and it misses the cost of loading, including the cold page cache after a reboot. The intended use is one baseline per model or configuration change, on a freshly booted machine where everything has to be launched anyway, so the runner takes over the launch.
+
+Phases, each sampled and stored separately:
+
+| Phase | What happens | Recorded |
+|---|---|---|
+| Idle | Nothing loaded; system-wide sources only, for a fixed time (default 30 s). | System CPU, RAM, swap, device VRAM/GTT, power, temperature, and the top processes by CPU and memory. |
+| Load | The server is started and polled until ready, with a timeout. | Time to ready, peak RAM, VRAM, and CPU during the load. |
+| Settle | Wait until system and server CPU stay below a threshold for 10 s, up to 120 s. | Whether it settled and how long it took; a warning if not. |
+| Loaded idle | Server ready and quiet, for a fixed time (default 10 s). | The model's resting footprint: server RAM, VRAM, CPU, and power. |
+| Suite | Functional checks, warmup, and workloads as defined above. | As before. |
+| Unload | The server is stopped and the machine observed for a short time. | Time to stop and whether VRAM and RAM returned to the idle level, which exposes leaks. |
+
+Modes:
+
+- **Container recipes** are managed fully. The runner calls the launcher's validated start and stop operations under a dedicated instance name, so a user's own instance is never touched. It refuses to start while another managed instance is running or the GPU is already in use, and tells the user what to stop. Launch options (`--models`, `--logs`, `--context`, `--draft`, `--vision`, `--port`) pass through, so the effective configuration is known exactly and can be recorded without guessing. Only what the runner started is stopped, including on Ctrl+C. A failed stop is reported with the command to run.
+- **Desktop apps** run in a guided mode. The runner prompts for each state change and waits for a confirmation: unload the model and stop the server, record the idle phase, load the model with the settings in `configuration.md` and start the server, confirm. It then checks the served model and context where the API shows them, finds the app's cgroup (or accepts `--pid`) and asks for confirmation when the cgroup holds unrelated processes. A `--yes` option answers prompts for scripted use and tests.
+- **No attach mode** is offered on the command line. The runner internally accepts an already-running server, which guided mode and the tests use, but running a suite against a hand-started server would reintroduce the mislabeled idle reference. This can be reconsidered if a need appears.
+- Scripting LM Studio through `lms` (`load`, `server start`, `ps --json`) is an optional later shortcut. `lms load` exposes GPU offload, context length, parallel predictions, TTL, and the MTP draft settings, but not flash attention, KV cache quantization, the thread pool, batch sizes, or context checkpoints, so settings would come from the model's saved app configuration and could not be verified. It needs testing with a loaded model first.
+
+The desktop is not truly idle (browser, desktop shell, LM Studio itself), so the report records the top processes at idle instead of claiming a quiet machine.
+
+### Simpler telemetry
+
+The research behind this revision found that the GNOME Resources app (`resources` 51.0) cannot be a backend: it is a GUI with no export, and its `resources-processes` helper emits only per-process data in a private binary format. It reads the same kernel interfaces the runner reads, so it serves as an independent cross-check during the pilot. The runner's own stack becomes smaller:
+
+- Per-process VRAM comes from `/proc/<pid>/fdinfo` (`drm-memory-vram`, filtered by `drm-pdev`, one value per `drm-client-id`) for the server's cgroup members. This replaces the `amdgpu_top` child process, its JSON parsing, and its refresh lag; readable without privileges for the user's own processes, including the launcher's `--user` containers. Verified: 15.02 GiB for `strata-host` against 14.99 GiB from `amdgpu_top`.
+- Desktop apps started by GNOME have their own systemd scope (for example `app-ai.elementlabs.bionic-<pid>.scope`) with readable `cpu.stat`, `memory.current`, and swap. Containers and desktop apps then share one cgroup reader, and the process-tree walker, PID-reuse guard, and PSS fallback are removed. A terminal-launched app may share the terminal's scope, which the guided mode detects and confirms.
+- Device-wide readings stay on sysfs and `/proc`. No external utility remains.
 
 ## Workloads
 
@@ -125,7 +157,7 @@ Preflight checks readiness, model identity (a mismatch with `--model` fails), co
 
 Begin sampling before warmup and keep it active through the final response. Use a monotonic clock for samples and request boundaries; retain wall-clock metadata only in external run artifacts. `amdgpu_top` JSON carries no timestamps, so samples from child processes are stamped on receipt; state the tolerated skew when joining samples to request intervals. Join samples to workload/request intervals and calculate time-weighted averages over active requests, excluding idle pauses and token-count preparation calls.
 
-Start with a 500 ms sampling interval. Validate overhead and sample coverage on the workstation. A short pre-run and post-run idle reference helps explain retained allocations, but the primary statistics describe active requests. Mark first-output boundaries when streaming allows it; label these as waiting-for-first-output and streaming intervals, not exact engine prefill/decode phases.
+Start with a 500 ms sampling interval. Validate overhead and sample coverage on the workstation. The idle, load, loaded-idle, and post-unload references explain retained allocations, but the primary statistics describe active requests. Mark first-output boundaries when streaming allows it; label these as waiting-for-first-output and streaming intervals, not exact engine prefill/decode phases.
 
 | Metric | Preferred source | Definition and caveat |
 |---|---|---|
@@ -210,7 +242,7 @@ Acceptance: each proposed metric has a defined source or explicit unavailable st
 - Build the orchestrator with preflight, boot-state capture, adaptive warmup, the 8K noise probe, sustained text/context workloads, functional checks, and bounded requests.
 - Implement concurrent CPU/RAM/GPU sampling and incremental output writing.
 - Add offline report generation and interruption cleanup.
-- Keep server configuration and lifecycle under the existing launcher.
+- Start and stop container servers through the existing launcher functions; the runner never builds Docker commands itself.
 
 Acceptance: a fake-server integration test exercises a full run, injected errors, cancellation, sample attribution, noise-floor calculation, and partial-report rendering. Monitoring starts before requests and continues while requests block. No server shutdown or model-file mutation occurs.
 
@@ -223,6 +255,28 @@ Implementation notes (stage 2, implemented):
 - Engine-reported timings are not parsed yet; those metrics are unavailable with that reason.
 - Per-process VRAM comes from one `amdgpu_top` child that the runner always stops; device-wide figures come from sysfs.
 - Still open for the workstation pilot: warmup tolerance, quiet-system thresholds, the minimum sustained output length, observer overhead, and the image-token setting.
+
+### 2b. Simplify telemetry (revision)
+
+- Read per-process VRAM from DRM fdinfo and remove the `amdgpu_top` child; compare against `amdgpu_top` once on the workstation.
+- Use a cgroup target for desktop apps and remove the process-tree source.
+- Let the sampler add sources after start, so target sources can join once the server exists.
+
+Acceptance: no external telemetry utility; container and desktop targets share one reader; fake-tree tests cover fdinfo parsing and the cgroup resolution.
+
+### 2c. Phase model and managed container runs (revision)
+
+- Add the idle, load, settle, loaded-idle, and unload phases to the runner, the raw records, the results contract, and the report.
+- Start and stop container servers through the launcher functions, with the single-instance and free-GPU checks and the cleanup rules above.
+- Replace the setup-guide baseline blocks with the managed command (`--models`, `--logs`, and launch options; no `--instance`).
+
+Acceptance: a test with a fake launcher and fake server covers start, readiness timeout, a failed start, Ctrl+C during the load and during the suite, a failed stop, and phase attribution.
+
+### 2d. Guided desktop runs (revision)
+
+- Prompt-driven phases with confirmations and `--yes`, app scope detection, and the confirmation of served model and context.
+
+Acceptance: tests drive the prompts with scripted answers and a fake server.
 
 ### 3. Validate on the workstation and unify documentation
 
