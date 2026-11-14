@@ -1,8 +1,39 @@
 # Baseline contract
 
-Status: this page defines the result format and measurement rules for the unified baseline runner. The runner itself is not implemented yet; see the [implementation plan](../plans/unified-baseline.md). The result format, request/stream handling, vision scoring, and table generation described here are implemented in `scripts/baseline/`.
+This page defines the baseline runner's result format and measurement rules and how to run it. The runner is implemented in `scripts/baseline/`; the [implementation plan](../plans/unified-baseline.md) tracks the remaining workstation validation.
 
 One execution per recipe produces one baseline. The runner attaches to a server you have already started and never starts, stops, or reconfigures it.
+
+## Running
+
+Start the server first, preferably from a freshly booted machine with nothing else running. For a launcher recipe:
+
+```bash
+python3 scripts/run_baseline.py run <recipe> --instance <instance> \
+  --model <served-model-id> --output "$HOME/Models/llm-recipes/baselines/<run-name>"
+```
+
+For a desktop server such as LM Studio, pass the endpoint, context, and process:
+
+```bash
+python3 scripts/run_baseline.py run <recipe> --base-url http://127.0.0.1:<port>/v1 \
+  --model <served-model-id> --context <tokens> --pid <server-pid> \
+  --output "$HOME/Models/llm-recipes/baselines/<run-name>"
+```
+
+`--output` must be a new directory outside the repository. Progress goes to stderr and a one-line result to stdout. Ctrl+C or SIGTERM stops the run, keeps what was recorded, and leaves the server running. `--instance` resolves the container with `sudo -n docker`, so authenticate with `sudo -v` first. Other options: `--gpu-pci` (default: the AMD GPU with the most VRAM), `--no-gpu`, `--image`, `--server-kind`, and `--request-extra` (a JSON object merged into every request).
+
+The run directory holds `meta.json`, `requests.jsonl`, `samples.jsonl`, and the rendered `results.json` and draft `summary.md`. `python3 scripts/run_baseline.py render <run-dir>` rebuilds the rendered files from the raw ones, for example after an interrupted run, and keeps the text you wrote in `summary.md`. To publish, create the numbered experiment folder, copy `summary.md` and `results.json` into it, fill in `profile.yaml`, and run the generator.
+
+The suite runs in a fixed order: a 5-second idle reference, functional checks (text, forced tool call, vision), an adaptive warmup of up to four requests, the 8K case repeated five times, three sustained-generation tasks, then 32K, 64K, and 120K contexts. Each case after the 8K probe is a single observation. Cases whose input plus output cannot fit the context are recorded as skipped. Prompt length is calibrated from the first warmup request's reported token count, and every request has distinct content.
+
+### Current limits
+
+- Thinking is disabled by default only for Strata (`reasoning_effort: none`). For other servers set the server's own field with `--request-extra`; the result records whether the default applied.
+- Engine-reported timings are not parsed yet, so the engine prefill and decode columns are unavailable. Client timings are measured for every server.
+- The long contexts are built from the interpreter's standard-library source (PSF-licensed code), so comparisons assume the same Python version.
+- The image-token setting is not detected; note it yourself when it matters for the vision scores.
+- Warning thresholds for the boot state (load average above 1.0, GPU more than 5% busy) and the warmup tolerance (10%) are provisional until the workstation pilot.
 
 ## Result document
 
@@ -57,7 +88,7 @@ Verified on the target workstation (RX 9070 XT at `0000:03:00.0`, plus an iGPU a
 | GPU power, temperature | `hwmon` in the same device directory (`power1_average`, `temp1_input`) |
 | Container CPU, memory, swap | cgroup v2 files, readable without privileges once the container's cgroup path is known |
 | System memory, swap activity | `/proc/meminfo`, `/proc/vmstat` |
-| Process allocations | `amdgpu_top` 0.11.5 JSON (`-J`, `-s <ms>`, `-n 0`, `--pci`) with `--no-pc` to avoid its performance counters |
+| Process allocations | `amdgpu_top` 0.11.5 JSON (`-J`, `-s <ms>`, `-n 0`, `--pci`) with `--no-pc` to avoid its performance counters; one long-lived child that the runner always stops. Its process index refreshes about once a second. |
 
 Resolving a container uses `sudo -n docker`, as the launcher does, once at start. Device memory is device-wide and is not added to cgroup or process figures.
 

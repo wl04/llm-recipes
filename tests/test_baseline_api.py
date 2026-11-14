@@ -221,3 +221,13 @@ def test_read_stream_keeps_partial_result_when_connection_breaks() -> None:
         api.read_stream(lines(), clock_of(1.0).__next__, started=0.0)
 
     assert raised.value.partial.text == "before"
+
+
+def test_read_stream_stops_with_partial_result_when_deadline_passes() -> None:
+    lines = [event(content="a"), event(content="b"), event(content="c"), "data: [DONE]"]
+    readings = iter([1.0, 2.0, 99.0, 100.0, 101.0])
+
+    with pytest.raises(api.StreamInterrupted, match="deadline") as raised:
+        api.read_stream(lines, readings.__next__, started=0.0, deadline_s=50.0)
+
+    assert raised.value.partial.text == "ab"

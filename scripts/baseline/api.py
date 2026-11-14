@@ -89,10 +89,13 @@ def _merge_tool_calls(calls: dict[int, dict[str, Any]], fragments: list[dict[str
         call["function"]["arguments"] += function.get("arguments") or ""
 
 
-def read_stream(lines: Iterable[str], clock: Clock, started: float) -> StreamResult:
+def read_stream(
+    lines: Iterable[str], clock: Clock, started: float, deadline_s: float | None = None
+) -> StreamResult:
     """Collect an OpenAI server-sent-event completion with client-side output timings.
 
-    ``clock`` is read once per event that carries output (content, reasoning, or a tool call).
+    ``clock`` is read once per event that carries output (content, reasoning, or a tool call);
+    with a ``deadline_s`` it is read once per data event so a stalled or slow stream is cut off.
 
     Raises:
         ApiError: an error event or a malformed event.
@@ -122,6 +125,11 @@ def read_stream(lines: Iterable[str], clock: Clock, started: float) -> StreamRes
             payload = line[5:].strip()
             if payload == "[DONE]":
                 return snapshot()
+            now = clock() if deadline_s is not None else None
+            if now is not None and deadline_s is not None and now - started > deadline_s:
+                raise StreamInterrupted(
+                    f"Request deadline of {deadline_s:g} s exceeded", snapshot()
+                )
             try:
                 item = json.loads(payload)
             except json.JSONDecodeError as error:
@@ -140,7 +148,7 @@ def read_stream(lines: Iterable[str], clock: Clock, started: float) -> StreamRes
                 produced = produced or bool(content or thought or fragments)
                 finish_reason = choice.get("finish_reason") or finish_reason
             if produced:
-                last = clock() - started
+                last = (now if now is not None else clock()) - started
                 first = last if first is None else first
             usage = parse_usage(item.get("usage")) or usage
     except OSError as error:
@@ -198,6 +206,7 @@ def stream_chat(
     timeout: float,
     clock: Clock = time.monotonic,
     opener: Opener = urlopen,
+    deadline_s: float | None = None,
 ) -> StreamResult:
     """Run one streamed completion; the request clock starts before the connection opens.
 
@@ -207,7 +216,9 @@ def stream_chat(
     started = clock()
     try:
         with opener(_request(base_url, route, payload), timeout=timeout) as response:
-            return read_stream((line.decode("utf-8") for line in response), clock, started)
+            return read_stream(
+                (line.decode("utf-8") for line in response), clock, started, deadline_s
+            )
     except HTTPError as error:
         raise _http_error(error) from error
     except URLError as error:

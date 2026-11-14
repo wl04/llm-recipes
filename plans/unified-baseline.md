@@ -15,7 +15,7 @@ The intended conditions are a freshly rebooted machine, the server started by th
 Proposed CLI, finalized during the first implementation stage:
 
 ```bash
-python3 scripts/baseline.py run <recipe> \
+python3 scripts/run_baseline.py run <recipe> \
   --instance strata-coding \
   --output "$HOME/Models/llm-recipes/baselines/<run-name>"
 ```
@@ -23,7 +23,7 @@ python3 scripts/baseline.py run <recipe> \
 For a desktop server:
 
 ```bash
-python3 scripts/baseline.py run <desktop-recipe> \
+python3 scripts/run_baseline.py run <desktop-recipe> \
   --base-url http://127.0.0.1:<port>/v1 \
   --model <served-model-id> --context <tokens> \
   --pid <server-pid> --gpu-pci <pci-address> \
@@ -213,6 +213,16 @@ Acceptance: each proposed metric has a defined source or explicit unavailable st
 - Keep server configuration and lifecycle under the existing launcher.
 
 Acceptance: a fake-server integration test exercises a full run, injected errors, cancellation, sample attribution, noise-floor calculation, and partial-report rendering. Monitoring starts before requests and continues while requests block. No server shutdown or model-file mutation occurs.
+
+Implementation notes (stage 2, implemented):
+
+- The command is `scripts/run_baseline.py`; a `scripts/baseline.py` would collide with the `scripts/baseline/` package.
+- The long contexts are built from the interpreter's standard-library source, which is PSF-licensed and needs no checked-in corpus. The Python version is part of what makes runs comparable.
+- The first warmup request is a roughly 1K-token code-review prompt whose reported token count calibrates prompt length for the later cases, so no measured prompt is also used for counting.
+- Thinking is disabled by default only for Strata, the one server with a verified field. Others need `--request-extra`, and the result records whether the default applied.
+- Engine-reported timings are not parsed yet; those metrics are unavailable with that reason.
+- Per-process VRAM comes from one `amdgpu_top` child that the runner always stops; device-wide figures come from sysfs.
+- Still open for the workstation pilot: warmup tolerance, quiet-system thresholds, the minimum sustained output length, observer overhead, and the image-token setting.
 
 ### 3. Validate on the workstation and unify documentation
 
