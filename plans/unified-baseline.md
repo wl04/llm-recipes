@@ -8,15 +8,14 @@ Baseline experiments eventually replace each recipe's initial text, tool, vision
 
 The runner owns the server's lifecycle for the duration of a baseline: it records the machine at rest, starts the server, measures the load, runs the suite, and stops the server (see [Lifecycle-managed runs](#lifecycle-managed-runs)). Downloads, conversion, and image builds remain in the existing setup workflow. Raw outputs stay in a user-selected external directory; experiment profiles and summaries remain the repository's durable records.
 
-The intended conditions are a freshly rebooted machine, the server started by the user, and nothing else running. The runner records the actual conditions instead of requiring them.
+The intended conditions are a freshly rebooted machine, the server started by the runner, and nothing else running. The runner records the actual conditions instead of requiring them.
 
 ## User-facing workflow
 
-Proposed CLI, finalized during the first implementation stage:
+Current CLI (container runs use the dedicated `baseline` instance):
 
 ```bash
 python3 scripts/run_baseline.py run <recipe> \
-  --instance strata-coding \
   --output "$HOME/Models/llm-recipes/baselines/<run-name>"
 ```
 
@@ -53,7 +52,7 @@ The existing doctor validates host prerequisites only (Docker, local image, mode
 
 API servers remain distinct from inference engines. Use shared OpenAI-compatible request handling where possible, with explicit TabbyAPI, Strata, and LM Studio capability handling. Keep native configuration files native.
 
-Concurrency model: the main thread issues blocking requests; sampler threads and monitoring child processes run beside it and timestamp samples with the monotonic clock on receipt. Every request has its own deadline in addition to a total run deadline. Specify the model, exit codes, and shutdown behavior in stage 1.
+Concurrency model: the main thread issues blocking requests; a sampler thread runs beside it and timestamp samples with the monotonic clock on receipt. Every request has its own deadline in addition to a total run deadline. Specify the model, exit codes, and shutdown behavior in stage 1.
 
 Discover actual capabilities at implementation time against the pinned servers. In particular, verify streaming usage/timing fields, reasoning controls, token-count endpoints, cancellation, and cache controls. Mark unsupported measurements unavailable; do not infer them from unrelated timings.
 
@@ -75,8 +74,8 @@ Phases, each sampled and stored separately:
 Modes:
 
 - **Container recipes** are managed fully. The runner calls the launcher's validated start and stop operations under a dedicated instance name, so a user's own instance is never touched. It refuses to start while another managed instance is running or the GPU is already in use, and tells the user what to stop. Launch options (`--models`, `--logs`, `--context`, `--draft`, `--vision`, `--port`) pass through, so the effective configuration is known exactly and can be recorded without guessing. Only what the runner started is stopped, including on Ctrl+C. A failed stop is reported with the command to run.
-- **Desktop apps** run in a guided mode. The runner prompts for each state change and waits for a confirmation: unload the model and stop the server, record the idle phase, load the model with the settings in `configuration.md` and start the server, confirm. It then checks the served model and context where the API shows them, finds the app's cgroup (or accepts `--pid`) and asks for confirmation when the cgroup holds unrelated processes. A `--yes` option answers prompts for scripted use and tests.
-- **No attach mode** is offered on the command line. The runner internally accepts an already-running server, which guided mode and the tests use, but running a suite against a hand-started server would reintroduce the mislabeled idle reference. This can be reconsidered if a need appears.
+- **Desktop apps (pending guided mode)** will run in a guided mode. The runner prompts for each state change and waits for a confirmation: unload the model and stop the server, record the idle phase, load the model with the settings in `configuration.md` and start the server, confirm. It then checks the served model and context where the API shows them, finds the app's cgroup (or accepts `--pid`) and asks for confirmation when the cgroup holds unrelated processes. A `--yes` option answers prompts for scripted use and tests.
+- **Current desktop mode** attaches to a running server using `--base-url`, `--context`, and `--pid`. It measures settle, loaded idle, and workloads; guided idle/load/unload phases remain pending.
 - Scripting LM Studio through `lms` (`load`, `server start`, `ps --json`) is an optional later shortcut. `lms load` exposes GPU offload, context length, parallel predictions, TTL, and the MTP draft settings, but not flash attention, KV cache quantization, the thread pool, batch sizes, or context checkpoints, so settings would come from the model's saved app configuration and could not be verified. It needs testing with a loaded model first.
 
 The desktop is not truly idle (browser, desktop shell, LM Studio itself), so the report records the top processes at idle instead of claiming a quiet machine.
@@ -91,7 +90,7 @@ The research behind this revision found that the GNOME Resources app (`resources
 
 ## Workloads
 
-Run at concurrency one in a fixed order, recorded in the results, because state carries over between workloads (expert cache, parked conversations, prompt caches, GPU clocks): functional checks, warmup, 8K context with the noise probe, sustained generation, then 32K, 64K, and 120K context. Every case is one measured run, except the 8K noise probe.
+Run at concurrency one in a fixed order, recorded in the results, because state carries over between workloads (expert cache, parked conversations, prompt caches, GPU clocks): functional checks, warmup, 8K context with the noise probe, sustained generation, then 32K, 64K, and 120K context. The 8K case runs five times; the largest context case runs twice. Other performance cases run once.
 
 | Stage | Initial specification | Output |
 |---|---|---|
@@ -106,7 +105,7 @@ Run at concurrency one in a fixed order, recorded in the results, because state 
 
 One adaptive global warmup follows the functional checks. Server-side first-use costs (page-in of memory-mapped model files after a reboot, kernel or shader loading, allocator growth, expert-cache fill, GPU clock ramp-up) are per process, not per workload shape, so warmup per context size is unnecessary and the large sizes are too expensive to repeat. Warmup tolerance and the maximum count are set in the pilot. If warmup does not converge, record that and continue. Record warmup duration and resources separately.
 
-The first request at each larger context size may still include one-time allocation growth. Keep it in the results as a single observation; do not exclude or repeat it. Report single observations as n=1 without a median or range.
+The first request at each larger context size may still include one-time allocation growth. Keep it in the results. Repeat only the largest context case, as specified below. Report single observations as n=1 without a median or range.
 
 The 8K case runs five requests, which serves as the automated noise estimate for the run. Report the 8K result as the median, and state the noise floor as the relative spread (max minus min over median) of first-output latency and client decode rate. Caveats stated in the report:
 
@@ -115,7 +114,7 @@ The 8K case runs five requests, which serves as the automated noise estimate for
 - The spread includes output-content variation at temperature 1; that variation is intended.
 - Rates, not total durations, are used because output length varies.
 
-Do not repeat expensive cases to estimate noise. Differences smaller than the run's noise floor are not distinguishable.
+Repeat the largest context case twice and report its own spread. The 8K spread does not establish the noise floor at other context lengths.
 
 ### Prompt construction
 
@@ -155,7 +154,7 @@ Preflight checks readiness, model identity (a mismatch with `--model` fails), co
 
 ## Continuous resource measurement
 
-Begin sampling before warmup and keep it active through the final response. Use a monotonic clock for samples and request boundaries; retain wall-clock metadata only in external run artifacts. `amdgpu_top` JSON carries no timestamps, so samples from child processes are stamped on receipt; state the tolerated skew when joining samples to request intervals. Join samples to workload/request intervals and calculate time-weighted averages over active requests, excluding idle pauses and token-count preparation calls.
+Begin sampling before warmup and keep it active through the final response. Use a monotonic clock for samples and request boundaries; retain wall-clock metadata only in external run artifacts. Samples are timestamped with the monotonic clock by the sampler. Join samples to workload/request intervals and calculate time-weighted averages over active requests, excluding idle pauses and token-count preparation calls.
 
 Start with a 500 ms sampling interval. Validate overhead and sample coverage on the workstation. The idle, load, loaded-idle, and post-unload references explain retained allocations, but the primary statistics describe active requests. Mark first-output boundaries when streaming allows it; label these as waiting-for-first-output and streaming intervals, not exact engine prefill/decode phases.
 
@@ -203,9 +202,9 @@ Use a schema version and a workload-suite version. Write metadata, request resul
 - **Result, structured:** the renderer reads the raw files and writes `results.json`: schema version, suite version, one entry per case (actual token counts, first-output latency, client decode rate, engine rates, finish reason, noise floor for the 8K case), resource summaries per workload, warmup, boot state, and functional outcomes. Units are explicit in field names. An unavailable metric is `null` with a stated reason, never zero or an omitted key. Write with a fixed key order, 2-space indent, and a trailing newline so promoted files give clean diffs. `profile.yaml` stays YAML because it is curated by hand; the machine-written results use JSON, which keeps exact types and needs no extra dependency in the runner.
 - **Tables:** the generator renders `results.json` into markdown tables, as `generate_configurations.py` renders `profile.yaml` into `configuration.md`, and `--check` in `scripts/check.sh` verifies they are current. The tables go into a marked block inside the experiment's `summary.md`, so the "Results" link in the recipe index points at the full baseline. A baseline `summary.md` is generated in full: the title comes from the folder name and the rest from `results.json`. Text added by hand outside the markers is preserved. The generator renders the block only for experiments that have a `results.json`; hand-written experiments keep their free-form summaries.
 - **Comparison:** a later comparison page or chart reads `results.json` across recipes and does not need the raw files. Comparable fields share names and definitions across recipes, with the workload-suite version stored so runs from different suites are not compared silently.
-- **Promotion:** `results.json` (small) is promoted next to `profile.yaml` in the experiment folder; raw JSONL stays external. The runner writes a draft `summary.md` with the placeholder title and the markers. It does not write `profile.yaml`: the profile stays hand-curated, and the runner records the facts it verified (served model, context, image identity, request policy) in `results.json` for the user to transfer. Whether a `promote` subcommand creates the numbered folder is decided in stage 1.
+- **Promotion:** `results.json` (small) is promoted next to `profile.yaml` in the experiment folder; raw JSONL stays external. The runner writes a draft `summary.md` with the placeholder title and the markers. It does not write `profile.yaml`: the profile stays hand-curated, and the runner records the served model, configured context, and request policy in `results.json`. Promotion is manual.
 
-Capture the repository revision and relevant file hashes, recipe identity, served model ID, actual context, host hardware/OS, boot state, runtime/model lock identities, sampling, image-token settings, and monitoring versions. Distinguish checked-in configuration from verified runtime state. Existing doctor checks only establish local image availability; they do not prove the running image's embedded build lock. Record running image identity and verification status separately.
+Profiles retain hardware/OS, runner and engine revisions, model identities, running image identity, Python version, and image-token settings. Results retain the suite version, request policy, vision image hash and expectations version, and measurements. External metadata retains diagnostic capture details. Configured settings and requested controls must not be described as independently verified server behavior.
 
 The report contains:
 
@@ -245,7 +244,7 @@ Acceptance: each proposed metric has a defined source or explicit unavailable st
 - Add offline report generation and interruption cleanup.
 - Start and stop container servers through the existing launcher functions; the runner never builds Docker commands itself.
 
-Acceptance: a fake-server integration test exercises a full run, injected errors, cancellation, sample attribution, noise-floor calculation, and partial-report rendering. Monitoring starts before requests and continues while requests block. No server shutdown or model-file mutation occurs.
+Acceptance: a fake-server integration test exercises a full run, injected errors, cancellation, sample attribution, noise-floor calculation, and partial-report rendering. Monitoring starts before requests and continues while requests block. Only the server started by the runner is stopped; model files are not mutated.
 
 Implementation notes (stage 2, implemented):
 
@@ -290,7 +289,7 @@ Acceptance: tests drive the prompts with scripted answers and a fake server.
 - The Strata `check_generation.py` helper and its tests were removed once the managed Strata baseline was verified; the TabbyAPI helpers stay until that server has been baselined.
 - Replace each recipe's initial-check and vision experiments with a baseline, only after that recipe has a baseline covering the same content (text, tools, vision, long context, memory). Rules:
   - Hand-written coding-session experiments are kept.
-  - Do not renumber; gaps are acceptable and the baseline takes the next number.
+  - The Strata migration replaced the initial experiments with baseline `001`. Preserve current assigned numbers; future baselines take the next number.
   - Some experiments are configuration variants, not plain checks (ISTA `002` with 1,024 image tokens; EXL3 `001`, which compares DFlash2 against disabled). Re-run them as baselines under that configuration, or keep them.
   - Remove or move assets only when nothing references them.
   - Fix the cross-references to removed experiments: EXL3 `002` links an asset in `001`, and the Unsloth `001` summary links the ISTA initial check.
@@ -323,3 +322,12 @@ The initial implementation is complete when one execution per recipe produces us
 - [Docker stats](https://docs.docker.com/reference/cli/docker/container/stats/): memory/cache accounting distinctions and container statistics.
 - [llama-bench](https://github.com/ggml-org/llama.cpp/tree/master/tools/llama-bench): warmup, repeated measurements, and context-depth workloads.
 - [vLLM serving benchmark](https://github.com/vllm-project/vllm/blob/main/vllm/benchmarks/serve.py): separate first-token, output-token, and end-to-end latency metrics.
+
+## Current remaining work
+
+- Stage 1: real response fixtures for Strata, TabbyAPI, and LM Studio; comprehensive capability probing and server-side context verification.
+- Stage 2d: guided desktop lifecycle and confirmations; desktop attachment is implemented.
+- Stage 3: TabbyAPI and LM Studio workstation baselines, monitoring overhead measurements, and calibration of thresholds. Both Strata recipes have recorded baselines.
+- Stage 4: conversation reuse and reasoning-enabled workloads.
+
+Profiles retain hardware, software/model versions, image identities, Python version, and vision configuration. Results retain measurements and the request policy. `policy.thinking_request` records explicit thinking controls after overrides, without claiming the server applied them. Historical results retain their recorded default flag. No additional corpus or environment metadata is required in the durable results.

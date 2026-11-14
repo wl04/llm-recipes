@@ -397,7 +397,7 @@ def test_run_records_the_request_policy_and_unconfigured_thinking(tmp_path: Path
     policy = raw.meta["policy"]
     assert policy["performance"]["temperature"] == 1.0
     assert policy["functional"]["temperature"] == 0.0
-    assert policy["thinking_disabled_by_default"] is True
+    assert policy["thinking_request"] == {"reasoning_effort": "none"}
     assert {p.get("temperature") for p in server.requests} == {0.0, 1.0}
 
 

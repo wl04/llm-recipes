@@ -64,7 +64,7 @@ Only the settle, loaded-idle, and suite phases are recorded in this mode, becaus
 | `schema_version`, `suite_version` | Format version, and the version of the workload suite (prompts, expectations, and case list). Runs from different suites are not compared silently. |
 | `recipe` | Recipe folder name. |
 | `run` | `status` (`complete`, `interrupted`, `failed`); optional run identity and repository revision. |
-| `server` | `kind` (`strata`, `tabbyapi`, `lmstudio`), served `model`, actual `context_tokens`. |
+| `server` | `kind` (`strata`, `tabbyapi`, `lmstudio`), served `model`, configured `context_tokens`. |
 | `boot` | Optional boot-state metrics (uptime, idle readings) and warnings. |
 | `functional` | One entry per check with `status` (`pass`, `fail`, `unparsed`, `skipped`). |
 | `warmup` | Request count, whether it converged, and duration. |
@@ -96,7 +96,7 @@ The client decode rate is `(completion_tokens - 1) / (last output - first output
 
 ## Server capabilities
 
-Servers differ in what they report. Capabilities are discovered by probing the running server and recorded; they are not assumed. A capability that was not probed is recorded as unknown, and the metric that depends on it is unavailable. This covers streaming usage, cached-token counts, engine timings, token-count routes, and cache controls. The Strata helpers use `POST /v1/messages/count_tokens` and streamed usage; TabbyAPI and LM Studio still need to be recorded against real servers (see [fixtures](../tests/fixtures/README.md)).
+The runner checks the served model ID and records usage fields returned by requests. Strata has explicit token-count and thinking controls and engine-log timing extraction. Comprehensive capability probing, server-side context verification, and cache-control discovery remain pending. TabbyAPI and LM Studio still need real-server fixtures (see [fixtures](../tests/fixtures/README.md)).
 
 ## Telemetry sources
 
@@ -118,11 +118,15 @@ Desktop recipes (for example LM Studio) have no launch manifest. The runner reso
 
 ## Experiment profile
 
-`profile.yaml` stays hand-curated. The runner records what it verified (served model, context, request policy) in `results.json`; transfer those into the profile. Set `software.harness` to the llm-recipes baseline runner, `software.harness_version` to the repository commit URL, and `settings.Workload suite` to the suite version.
+`profile.yaml` stays hand-curated. The runner records the served model, configured context, and request policy in `results.json`; transfer those into the profile. Set `software.harness` to the llm-recipes baseline runner, `software.harness_version` to the repository commit URL, and `settings.Workload suite` to the suite version.
 
 ## Vision check
 
 All recipes use `assets/checks/amdgpu-top.png`. [`assets/checks/amdgpu-top.expected.json`](../assets/checks/amdgpu-top.expected.json) lists the expected fields in two tiers. The prompt is built from that file and asks for a JSON object. Each field scores `match`, `mismatch`, or `missing`. The check passes when every `identity` field matches; `detail` fields are informational because small text depends on the image-token budget. Record the image-token setting beside the scores. The values in the screenshot (the VRAM figures and the `strata-host` process) belong to the capture, not to the server being measured. The scores are a text-matching check on one screenshot, not a general claim of image understanding.
+
+Request policy records sampling defaults, `request_extra`, and `thinking_request`: explicit thinking fields after overrides. An empty `thinking_request` means no explicit control was sent; it does not mean thinking was disabled. These fields describe requests, not verified server behavior. Older results retain `thinking_disabled_by_default`, which describes the runner default only. Context in results is the configured limit, not an independently queried server value.
+
+Profiles hold hardware, software, model identities, and inference settings. Results hold workload policies and measurements; paths and diagnostic metadata stay in the external run directory.
 
 ---
 

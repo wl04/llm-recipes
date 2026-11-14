@@ -263,7 +263,7 @@ def render_results_block(document: dict[str, Any]) -> str:
         "",
         f"Suite v{_cell(document['suite_version'])} · "
         f"run {_cell(run['status'])} · model `{_cell(server['model'])}` · "
-        f"context {server['context_tokens']:,} tokens",
+        f"configured context {server['context_tokens']:,} tokens",
     ]
     if document.get("functional"):
         lines += _functional(document["functional"])

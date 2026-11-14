@@ -77,9 +77,21 @@ PERFORMANCE = Policy(1.0, 20, 0.95, 0.0, 1.0, 0.0)
 FUNCTIONAL = Policy(0.0, 20, 0.95, 0.0, 1.0, 0.0)
 
 
-def thinking_configured(kind: str) -> bool:
-    """Whether a verified way of disabling thinking is known for this server kind."""
-    return kind in THINKING_OFF
+def thinking_request(kind: str, extra: dict[str, Any]) -> dict[str, Any]:
+    """Record explicit thinking controls after overrides; an empty mapping means unspecified.
+
+    These are request fields, not confirmation of server-side behavior. Template kwargs
+    are retained intact because their interpretation belongs to the server's template.
+    """
+    fields = {**THINKING_OFF.get(kind, {}), **extra}
+    keys = (
+        "reasoning_effort",
+        "enable_thinking",
+        "thinking",
+        "chat_template_kwargs",
+        "reasoning_budget_tokens",
+    )
+    return {key: fields[key] for key in keys if key in fields}
 
 
 def request_payload(

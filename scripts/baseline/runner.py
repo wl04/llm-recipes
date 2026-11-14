@@ -134,7 +134,7 @@ class Runner:
                 "performance": _describe(workloads.PERFORMANCE),
                 "functional": _describe(workloads.FUNCTIONAL),
                 "request_extra": config.request_extra,
-                "thinking_disabled_by_default": workloads.thinking_configured(config.kind),
+                "thinking_request": workloads.thinking_request(config.kind, config.request_extra),
             },
             "target": config.target,
             "phases": {},
