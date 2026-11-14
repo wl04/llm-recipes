@@ -13,8 +13,8 @@ os:
   kernel: 7.3.0-10-generic
   kernel_driver: amdgpu
 software:
-  harness: TabbyAPI
-  harness_version: https://github.com/theroyallab/tabbyAPI/commit/8f92fac5d9307bf1e09668c3715b32ff46ad0333
+  harness: llm-recipes baseline runner
+  harness_version: https://github.com/wl04/llm-recipes/commit/1a3c7c7a934854fb539ccf9beab4a8751818d5b9
   engine: ExLlamaV3
   engine_version: https://github.com/turboderp-org/exllamav3/releases/tag/v1.6.6
   engine_version_note: https://github.com/turboderp-org/exllamav3/commit/bd1f519172406a9560bd5c90e61000691bb69a07
@@ -24,9 +24,13 @@ software:
   gpu_driver_version: null
   pytorch: 2.14.0+rocm10.1.0
   python: 3.12.3
-  docker: 29.9.3
   base_image_tag: https://hub.docker.com/r/rocm/pytorch/tags?name=latest
   base_image: rocm/pytorch@sha256:099f59a3bee9c436f5cc57db6bc6076fdeda579c57e9e22ae40f856d5905b3e4
+  server: TabbyAPI
+  server_version: https://github.com/theroyallab/tabbyAPI/commit/8f92fac5d9307bf1e09668c3715b32ff46ad0333
+  host_python: 3.14.8
+  running_image_id: sha256:118c6aa85e1f40568a0f1023002d321f267ef251b5a6ca7d8678cbf90524c5c6
+  configuration_basis: Repository runtime/model locks and native settings; running image ID and engine version recorded by the baseline run
 model:
   name: Qwen3.8-27B
   format: EXL3
@@ -39,25 +43,23 @@ model:
   draft_quantization: 3.0 bpw, mul1 codebook, --out_scales always
   draft_size: 0.932 GB (decimal, converted weights)
 settings:
-  Speculative decoding: DFlash2 enabled and disabled; per-session modes in Results
-  Context length:
-  - 4096
-  - 131072
+  Speculative decoding: DFlash2 enabled
+  Context length: 131072
   Cache capacity: Equal to context length
   Target cache: Q4
   Draft cache: Q4
   Chunk size: 1024
   Maximum batch size: 1
-  Vision: false
+  Vision: true
   Tensor parallel: false
   GPU selection: RX 9070 XT only (HIP_VISIBLE_DEVICES)
   Recurrent state: FP16
   System recurrent cache MB: 4096
-  Temperature: 0
-  Seed: 42
-  Maximum output tokens: 128
-  Request endpoint: /v1/completions (non-streaming)
-  Long prompt BOS: false
+  Vision offload: false
+  Workload suite: '1'
+  Request policy: 'Performance: temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, presence penalty 0. Functional checks: temperature 0. Thinking disabled through chat_template_kwargs.enable_thinking=false; concurrency 1. Output caps: 1,024 for context cases, 2,048 for sustained generation, 256 for text/tools, 512 for vision.'
+  Request endpoint: /v1/chat/completions; streamed performance requests
+  Token counting: /v1/token/encode
 labels:
   hardware: Hardware
   hardware.gpu: GPU
@@ -91,7 +93,6 @@ labels:
   settings.Speculative decoding: Speculative decoding
   software.pytorch: PyTorch
   software.python: Python
-  software.docker: Docker Engine
   software.base_image_tag: Base image tag at preparation
   software.base_image: Pinned base image
   model.revision: Target revision
@@ -110,8 +111,13 @@ labels:
   settings.GPU selection: Gpu selection
   settings.Recurrent state: Recurrent state
   settings.System recurrent cache MB: System recurrent cache budget (MB)
-  settings.Temperature: Temperature
-  settings.Seed: Seed
-  settings.Maximum output tokens: Maximum output tokens
   settings.Request endpoint: Request endpoint
-  settings.Long prompt BOS: Long prompt bos
+  settings.Vision offload: Vision weight offload to system RAM
+  software.server: API server
+  software.server_version: API server revision
+  software.host_python: Host Python
+  software.running_image_id: Running image ID
+  software.configuration_basis: Software configuration basis
+  settings.Workload suite: Workload suite
+  settings.Request policy: Request policy
+  settings.Token counting: Token counting

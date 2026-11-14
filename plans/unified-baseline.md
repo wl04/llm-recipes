@@ -289,10 +289,10 @@ Acceptance: tests drive the prompts with scripted answers and a fake server.
 - The Strata `check_generation.py` helper and its tests were removed once the managed Strata baseline was verified; the TabbyAPI helpers stay until that server has been baselined.
 - Replace each recipe's initial-check and vision experiments with a baseline, only after that recipe has a baseline covering the same content (text, tools, vision, long context, memory). Rules:
   - Hand-written coding-session experiments are kept.
-  - The Strata migration replaced the initial experiments with baseline `001`. Preserve current assigned numbers; future baselines take the next number.
-  - Some experiments are configuration variants, not plain checks (ISTA `002` with 1,024 image tokens; EXL3 `001`, which compares DFlash2 against disabled). Re-run them as baselines under that configuration, or keep them.
+  - Strata and ExLlamaV3 initial experiments have been replaced by baseline `001`. The ExLlamaV3 coding session is `002`. Preserve current assigned numbers; future baselines take the next number.
+  - Preserve configuration variants unless explicitly replacing them.
   - Remove or move assets only when nothing references them.
-  - Fix the cross-references to removed experiments: EXL3 `002` links an asset in `001`, and the Unsloth `001` summary links the ISTA initial check.
+  - Update cross-references when replacing experiments.
   - Update `docs/authoring.md` examples that name the removed folders.
   - Git history preserves the removed results. Run the generator so the recipe index is regenerated.
 

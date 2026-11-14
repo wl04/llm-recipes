@@ -1,3 +1,7 @@
+<!-- Optional: add an Overview section here to describe how you use this setup. -->
+
+<!-- The generator adds Build and run to the footer when ../setup.md exists. -->
+
 <!-- BEGIN GENERATED CONFIGURATIONS -->
 
 # Qwen3.8-27B / EXL3 / RX 9070 XT / 16 GB VRAM
@@ -31,8 +35,8 @@
 
 | Setting | Value |
 |---|---|
-| Agent / harness | TabbyAPI |
-| Harness version | [8f92fac5](https://github.com/theroyallab/tabbyAPI/commit/8f92fac5d9307bf1e09668c3715b32ff46ad0333) |
+| Agent / harness | llm-recipes baseline runner |
+| Harness version | [1a3c7c7a](https://github.com/wl04/llm-recipes/commit/1a3c7c7a934854fb539ccf9beab4a8751818d5b9) |
 | Inference engine | ExLlamaV3 |
 | Engine version | [v1.6.6](https://github.com/turboderp-org/exllamav3/releases/tag/v1.6.6) |
 | Engine commit | [bd1f5191](https://github.com/turboderp-org/exllamav3/commit/bd1f519172406a9560bd5c90e61000691bb69a07) |
@@ -41,9 +45,13 @@
 | GPU driver | amdgpu |
 | PyTorch | 2.14.0+rocm10.1.0 |
 | Python | 3.12.3 |
-| Docker Engine | 29.9.3 |
 | Base image tag at preparation | [rocm/pytorch:latest](https://hub.docker.com/r/rocm/pytorch/tags?name=latest) |
 | Pinned base image | rocm/pytorch@sha256:099f59a3bee9c436f5cc57db6bc6076fdeda579c57e9e22ae40f856d5905b3e4 |
+| API server | TabbyAPI |
+| API server revision | [8f92fac5](https://github.com/theroyallab/tabbyAPI/commit/8f92fac5d9307bf1e09668c3715b32ff46ad0333) |
+| Host Python | 3.14.8 |
+| Running image ID | sha256:118c6aa85e1f40568a0f1023002d321f267ef251b5a6ca7d8678cbf90524c5c6 |
+| Software configuration basis | Repository runtime/model locks and native settings; running image ID and engine version recorded by the baseline run |
 
 
 ## Model
@@ -79,14 +87,14 @@
 | Gpu selection | RX 9070 XT only (HIP_VISIBLE_DEVICES) |
 | Recurrent state | FP16 |
 | System recurrent cache budget (MB) | 4096 |
-| Temperature | 0 |
-| Maximum output tokens | 256 |
-| Request endpoint | /v1/chat/completions (non-streaming) |
 | Vision weight offload to system RAM | False |
-| Thinking (chat template) | False |
+| Workload suite | 1 |
+| Request policy | Performance: temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, presence penalty 0. Functional checks: temperature 0. Thinking disabled through chat_template_kwargs.enable_thinking=false; concurrency 1. Output caps: 1,024 for context cases, 2,048 for sustained generation, 256 for text/tools, 512 for vision. |
+| Request endpoint | /v1/chat/completions; streamed performance requests |
+| Token counting | /v1/token/encode |
 
 ---
 
-[Recipe](../recipe.md) · [Results](summary.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)
+[Recipe](../recipe.md) · [Results](summary.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml) · [Results data](results.json)
 
 <!-- END GENERATED CONFIGURATIONS -->
