@@ -214,8 +214,8 @@ The report contains:
 3. A compact functional outcome list.
 4. Warmup summary: request count, duration, convergence.
 5. One row per case: actual input and output counts, first-output latency, engine prefill speed, client decode rate, draft acceptance, and finish reason, with the noise floor of the repeated 8K case beneath.
-6. A resource table by workload: server and system CPU, peak RAM and VRAM as used over total, GPU load, power and temperature, swap activity, and sample coverage. Sizes are shown in GB, meaning 2^30 bytes, as elsewhere in the repository.
-7. The measurements that are unavailable, with their reasons, and a one-line definition of decode, prefill, and GB.
+6. A resource table by workload: server and system CPU, peak RAM and VRAM as used over total, GPU load, power and temperature, swap activity, and sample coverage. Sizes are shown in GB, as elsewhere in the repository, and stored in GiB.
+7. The measurements that are unavailable, with their reasons, and a one-line definition of decode and prefill.
 
 The phase measurements (idle, load, settle, loaded idle, unload) stay in `results.json` but are not rendered.
 

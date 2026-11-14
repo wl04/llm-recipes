@@ -54,7 +54,7 @@ Warmup: 2 requests, converged, 2.29 s.
 | context-64k | 3.69 | 23.12 | 49.5 / — | 15.3 / — | 97.40 | 273.65 | 54 | 0 / 0 | 60 | 0.500 |
 | context-120k | 2.94 | 18.31 | 51.1 / — | 15.3 / — | 97.48 | 272.89 | 54 | 0 / 0 | 94 | 0.500 |
 
-Decode is a client estimate: (output tokens - 1) / (last - first output). Prefill is reported by the engine and is empty when the server reports none. GB means 2^30 bytes.
+Decode is a client estimate: (output tokens - 1) / (last - first output). Prefill is reported by the engine and is empty when the server reports none.
 
 <!-- END GENERATED RESULTS -->
 

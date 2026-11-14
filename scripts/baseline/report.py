@@ -1,7 +1,7 @@
 """Render baseline results as the markdown block of an experiment summary.
 
 The block is a pure function of the result document, so a summary can be regenerated at any time.
-Sizes are shown in GB, where 1 GB is 2^30 bytes, matching how the repository writes "16 GB VRAM".
+Sizes are shown in GB, as elsewhere in the repository; the result document stores them in GiB.
 """
 
 import html
@@ -59,7 +59,7 @@ RESOURCE_DISPLAYED = (
 )
 DEFINITIONS = (
     "Decode is a client estimate: (output tokens - 1) / (last - first output). Prefill is "
-    "reported by the engine and is empty when the server reports none. GB means 2^30 bytes."
+    "reported by the engine and is empty when the server reports none."
 )
 
 

@@ -198,7 +198,7 @@ def test_a_definitions_line_explains_decode_prefill_and_gb() -> None:
 
     assert "Decode is a client estimate" in text
     assert "Prefill is reported by the engine" in text
-    assert "GB means 2^30 bytes" in text
+    assert "2^30" not in text
 
 
 def test_unavailable_list_covers_only_metrics_that_are_shown() -> None:
