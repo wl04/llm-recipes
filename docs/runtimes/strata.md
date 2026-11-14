@@ -54,8 +54,6 @@ The [baseline runner](../baseline.md) is the way to check and measure a Strata r
 - **Cache:** usage reports cached input tokens.
 - **Engine timings:** the engine log holds one line per completion, such as `strata serve: prompt 24 tokens = 0 reused + 24 read in 315 ms (76.3 tok/s), 120 generated in 1233 ms (97.3 tok/s), drafts accepted 86 of 94, 1 checkpoints`. The runner keeps the log in the run's `server-logs/` and matches the lines to its requests to report engine prefill and decode speed and draft acceptance.
 
-`runtimes/strata/scripts/check_generation.py` (`text`, `tools`, `vision`, `long`) remains for quick manual checks against a running server; it needs an explicit `--model` and defaults to `http://127.0.0.1:8080`. See its `--help`.
-
 Pi uses OpenAI-compatible chat completions. The frontend supports streaming, tool calls/results, embedded images, and `max_completion_tokens`. `low` and `medium` reasoning map directly; `high` and `xhigh` map to the model's `xhigh`. `off: none` disables thinking; `minimal` also disables it in this revision. See [Pi setup](../clients/pi.md) for installation and client configuration.
 
 ---

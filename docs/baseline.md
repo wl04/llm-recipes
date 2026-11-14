@@ -122,7 +122,7 @@ Desktop recipes (for example LM Studio) have no launch manifest. The runner reso
 
 ## Vision check
 
-All recipes use `assets/checks/amdgpu-top.png`. [`assets/checks/amdgpu-top.expected.json`](../assets/checks/amdgpu-top.expected.json) lists the expected fields in two tiers. The prompt is built from that file and asks for a JSON object. Each field scores `match`, `mismatch`, or `missing`. The check passes when every `identity` field matches; `detail` fields are informational because small text depends on the image-token budget. Record the image-token setting beside the scores. The scores are a text-matching check on one screenshot, not a general claim of image understanding.
+All recipes use `assets/checks/amdgpu-top.png`. [`assets/checks/amdgpu-top.expected.json`](../assets/checks/amdgpu-top.expected.json) lists the expected fields in two tiers. The prompt is built from that file and asks for a JSON object. Each field scores `match`, `mismatch`, or `missing`. The check passes when every `identity` field matches; `detail` fields are informational because small text depends on the image-token budget. Record the image-token setting beside the scores. The values in the screenshot (the VRAM figures and the `strata-host` process) belong to the capture, not to the server being measured. The scores are a text-matching check on one screenshot, not a general claim of image understanding.
 
 ---
 

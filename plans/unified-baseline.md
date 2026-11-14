@@ -138,7 +138,7 @@ Score the vision answer against expectations stored next to the image in `assets
 - Each field is scored `match`, `mismatch` (a different value, such as a misread), or `missing`. The report shows counts per tier and the per-field table.
 - The functional outcome passes when all `identity` fields match. `detail` scores are informational and do not fail the run. Earlier results show that small on-screen text depends strongly on the image-token budget: at 300 tokens the models recognized the application but invented panel names, while 1,024 tokens read the details correctly. Report the image-token setting beside the scores, and compare scores only at equal settings.
 - Record the expectations file hash and version. Changing the image, prompt, or expectations bumps the workload-suite version.
-- Generate the value table in `docs/vision-check.md` from the expectations file, or replace it with a link, so there is one source of truth.
+- The expectations file is the single source of truth for the expected values; `docs/vision-check.md` was folded into the baseline guide and removed.
 - The scores are a text-matching check on one screenshot, not a general claim of image understanding.
 
 ### Sampling and cache policy
@@ -285,14 +285,14 @@ Acceptance: tests drive the prompts with scripted answers and a fake server.
 - Set the warmup tolerance and maximum count, the quiet-system thresholds, and the minimum sustained output length from pilot data. Check that noise floors are plausible and comparable across recipes.
 - Confirm the proposed lengths and context matrix yield useful durations without exhausting memory. Record actual suite duration before documenting an estimate.
 - Replace setup-guide validation blocks with the unified command where a setup guide exists (desktop recipes have none). Update runtime/client instructions, authoring guidance, and templates.
-- Retain small compatibility wrappers for existing check commands during migration if needed; remove duplicate request logic once the new path is verified.
+- The Strata `check_generation.py` helper and its tests were removed once the managed Strata baseline was verified; the TabbyAPI helpers stay until that server has been baselined.
 - Replace each recipe's initial-check and vision experiments with a baseline, only after that recipe has a baseline covering the same content (text, tools, vision, long context, memory). Rules:
   - Hand-written coding-session experiments are kept.
   - Do not renumber; gaps are acceptable and the baseline takes the next number.
   - Some experiments are configuration variants, not plain checks (ISTA `002` with 1,024 image tokens; EXL3 `001`, which compares DFlash2 against disabled). Re-run them as baselines under that configuration, or keep them.
   - Remove or move assets only when nothing references them.
   - Fix the cross-references to removed experiments: EXL3 `002` links an asset in `001`, and the Unsloth `001` summary links the ISTA initial check.
-  - Update `docs/authoring.md` examples that name the removed folders, and `docs/vision-check.md`, which mentions the earlier Unsloth image.
+  - Update `docs/authoring.md` examples that name the removed folders.
   - Git history preserves the removed results. Run the generator so the recipe index is regenerated.
 
 Acceptance: each recipe can produce a standalone baseline with comparable metric definitions and clearly marked gaps. Retained historical results are unchanged, and removed ones leave no dangling links. Workstation validation is reported separately from CPU-only CI.
