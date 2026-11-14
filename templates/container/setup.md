@@ -33,7 +33,7 @@ sudo -v
 python3 scripts/run_baseline.py run <recipe>
 ```
 
-Add launch options only where the launch command above differs from the manifest defaults (for example `--context` and `--vision`). State whether thinking is disabled by default for this server (see the [baseline guide](../../docs/baseline.md#current-limits)) and link the guide for preconditions, the phases, the output location, and how to publish a result. Do not repeat the guide's instructions here. Do not link results from this page: the setup guide is read before any experiment exists.
+Add launch options only where the launch command above differs from the manifest defaults (for example `--context` and `--vision`). Mention thinking only when the reader has to act on it (for example, a server that thinks by default and needs `--request-extra` to disable it); otherwise the baseline guide covers it. Link the guide for preconditions, the phases, the output location, and how to publish a result. Do not repeat the guide's instructions here. Do not link results from this page: the setup guide is read before any experiment exists.
 
 ## Pi
 
