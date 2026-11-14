@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "image": "amdgpu-top.png",
+  "image_sha256": "5c79b4125f0745a1d6089547839409d1030aaff00891f675107f00af25b0f329",
+  "instruction": "Read the screenshot and report each field below exactly as displayed. Use null for anything you cannot read.",
+  "expectations": [
+    {
+      "id": "application",
+      "tier": "identity",
+      "description": "Name of the application shown in the window",
+      "all_of": ["amdgpu_top"]
+    },
+    {
+      "id": "gpu_model",
+      "tier": "identity",
+      "description": "GPU model name in the top panel",
+      "all_of": ["rx 9070 xt"]
+    },
+    {
+      "id": "application_version",
+      "tier": "detail",
+      "description": "Application version in the top panel title",
+      "all_of": ["0.11.5"]
+    },
+    {
+      "id": "architecture",
+      "tier": "detail",
+      "description": "GPU architecture code on the second line of the top panel",
+      "all_of": ["gfx1201"]
+    },
+    {
+      "id": "device_vram",
+      "tier": "detail",
+      "description": "Device VRAM used and total in the Memory Usage panel",
+      "all_of": ["15737", "16304"]
+    },
+    {
+      "id": "device_gtt",
+      "tier": "detail",
+      "description": "Device GTT used and total in the Memory Usage panel",
+      "all_of": ["116", "30328"]
+    },
+    {
+      "id": "process_name",
+      "tier": "detail",
+      "description": "Name of the first process in the fdinfo table",
+      "all_of": ["strata-host"]
+    },
+    {
+      "id": "process_vram",
+      "tier": "detail",
+      "description": "VRAM of that first process in the fdinfo table",
+      "all_of": ["15419"]
+    },
+    {
+      "id": "panel_headings",
+      "tier": "detail",
+      "description": "Titles of the panels below the top panel, as a list",
+      "all_of": ["grbm", "memory usage", "activity", "fdinfo", "sensors", "gpu metrics"]
+    }
+  ]
+}

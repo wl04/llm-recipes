@@ -24,6 +24,7 @@ files = [
     "scripts/launch.py",
     "scripts/launcher.py",
     "scripts/doctor.py",
+    "scripts/baseline",
     "runtimes/exllamav3-tabbyapi/scripts/gpu.py",
     "runtimes/exllamav3-tabbyapi/scripts/serve.py",
     "runtimes/exllamav3-tabbyapi/scripts/prepare_models.py",
