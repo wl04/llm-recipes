@@ -10,7 +10,7 @@ Strata HIP container build and launch configuration for ISTA-DASLab GSQ-RCO IQ3_
 
 | Experiment | Configuration | Results |
 |---|---|---|
-| 003 · 2026-11-12 — Long coding session in Pi | [Configuration](003-2026-11-12-coding-medium/configuration.md) | [Results](003-2026-11-12-coding-medium/summary.md) |
+| 002 · 2026-11-12 — Long coding session in Pi | [Configuration](002-2026-11-12-coding-medium/configuration.md) | [Results](002-2026-11-12-coding-medium/summary.md) |
 | 001 · 2026-11-14 — Baseline | [Configuration](001-2026-11-14-baseline/configuration.md) | [Results](001-2026-11-14-baseline/summary.md) |
 
 <!-- END GENERATED EXPERIMENTS -->

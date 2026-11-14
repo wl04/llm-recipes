@@ -1,4 +1,4 @@
-# 003 · 2026-11-12 — Long coding session in Pi
+# 002 · 2026-11-12 — Long coding session in Pi
 
 ## Workload
 
