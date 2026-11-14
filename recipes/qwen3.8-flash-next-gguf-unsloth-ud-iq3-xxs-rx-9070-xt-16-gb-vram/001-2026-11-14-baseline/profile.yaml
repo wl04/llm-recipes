@@ -80,8 +80,8 @@ labels:
   os.kernel: Kernel version
   os.kernel_driver: Kernel driver
   software: Software
-  software.harness: Check client
-  software.harness_version: Check client revision
+  software.harness: Harness
+  software.harness_version: Harness revision
   software.api_server: API server
   software.engine: Engine
   software.engine_version: Engine version

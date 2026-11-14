@@ -36,8 +36,8 @@
 
 | Setting | Value |
 |---|---|
-| Check client | llm-recipes baseline runner |
-| Check client revision | [13dfa3ba](https://github.com/wl04/llm-recipes/commit/13dfa3baa93040188a63391f0a2b7463835742bb) |
+| Harness | llm-recipes baseline runner |
+| Harness revision | [13dfa3ba](https://github.com/wl04/llm-recipes/commit/13dfa3baa93040188a63391f0a2b7463835742bb) |
 | API server | Strata serve.server |
 | Engine | Strata |
 | Engine version | 0.1.59.1 |
