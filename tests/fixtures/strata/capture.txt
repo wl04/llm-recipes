@@ -1,0 +1,28 @@
+server kind: strata
+base url: http://127.0.0.1:8080
+model id: qwen3.8-flash-next-ud-iq3_xxs
+captured (UTC): 2026-11-14 23:27:24
+client: curl 8.20.0 (x86_64-pc-linux-gnu) libcurl/8.20.0 OpenSSL/4.0.3 zlib/1.3.2 brotli/1.2.0 zstd/1.5.7 libidn2/2.3.8 libpsl/0.23.3 libssh2/1.11.1 nghttp2/1.70.0 mit-krb5/1.22.1 OpenLDAP/2.6.13
+token-count route: /v1/messages/count_tokens -> 200
+
+GET /v1/models response headers:
+HTTP/1.0 200 OK
+Server: BaseHTTP/0.6 Python/3.12.3
+Date: Sat, 14 Nov 2026 23:27:21 GMT
+Content-Type: application/json
+Content-Length: 234
+Connection: close
+
+
+Engine and server version:
+  engine: Strata 0.1.59.1, revision dbb2d168cffa8cf793d9325358809d5263c7c6b0
+  image: llm-recipes/strata-rdna4:probe sha256:afe7c1bff2f14085879a86bfcdc5729996a66beac14edee40207c08e255feca6
+  container runtime: Python 3.12.3 (BaseHTTP)
+  model: qwen3.8-flash-next-ud-iq3_xxs (Unsloth UD IQ3_XXS)
+Confirm identity with `sudo docker ps` and the recipe profile before committing.
+
+Behavior notes from this capture:
+  - Unknown model ids are ACCEPTED with HTTP 200 (see error.json / error.status).
+  - Forced tool calls stream as tool_calls deltas and finish with finish_reason tool_calls.
+  - /v1/models reports n_ctx 131072 and input_modalities text+image.
+  - Streams interleave ': keep-alive' comment lines before the final usage chunk.
