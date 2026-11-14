@@ -62,14 +62,13 @@ def test_render_results_block_reports_warmup() -> None:
 def test_boot_state_uses_readable_labels_and_used_over_total_pairs() -> None:
     boot = section(render(), "### Boot state")
 
-    assert row_of(boot, "Uptime (s)")[1] == "540"
+    assert row_of(boot, "Uptime")[1] == "9 min"
     assert row_of(boot, "RAM used / total (GB)")[1] == "6.5 / 62.6"
     assert row_of(boot, "Swap used / total (GB)")[1] == "0.0 / 8.0"
     assert row_of(boot, "VRAM used / total (GB)")[1] == "0.2 / 15.9"
     assert row_of(boot, "GPU busy (%)")[1] == "2"
     assert row_of(boot, "GPU power (W)")[1] == "9.30"
     assert row_of(boot, "GPU temperature (°C)")[1] == "29"
-    assert row_of(boot, "Load average (1 min)")[1] == "0.25"
 
 
 def test_boot_state_shows_variable_names_nowhere() -> None:
@@ -77,6 +76,7 @@ def test_boot_state_shows_variable_names_nowhere() -> None:
 
     for name in ("uptime_s", "mem_used_gib", "gpu_vram_used_gib", "swap_used_gib", "load_1m"):
         assert name not in boot
+    assert "Load average" not in boot
 
 
 def test_boot_state_shows_a_dash_for_a_missing_total() -> None:
@@ -283,3 +283,14 @@ def test_blocks_never_contain_two_blank_lines_in_a_row() -> None:
 
     assert "\n\n\n" not in render(document)
     assert "\n\n\n" not in render()
+
+
+@pytest.mark.parametrize(
+    ("seconds", "expected"),
+    [(45, "45 s"), (60, "1 min"), (840, "14 min"), (3600, "1 h"), (8483, "2 h 21 min")],
+)
+def test_uptime_is_shown_in_hours_and_minutes(seconds: int, expected: str) -> None:
+    document = sample_results()
+    document["boot"]["metrics"]["uptime_s"] = schema.measured(seconds, "s", "/proc/uptime")
+
+    assert row_of(section(render(document), "### Boot state"), "Uptime")[1] == expected

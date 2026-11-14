@@ -37,7 +37,6 @@ def test_boot_state_records_uptime_load_memory_and_idle_gpu(tmp_path: Path) -> N
 
     metrics = {name: metric["value"] for name, metric in state["metrics"].items()}
     assert metrics["uptime_s"] == 540.25
-    assert metrics["load_1m"] == 0.1
     assert metrics["mem_total_gib"] == pytest.approx(64_000_000 / 1024 / 1024)
     assert metrics["mem_used_gib"] == pytest.approx(4_000_000 / 1024 / 1024)
     assert metrics["swap_total_gib"] == pytest.approx(8_000_000 / 1024 / 1024)
@@ -56,14 +55,12 @@ def test_boot_state_warns_when_the_gpu_is_busy_at_start(tmp_path: Path) -> None:
     assert any("GPU" in warning for warning in state["warnings"])
 
 
-def test_boot_state_records_but_does_not_warn_on_load_that_follows_a_server_start(
-    tmp_path: Path,
-) -> None:
+def test_boot_state_does_not_record_load_average(tmp_path: Path) -> None:
     proc = fake_proc(tmp_path / "proc", load="3.50 2.00 1.00 1/100 1")
 
     state = host.boot_state(proc, fake_gpu(tmp_path / "gpu"))
 
-    assert state["metrics"]["load_1m"]["value"] == 3.5
+    assert "load_1m" not in state["metrics"]
     assert state["warnings"] == []
 
 

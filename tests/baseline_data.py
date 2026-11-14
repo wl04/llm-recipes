@@ -16,7 +16,6 @@ def sample_results() -> dict[str, Any]:
         "boot": {
             "metrics": {
                 "uptime_s": schema.measured(540, "s", "/proc/uptime"),
-                "load_1m": schema.measured(0.25, "load", "/proc/loadavg"),
                 "mem_used_gib": schema.measured(6.5, "GiB", "/proc/meminfo"),
                 "mem_total_gib": schema.measured(62.6, "GiB", "/proc/meminfo"),
                 "swap_used_gib": schema.measured(0, "GiB", "/proc/meminfo"),

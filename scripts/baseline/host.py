@@ -42,9 +42,6 @@ def boot_state(proc: Path, gpu_device: Path | None) -> dict[str, Any]:
         "uptime_s": _metric(
             lambda: float((proc / "uptime").read_text().split()[0]), "s", "/proc/uptime"
         ),
-        "load_1m": _metric(
-            lambda: float((proc / "loadavg").read_text().split()[0]), "load", "/proc/loadavg"
-        ),
     }
     for key, name, source in (
         ("sys_used_bytes", "mem_used_gib", "/proc/meminfo MemTotal-MemAvailable"),

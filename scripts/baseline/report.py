@@ -25,8 +25,7 @@ NOISE_LABELS = (
 )
 # (label, used metric, total metric, decimals); the total is empty for a single value.
 BOOT_ROWS = (
-    ("Uptime (s)", "uptime_s", None, 0),
-    ("Load average (1 min)", "load_1m", None, 2),
+    ("Uptime", "uptime_s", None, 0),
     ("RAM used / total (GB)", "mem_used_gib", "mem_total_gib", 1),
     ("Swap used / total (GB)", "swap_used_gib", "swap_total_gib", 1),
     ("GPU busy (%)", "gpu_busy_percent", None, 0),
@@ -87,6 +86,19 @@ def _fixed(metric: dict[str, Any] | None, digits: int) -> str:
     return f"{metric['value']:,.{digits}f}" if metric is not None and _has(metric) else MISSING
 
 
+def _uptime(metric: dict[str, Any] | None) -> str:
+    if not _has(metric):
+        return MISSING
+    assert metric is not None
+    minutes = int(metric["value"]) // 60
+    if minutes == 0:
+        return f"{int(metric['value'])} s"
+    hours, minutes = divmod(minutes, 60)
+    if hours == 0:
+        return f"{minutes} min"
+    return f"{hours} h" if minutes == 0 else f"{hours} h {minutes} min"
+
+
 def _pair(used: dict[str, Any] | None, total: dict[str, Any] | None, digits: int) -> str:
     return f"{_fixed(used, digits)} / {_fixed(total, digits)}"
 
@@ -126,11 +138,12 @@ def _boot(boot: dict[str, Any]) -> list[str]:
     for label, used, total, digits in BOOT_ROWS:
         if used not in metrics and total not in metrics:
             continue
-        value = (
-            _fixed(metrics.get(used), digits)
-            if total is None
-            else _pair(metrics.get(used), metrics.get(total), digits)
-        )
+        if used == "uptime_s":
+            value = _uptime(metrics.get(used))
+        elif total is None:
+            value = _fixed(metrics.get(used), digits)
+        else:
+            value = _pair(metrics.get(used), metrics.get(total), digits)
         rows.append([label, value])
     lines = ["", "### Boot state", ""]
     if rows:

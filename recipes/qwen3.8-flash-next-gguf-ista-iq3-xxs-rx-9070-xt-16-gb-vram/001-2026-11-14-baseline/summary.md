@@ -18,8 +18,7 @@ suite 1 · schema 1 · run complete · model `qwen3.8-flash-next-iq3_xxs` · con
 
 | Measurement | Value |
 |---|---|
-| Uptime (s) | 8,483 |
-| Load average (1 min) | 0.17 |
+| Uptime | 2 h 21 min |
 | Swap used / total (GB) | 0.0 / — |
 | GPU busy (%) | 1 |
 | VRAM used / total (GB) | 0.2 / — |
