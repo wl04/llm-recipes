@@ -275,6 +275,8 @@ class Runner:
                 server_cpu_max=suite.settle_server_cpu_cores,
             )
             if verdict:
+                if self._clock() - begun < suite.settle_poll_s:
+                    entry["note"] = "Already settled when the server became ready"
                 return
             if self._clock() - begun > suite.settle_max_seconds:
                 entry["note"] = (

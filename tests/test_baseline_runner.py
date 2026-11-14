@@ -565,3 +565,14 @@ def test_managed_run_notes_when_the_server_does_not_settle(tmp_path: Path) -> No
     settle = next(p for p in results_of(raw)["phases"] if p["id"] == "settle")
     assert code == ExitCode.OK
     assert "did not settle" in settle["note"]
+
+
+def test_managed_run_notes_when_the_server_was_already_settled(tmp_path: Path) -> None:
+    suite = SuiteConfig(**{**SUITE.__dict__, "settle_seconds": 0.0})
+    with FakeServer() as server:
+        control = FakeControl(tmp_path, server)
+        _, raw, _ = execute(tmp_path, server, control=control, suite=suite)
+
+    settle = next(p for p in results_of(raw)["phases"] if p["id"] == "settle")
+    assert "already settled" in settle["note"].lower()
+    assert list(settle["metrics"]) == ["duration_s"]

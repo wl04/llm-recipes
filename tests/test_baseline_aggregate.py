@@ -542,3 +542,14 @@ def test_engine_metrics_are_unavailable_for_servers_without_a_log_parser() -> No
     case = case_of(results(two_requests(), engine_log=ENGINE_LOG, server=server), "c")
 
     assert "not parsed for tabbyapi" in case["metrics"]["engine_decode_tok_s"]["unavailable"]
+
+
+def test_phase_too_short_to_sample_reports_only_its_duration() -> None:
+    samples = [sample(0.0, vram_bytes=GIB), sample(50.0, vram_bytes=GIB)]
+    phases = {"settle": phase(10.0, 10.001, note="Already settled when the server became ready")}
+
+    document = results([request("c")], samples, phases=phases)
+
+    entry = document["phases"][0]
+    assert list(entry["metrics"]) == ["duration_s"]
+    assert entry["note"].startswith("Already settled")

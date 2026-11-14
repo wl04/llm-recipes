@@ -293,6 +293,7 @@ def _resource_metrics(
 
 
 IDLE_CPU_WARNING_PERCENT = 10.0
+MIN_UNSAMPLED_PHASE_S = 1.0
 PHASE_ORDER = ("idle", "load", "settle", "loaded_idle", "unload", "after_unload")
 SYSTEM_PHASE_METRICS = (
     "system_cpu_busy_percent",
@@ -330,12 +331,14 @@ def _phases(
     for name in [n for n in PHASE_ORDER if n in recorded]:
         item = recorded[name]
         window = [(item["start_s"], item["end_s"])]
-        everything = _resource_metrics(samples, window, target, f"the {name} phase")
-        names = SYSTEM_PHASE_METRICS + (() if name in SYSTEM_ONLY_PHASES else SERVER_PHASE_METRICS)
-        metrics: dict[str, Any] = {
-            "duration_s": _measured(item["end_s"] - item["start_s"], "s", CLIENT_SOURCE)
-        }
-        metrics.update({key: everything[key] for key in names})
+        duration = item["end_s"] - item["start_s"]
+        metrics: dict[str, Any] = {"duration_s": _measured(duration, "s", CLIENT_SOURCE)}
+        if _within(samples, window) or duration >= MIN_UNSAMPLED_PHASE_S:
+            everything = _resource_metrics(samples, window, target, f"the {name} phase")
+            names = SYSTEM_PHASE_METRICS + (
+                () if name in SYSTEM_ONLY_PHASES else SERVER_PHASE_METRICS
+            )
+            metrics.update({key: everything[key] for key in names})
         for key, value in item.get("measures", {}).items():
             metrics[key] = _measured(value, "s", CLIENT_SOURCE)
         entry: dict[str, Any] = {"id": name, "status": item.get("status", "ok")}
@@ -349,7 +352,8 @@ def _phases(
             ("vram_peak_gib", "vram_vs_idle_gib", 1),
             ("system_available_min_gib", "available_ram_vs_idle_gib", -1),
         ):
-            before, later = idle["metrics"][key]["value"], after["metrics"][key]["value"]
+            before = idle["metrics"].get(key, {}).get("value")
+            later = after["metrics"].get(key, {}).get("value")
             after["metrics"][label] = (
                 schema.unavailable(f"{key} was not measured in both phases")
                 if before is None or later is None
@@ -381,7 +385,7 @@ def build_results(raw: RawRun) -> dict[str, Any]:
     if boot is not None or phases:
         warnings = list((boot or {}).get("warnings", []))
         idle = next((p for p in phases if p["id"] == "idle"), None)
-        busy = idle["metrics"]["system_cpu_busy_percent"]["value"] if idle else None
+        busy = idle["metrics"].get("system_cpu_busy_percent", {}).get("value") if idle else None
         if busy is not None and busy > IDLE_CPU_WARNING_PERCENT:
             warnings.append(
                 f"System CPU was {busy:.1f}% busy during the idle phase; "
