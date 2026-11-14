@@ -47,6 +47,22 @@ python3 runtimes/exllamav3-tabbyapi/scripts/check_long_context.py --model qwen3.
 
 The manifest defaults to a 4,096-token context, drafting on and vision off; the launch command above overrides context and vision. Edit [tabby.yml](config/tabby.yml) for sampling and other native defaults. Thinking is enabled by default, and clients control effort and reasoning budget.
 
+## Baseline
+
+Record one baseline once the server is ready, ideally on a freshly booted machine with nothing else running. Run from the repository root. `sudo -v` is needed because the runner resolves the container with `sudo -n docker`.
+
+```bash
+curl -fsS http://127.0.0.1:5000/v1/models   # repeat until it succeeds
+sudo -v
+python3 scripts/run_baseline.py run qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
+  --instance coding \
+  --model qwen3.8-27b-exl3-3bpw \
+  --context 131072 \
+  --output "$HOME/Models/llm-recipes/baselines/coding-$(date +%F-%H%M)"
+```
+
+The launch command above overrides the manifest context, so `--context` matches it. Thinking is enabled by default on this server and the baseline does not yet know TabbyAPI's field for disabling it: the measured output then includes reasoning, and `--request-extra '<json>'` can supply the field. The output directory receives `results.json`, a draft `summary.md`, and the raw records. See the [baseline guide](../../docs/baseline.md) for what is measured and how to publish a result.
+
 ## Pi
 
 Follow [Pi setup](../../docs/clients/pi.md#configure-a-recipe) using [`config/pi.models.json`](config/pi.models.json). Select `tabby-local` / `qwen3.8-27b-exl3-3bpw`. The example matches the launch command above: 131,072 context tokens and text/image input.

@@ -41,6 +41,21 @@ Provide a Bash block that waits for readiness, displays the loaded model ID, and
 
 Use stderr for helper progress so saved JSON remains parseable. Use the shared `assets/checks/amdgpu-top.png` as the vision input when supported, with an optional `--image` override; link [baseline reading details](../../docs/vision-check.md). The subshell keeps shell options local; `pipefail` propagates failures through `tee`. Link the runtime guide for check behavior and token limits. Outputs stay outside the repository; record the relevant statistics and observations in the experiment summary.
 
+## Baseline
+
+Provide a copy-and-paste block that records one baseline for this recipe. Run it from the repository root once the server is ready, ideally on a freshly booted machine with nothing else running. The runner resolves the container with `sudo -n docker`, so authenticate first. Use the instance name, served model ID, and context from the launch command above, and pass `--context` when the launch command overrides the manifest. State whether thinking is disabled by default for this server (see the [baseline guide](../../docs/baseline.md#current-limits)). For example:
+
+```bash
+curl -fsS http://127.0.0.1:<port>/<readiness-route>   # repeat until it succeeds
+sudo -v
+python3 scripts/run_baseline.py run <recipe> \
+  --instance coding \
+  --model <served-model-id> \
+  --output "$HOME/Models/llm-recipes/baselines/<instance>-$(date +%F-%H%M)"
+```
+
+Link the [baseline guide](../../docs/baseline.md) for what is measured, the output files, and how to publish a result.
+
 ## Pi
 
 Link to [Pi setup](../../docs/clients/pi.md#configure-a-recipe) and `config/pi.models.json`. Name the provider/model and the context and vision configuration that the example matches.

@@ -60,6 +60,21 @@ Run this Bash block from the repository root after startup. Vision uses the shar
 
 Each helper checks the loaded model ID before generation. The block stops on failure and saves outputs in a fresh temporary directory. Keep any files needed for analysis before clearing temporary storage; summarize results in a numbered experiment. See [check behavior](../../docs/runtimes/strata.md#checks-and-clients) for sampling, token limits, and interpreting the output.
 
+## Baseline
+
+Record one baseline once the server is ready, ideally on a freshly booted machine with nothing else running. Run from the repository root. `sudo -v` is needed because the runner resolves the container with `sudo -n docker`.
+
+```bash
+curl -fsS http://127.0.0.1:8080/health   # repeat until it succeeds
+sudo -v
+python3 scripts/run_baseline.py run qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram \
+  --instance strata-coding \
+  --model qwen3.8-flash-next-iq3_xxs \
+  --output "$HOME/Models/llm-recipes/baselines/strata-coding-$(date +%F-%H%M)"
+```
+
+Thinking is disabled by default for this server. The output directory receives `results.json`, a draft `summary.md`, and the raw records. See the [baseline guide](../../docs/baseline.md) for what is measured and how to publish a result.
+
 ## Pi
 
 Follow [Pi setup](../../docs/clients/pi.md#configure-a-recipe) using [`config/pi.models.json`](config/pi.models.json). Select `strata-local` with `/model`. The example uses 131,072 context tokens and text/image input.
