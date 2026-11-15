@@ -18,20 +18,20 @@
     "unclosed_requests": false
   },
   "totals": {
-    "requests": 1943,
+    "requests": 1947,
     "cancelled": 0,
     "unclosed_requests": null,
-    "prompt_tokens": 138731884,
-    "reused_prompt_tokens": 134529422,
-    "read_prompt_tokens": 4202462,
-    "generated_tokens": 1212302,
-    "prefill_seconds": 2148.7,
-    "decode_seconds": 13848.5,
-    "prefill_tok_s": 1955.9,
+    "prompt_tokens": 138951134,
+    "reused_prompt_tokens": 134747931,
+    "read_prompt_tokens": 4203203,
+    "generated_tokens": 1214563,
+    "prefill_seconds": 2150.5,
+    "decode_seconds": 13876.4,
+    "prefill_tok_s": 1954.5,
     "decode_tok_s": 87.5,
     "decode_tok_s_median": 86.1,
-    "drafts_accepted": 733560,
-    "drafts_proposed": 997103,
+    "drafts_accepted": 734837,
+    "drafts_proposed": 999117,
     "draft_acceptance": 0.7,
     "context_buckets": [
       {
@@ -54,9 +54,9 @@
       },
       {
         "label": "32,768-131,071 tokens",
-        "requests": 1842,
-        "prompt_tokens": 137553066,
-        "generated_tokens": 1150893
+        "requests": 1846,
+        "prompt_tokens": 137772316,
+        "generated_tokens": 1153154
       }
     ]
   }

@@ -22,18 +22,18 @@ Timestamps: unavailable — this engine logs no per-line times; wall-clock span 
 
 | Metric | Value |
 |---|---|
-| Requests completed | 1,943 |
+| Requests completed | 1,947 |
 | Cancelled | 0 |
 | Started without result | unavailable |
 | Wall-clock span | unavailable |
-| Prompt tokens | 138,731,884 |
-| Reused prompt tokens | 134,529,422 |
-| Fresh prefill tokens | 4,202,462 |
-| Generated tokens | 1,212,302 |
-| Aggregate prefill (tok/s) | 1,955.9 |
+| Prompt tokens | 138,951,134 |
+| Reused prompt tokens | 134,747,931 |
+| Fresh prefill tokens | 4,203,203 |
+| Generated tokens | 1,214,563 |
+| Aggregate prefill (tok/s) | 1,954.5 |
 | Aggregate decode (tok/s) | 87.5 |
 | Median decode (tok/s) | 86.1 |
-| Draft acceptance | 70.0% (733,560 / 997,103) |
+| Draft acceptance | 70.0% (734,837 / 999,117) |
 
 ### Request size distribution
 
@@ -42,7 +42,7 @@ Timestamps: unavailable — this engine logs no per-line times; wall-clock span 
 | under 2,048 tokens | 34 | 13,943 | 17,615 |
 | 2,048-8,191 tokens | 9 | 54,228 | 8,066 |
 | 8,192-32,767 tokens | 58 | 1,110,647 | 35,728 |
-| 32,768-131,071 tokens | 1,842 | 137,553,066 | 1,150,893 |
+| 32,768-131,071 tokens | 1,846 | 137,772,316 | 1,153,154 |
 <!-- END GENERATED SESSION -->
 
 <!-- If ../setup.md exists, use this footer instead:
