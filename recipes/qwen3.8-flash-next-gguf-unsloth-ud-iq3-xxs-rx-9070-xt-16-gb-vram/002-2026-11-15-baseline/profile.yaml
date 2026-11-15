@@ -1,0 +1,63 @@
+id: Qwen3.8-Flash-Next / GGUF Unsloth UD-IQ3_XXS / RX 9070 XT / 16 GB VRAM
+hardware:
+  gpu: Radeon RX 9070/9070 XT/9070 GRE (gfx1201)
+  cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+  memory:
+    architecture: discrete
+    dedicated_vram_gib: 16
+    system_ram_gib: 59
+    unified_memory_gib: null
+os:
+  name: Ubuntu
+  version: '26.10'
+  kernel: 7.3.0-10-generic
+  kernel_driver: amdgpu
+software:
+  harness: llm-recipes baseline suite
+  harness_version: https://github.com/wl04/llm-recipes/commit/35c6bec29fd5d81efd7aedcffa8fdbb7a2ed634c
+  engine: Strata
+  engine_version: Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0
+  engine_version_note: null
+  backend: null
+  backend_api_version: null
+  gpu_driver: amdgpu
+  gpu_driver_version: null
+  pytorch: null
+  python: null
+  base_image_tag: https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags
+  base_image: rocm/dev-ubuntu-24.04@sha256:5ed1362ea542a928651e4c710b44024ebe98870f74159cb70f0265aec8ef0abe
+  server: Strata
+  server_version: Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0
+  host_python: 3.14.8
+  running_image_id: sha256:afe7c1bff2f14085879a86bfcdc5729996a66beac14edee40207c08e255feca6
+model:
+  name: Qwen3.8-Flash-Next UD-IQ3_XXS · Strata
+  format: GGUF Unsloth UD IQ3 XXS
+  quantization: null
+  repository: null
+  artifacts: []
+  revision: null
+settings:
+  serving:
+    served_model_id: qwen3.8-flash-next-ud-iq3_xxs
+    expert_cache: auto
+    prefill: auto
+    max_draft_tokens: '4'
+    min_draft_probability: '0.5'
+    kv_cache: int8
+    gpu_resident_kv_cells: '32768'
+    vision: cpu
+    vision_min_image_tokens: 1024
+    vision_max_image_tokens: 1024
+    context_length_tokens: 131072
+    speculative_decoding: true
+  sampling: null
+  thinking:
+    enabled: false
+    control: reasoning_effort=none
+  requests:
+    endpoint: /v1/chat/completions
+    token_counting: /v1/messages/count_tokens
+    streaming: Performance requests streamed
+    concurrency: 1
+  notes: null

@@ -126,7 +126,7 @@ Run import from the development checkout: the experiment lands in the repository
 
 The command creates the numbered experiment folder under the recipe, copies `results.json`, writes a complete `profile.yaml` from the run's `meta.json`, `facts.json`, recipe configuration, and runtime locks, and regenerates the configuration and recipe index. A baseline experiment then needs no manual `profile.yaml` editing. The profile reuses the identity of the recipe's existing experiments when they have one, so the recipe id never splits over display wording; folder-derived parts serve only the first experiment. See the [authoring guide](authoring.md) for folder naming.
 
-The Strata and TabbyAPI recipe baselines were recorded with suite v1 and therefore carry no conversation-reuse or reasoning rows; only the GGUF/LM Studio baseline runs suite v2. Re-running one Strata or TabbyAPI recipe with the current suite would fill that gap — optional, roughly 6–11 minutes of GPU time.
+The Unsloth GGUF baseline was re-recorded with suite v2 on 2026-11-15 and carries conversation-reuse and reasoning rows, like the LM Studio run of the 27B GGUF recipe. The TabbyAPI/exl3 and ISTA GGUF baselines were recorded with suite v1 and therefore carry no conversation-reuse or reasoning rows; re-running one with the current suite would fill that gap — optional, roughly 6–11 minutes of GPU time.
 
 ## Session report
 
