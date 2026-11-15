@@ -81,15 +81,24 @@ def test_instance_rejects_paths() -> None:
         instance_name("../coding")
 
 
-@pytest.mark.parametrize("field,value", [("port", True), ("context", 1025), ("vision", "cpu")])
-def test_discover_rejects_invalid_defaults(tmp_path: Path, field: str, value: object) -> None:
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("port", True, "port must be an integer"),
+        ("context", 1025, "multiple of 256"),
+        ("vision", "cpu", "vision must be"),
+    ],
+)
+def test_discover_rejects_invalid_defaults(
+    tmp_path: Path, field: str, value: object, message: str
+) -> None:
     write_recipe(tmp_path / "recipes", "model")
     path = tmp_path / "recipes/model/config/launch.json"
     config = json.loads(path.read_text())
     config[field] = value
     path.write_text(json.dumps(config))
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=message):
         discover_recipes(tmp_path / "recipes")
 
 
@@ -166,7 +175,7 @@ def test_discover_resolves_two_models_to_one_runtime(tmp_path: Path) -> None:
     assert f"type=bind,src={recipes['unsloth'].directory},dst=/recipes/unsloth,readonly" in command
 
 
-@pytest.mark.parametrize("field,value", [("runtime", "../other")])
+@pytest.mark.parametrize(("field", "value"), [("runtime", "../other")])
 def test_discover_rejects_paths_outside_shared_roots(
     tmp_path: Path, field: str, value: str
 ) -> None:

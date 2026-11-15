@@ -62,7 +62,7 @@ class Sampler:
                 continue
             try:
                 reading = source.read()
-            except Exception as error:  # a source must never end monitoring
+            except Exception as error:  # noqa: BLE001 - a source must never end monitoring
                 for key in source.keys:
                     errors[key] = f"{source.name}: {error!r}"
                 continue
@@ -74,7 +74,7 @@ class Sampler:
             self._recent.append(sample)
         try:
             self._sink(sample)
-        except Exception as error:  # a full disk must not silently end monitoring either
+        except Exception as error:  # noqa: BLE001 - a full disk must not end monitoring
             self.failures += 1
             self.last_failure = repr(error)
 

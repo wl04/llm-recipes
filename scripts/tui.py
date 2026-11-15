@@ -180,7 +180,7 @@ class LlmRecipesApp(App[None]):
     def load_recipes(self) -> None:
         try:
             recipes = load_recipes()
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - the status bar reports worker failures
             self.call_from_thread(self._status, f"Recipe discovery failed: {error}")
             return
         self._recipes = recipes
@@ -209,7 +209,7 @@ class LlmRecipesApp(App[None]):
         recipe = self._recipes[name]
         try:
             _, failures = load_doctor(recipe)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - the status bar reports worker failures
             self.call_from_thread(self._status, f"Doctor failed for {name}: {error}")
             badge = "error"
         else:
@@ -226,7 +226,7 @@ class LlmRecipesApp(App[None]):
     def load_instances(self) -> None:
         try:
             instances = load_instances()
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - the status bar reports worker failures
             self.call_from_thread(self._status, f"Instance listing failed: {error}")
             return
         self.call_from_thread(self._fill_instances, instances)
@@ -281,7 +281,7 @@ class LlmRecipesApp(App[None]):
             )
             prepare_start(recipe, options)
             status = execute(command)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - the status bar reports worker failures
             self.call_from_thread(self._status, f"Start {name} failed: {error}")
             return
         message = f"Started {name}" if status == 0 else f"Start {name} exited with {status}"

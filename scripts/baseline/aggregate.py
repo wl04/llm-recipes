@@ -200,8 +200,8 @@ def _counter_change(points: Points, intervals: list[Interval]) -> tuple[float, f
     if not points:
         return None
     change = covered = 0.0
-    for start, end in intervals:
-        start, end = max(start, points[0][0]), min(end, points[-1][0])
+    for opened, closed in intervals:
+        start, end = max(opened, points[0][0]), min(closed, points[-1][0])
         if end <= start:
             continue
         begin, finish = _interpolate(points, start), _interpolate(points, end)

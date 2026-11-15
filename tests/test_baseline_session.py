@@ -213,7 +213,8 @@ def test_write_session_block_replaces_only_the_generated_block(tmp_path: Any) ->
     report.write_session_block(summary, "new\n")
 
     text = summary.read_text()
-    assert "new" in text and "old" not in text
+    assert "new" in text
+    assert "old" not in text
     assert "Human prose." in text
 
 

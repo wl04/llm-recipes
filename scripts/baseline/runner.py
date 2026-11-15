@@ -149,11 +149,12 @@ class Runner:
                 "chars_per_token": workloads.INITIAL_CHARS_PER_TOKEN,
             },
         }
-        for key, value in config.meta_extra.items():
+        for key, supplied in config.meta_extra.items():
             existing = meta.get(key)
-            if isinstance(existing, dict) and isinstance(value, dict):
-                value = {**existing, **value}
-            meta[key] = value
+            if isinstance(existing, dict) and isinstance(supplied, dict):
+                meta[key] = {**existing, **supplied}
+            else:
+                meta[key] = supplied
         return meta
 
     def _save_meta(self) -> None:
@@ -185,7 +186,7 @@ class Runner:
             status, code = "interrupted", ExitCode.INTERRUPTED
         except (PreflightError, LifecycleError) as failure:
             status, code, error = "failed", ExitCode.PREFLIGHT_FAILED, str(failure)
-        except Exception as failure:  # keep what was recorded and say what broke
+        except Exception as failure:  # noqa: BLE001 - keep what was recorded and say what broke
             status, code, error = "failed", ExitCode.CHECKS_FAILED, repr(failure)
         finally:
             self._shutdown(monitoring, interrupted=status == "interrupted")
@@ -737,6 +738,7 @@ class Runner:
         for index, item in enumerate(plan):
             self._check_stop()
             runs = suite.largest_context_runs if item is largest else 1
+            recorded = item
             if item.skip is None:
                 try:
                     for run in range(1, runs + 1):
@@ -752,7 +754,12 @@ class Runner:
                         )  # fmt: skip
                     continue
                 except ValueError as error:
-                    item = workloads.PlannedContext(item.label, item.tokens, str(error))
+                    recorded = workloads.PlannedContext(item.label, item.tokens, str(error))
             self._writer.append_request(
-                {"phase": "case", "case": item.label, "status": "skipped", "note": item.skip}
+                {
+                    "phase": "case",
+                    "case": recorded.label,
+                    "status": "skipped",
+                    "note": recorded.skip,
+                }
             )

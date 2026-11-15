@@ -120,9 +120,11 @@ def test_gpu_block_fails_loudly_when_no_amd_gpu_exists(tmp_path: Path) -> None:
 
 def test_parse_gpu_description_matches_the_requested_address_only() -> None:
     navi = host_facts.parse_gpu_description(LSPCI_OUTPUT, "0000:03:00.0")
-    assert navi is not None and "Navi 48" in navi
+    assert navi is not None
+    assert "Navi 48" in navi
     granite = host_facts.parse_gpu_description(LSPCI_OUTPUT, "0000:12:00.0")
-    assert granite is not None and "Granite Ridge" in granite
+    assert granite is not None
+    assert "Granite Ridge" in granite
     assert host_facts.parse_gpu_description(LSPCI_OUTPUT, "0000:99:00.0") is None
 
 

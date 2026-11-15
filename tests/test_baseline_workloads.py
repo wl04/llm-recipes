@@ -217,7 +217,8 @@ def test_fit_prompt_returns_unfitted_prompt_when_server_cannot_count() -> None:
 def test_fit_prompt_never_returns_a_prompt_over_the_target_when_it_can_count() -> None:
     _, tokens = fit(700, lambda prompt: prompt.chars // 3 + 120)
 
-    assert tokens is not None and tokens <= 700
+    assert tokens is not None
+    assert tokens <= 700
 
 
 def test_fit_prompt_aims_within_one_percent_below_the_target() -> None:

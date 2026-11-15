@@ -511,7 +511,8 @@ def test_managed_run_samples_only_system_sources_until_the_server_exists(tmp_pat
     load_start = raw.meta["phases"]["load"]["start_s"]
     before = [s for s in raw.samples if s["t"] < load_start]
     after = [s for s in raw.samples if s["t"] > load_start]
-    assert before and all("mem_anon_bytes" not in s["values"] for s in before)
+    assert before
+    assert all("mem_anon_bytes" not in sample["values"] for sample in before)
     assert any("mem_anon_bytes" in s["values"] for s in after)
     assert raw.meta["target"]["memory_label"] == "cgroup memory.current"
 
@@ -650,7 +651,8 @@ def test_run_repeats_only_the_largest_context_and_reports_its_spread(tmp_path: P
         for p in server.requests
         if p.get("stream") and "context-large" in str(p["messages"][0]["content"])[:60]
     ]
-    assert len(large_prompts) == 2 and large_prompts[0] != large_prompts[1]
+    assert len(large_prompts) == 2
+    assert large_prompts[0] != large_prompts[1]
 
 
 def test_run_does_not_repeat_a_largest_context_that_was_skipped(tmp_path: Path) -> None:

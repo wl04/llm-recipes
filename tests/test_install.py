@@ -319,7 +319,8 @@ def test_migrate_data_dry_run_prints_manifest_without_changes(
 
     printed = capsys.readouterr().out
     assert code == 0
-    assert "move: " in printed and "moved: " not in printed
+    assert "move: " in printed
+    assert "moved: " not in printed
     assert (old_root / "strata").is_dir()
     assert not paths.data_home().exists()
     assert not (roots["runtime"] / "migrate-journal.jsonl").exists()
@@ -373,7 +374,9 @@ def test_migrate_data_applies_all_moves_and_cleans_old_root(
 
     data = paths.data_home()
     assert code == 0
-    assert (data / ".cache").is_dir() and (data / "baselines").is_dir() and (data / "logs").is_dir()
+    assert (data / ".cache").is_dir()
+    assert (data / "baselines").is_dir()
+    assert (data / "logs").is_dir()
     exl3 = data / "recipes" / EXL3_RECIPE
     assert (exl3 / "qwen3.8-27b-exl3-3bpw/model.safetensors").is_file()
     assert (data / "recipes" / ISTA_RECIPE / "models/one.gguf").is_file()

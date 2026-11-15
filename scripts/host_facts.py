@@ -5,10 +5,10 @@ so no command in this module needs elevation.  Each reader takes its filesystem 
 as an argument so tests can pass a fabricated tree.
 """
 
+import contextlib
 import os
 import re
 import socket
-import contextlib
 import subprocess
 from collections.abc import Callable
 from pathlib import Path

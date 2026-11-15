@@ -130,7 +130,8 @@ def test_session_cli_writes_results_block_and_seeds_profile(
     assert profile["settings"]["serving"]["context_length_tokens"] == 65536
     assert profile["software"]["python"] == "3.12.3"
     out = capsys.readouterr().out
-    assert "coding-session" in out and "completions" in out
+    assert "coding-session" in out
+    assert "completions" in out
 
 
 def test_session_cli_keeps_existing_profile_and_replaces_block(
@@ -281,7 +282,8 @@ def test_session_create_builds_the_experiment_from_templates(
     assert report.SESSION_START in summary
     assert summary.index(report.SESSION_START) < summary.index("[Recipe](../recipe.md)")
     configuration = (experiment / "configuration.md").read_text()
-    assert gen.START in configuration and "Qwen3.8-27B" in configuration
+    assert gen.START in configuration
+    assert "Qwen3.8-27B" in configuration
     assert "coding-session" in capsys.readouterr().out
 
 

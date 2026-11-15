@@ -37,7 +37,8 @@ def test_parse_strata_leaves_draft_counts_empty_when_the_line_has_none() -> None
     last = engine_log.parse_strata(LOG)[-1]
 
     assert (last.reused_tokens, last.read_tokens) == (10, 30)
-    assert last.drafts_accepted is None and last.drafts_proposed is None
+    assert last.drafts_accepted is None
+    assert last.drafts_proposed is None
 
 
 def test_parse_strata_returns_nothing_for_an_unrelated_log() -> None:
@@ -246,8 +247,10 @@ def test_parse_lmstudio_reads_timing_blocks_closed_by_slot_release() -> None:
 def test_parse_lmstudio_leaves_draft_counts_empty_when_the_line_has_none() -> None:
     second = engine_log.parse_lmstudio(LMSTUDIO_LOG)[-1]
 
-    assert second.drafts_accepted is None and second.drafts_proposed is None
-    assert second.prompt_tokens == 10 and second.reused_tokens == 0
+    assert second.drafts_accepted is None
+    assert second.drafts_proposed is None
+    assert second.prompt_tokens == 10
+    assert second.reused_tokens == 0
 
 
 def test_parse_lmstudio_ignores_noise_without_slot_release() -> None:

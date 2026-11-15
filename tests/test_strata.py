@@ -24,7 +24,8 @@ UNSLOTH = RECIPE.with_name("qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-x
 
 def load_module(name: str, path: Path) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, path)
-    assert spec is not None and spec.loader is not None
+    assert spec is not None
+    assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -46,7 +47,8 @@ def test_configure_disables_optional_models_without_mutating_defaults() -> None:
     assert "--mtp" not in result["args"]
     assert result["args"][result["args"].index("--spec") + 1] == "0"
     assert result["args"][result["args"].index("--kv-resident") + 1] == "4096"
-    assert "vision" in original and "--mtp" in original["args"]
+    assert "vision" in original
+    assert "--mtp" in original["args"]
 
 
 def test_configure_preserves_cpu_vision_and_resident_cap_for_long_context() -> None:
@@ -60,9 +62,17 @@ def test_configure_preserves_cpu_vision_and_resident_cap_for_long_context() -> N
     assert result["args"][result["args"].index("--spec") + 1] == "4"
 
 
-@pytest.mark.parametrize("context,draft,vision", [(1025, "on", "cpu"), (4096, "on", "on")])
-def test_configure_rejects_invalid_options(context: int, draft: str, vision: str) -> None:
-    with pytest.raises(ValueError):
+@pytest.mark.parametrize(
+    ("context", "draft", "vision", "message"),
+    [
+        (1025, "on", "cpu", "multiple of 256"),
+        (4096, "on", "on", "vision must be cpu/off"),
+    ],
+)
+def test_configure_rejects_invalid_options(
+    context: int, draft: str, vision: str, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
         serve.configure({}, context, draft, vision)
 
 
