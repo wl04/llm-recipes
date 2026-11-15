@@ -124,7 +124,7 @@
 
 ## Experiment notes
 
-Request policy: functional checks run at temperature 0. Output caps: 1,024 tokens for the 8K and context cases, 2,048 for sustained generation, 256 for text and tools, 512 for vision. Software configuration basis: repository runtime and model locks; the running image ID and the engine startup log were captured by the baseline run.
+Superseded by 002-2026-11-15-baseline (suite v2 with conversation-reuse and reasoning rows). Recorded 2026-11-14 with the pre-cutover launcher; throughput reproduced within noise. Request policy: functional checks run at temperature 0. Output caps: 1,024 tokens for the 8K and context cases, 2,048 for sustained generation, 256 for text and tools, 512 for vision. Software configuration basis: repository runtime and model locks; the running image ID and the engine startup log were captured by the baseline run.
 
 ---
 
