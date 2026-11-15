@@ -3,21 +3,18 @@
 An optional terminal dashboard over the launcher: recipes, instances, logs, and eventually
 baseline runs. The CLI contract is the product; the TUI is sugar over it and replaceable.
 
-Status: the prerequisites and the dashboard core are implemented in `scripts/tui.py`;
-the baseline-run screens are not.
-
 ## Constraints
 
 - **Textual** is an **optional extra**, never a hard dependency:
-  `[project.optional-dependencies] tui = ["textual>=8.2,<9"]`. `check.sh` and CI stay
-  offline and dependency-free; `scripts/tui.py` imports Textual lazily and the tests run
-  headless without it installed.
+  `[project.optional-dependencies] tui = ["textual>=8.2,<9"]`. Nothing in `check.sh` starts the
+  GUI. `scripts/tui.py` imports Textual lazily, `tests/test_tui.py` skips when Textual is
+  absent, and `textual` is pinned in `dev-requirements.txt` so CI exercises the real package.
 - Maintenance rests on one maintainer (Textual's company wound down its stewardship):
   the pinned range holds, and nothing outside `scripts/tui.py` may import Textual.
 
 ## Architecture guarantees
 
-The TUI consumes the launcher through these contracts. All four hold today.
+The TUI consumes the launcher through these contracts.
 
 1. Machine-readable output: `list`, `ps`, `status`, and `doctor` accept `--json`;
    the TUI consumes JSON, never parses prose tables.
@@ -31,7 +28,7 @@ The TUI consumes the launcher through these contracts. All four hold today.
 4. Long-running output (`logs --follow`, baseline runs) is consumable from worker
    threads via streamed stdout.
 
-## Implemented
+## Dashboard surface
 
 - Recipe list with per-recipe doctor badges (async checks, no UI freeze).
 - Instance dashboard: running instances from `ps --json`, start/stop of the selected
@@ -39,7 +36,7 @@ The TUI consumes the launcher through these contracts. All four hold today.
 - Headless test pattern: a `SilentApp` subclass overriding `refresh_all()`, so the
   suite verifies behavior without a running Textual pilot loop.
 
-## Remaining scope
+## Not yet built
 
 - Baseline run launcher: recipe and suite selection, the guided interview rendered as
   forms (via injected `_ask`/`_progress`), and run progress from streamed stdout.
