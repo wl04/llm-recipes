@@ -19,10 +19,10 @@ Suite v1 · run complete · model `qwen3.8-flash-next-ud-iq3_xxs` · configured 
 | Measurement | Value |
 |---|---|
 | Uptime | 56 s |
-| RAM used / total (GB) | 2.3 / 59.2 |
-| Swap used / total (GB) | 0.0 / 8.0 |
+| RAM used / total (GiB) | 2.3 / 59.2 |
+| Swap used / total (GiB) | 0.0 / 8.0 |
 | GPU busy (%) | 2 |
-| VRAM used / total (GB) | 0.2 / 15.9 |
+| VRAM used / total (GiB) | 0.2 / 15.9 |
 | GPU power (W) | 9.00 |
 | GPU temperature (°C) | 33 |
 
@@ -45,7 +45,7 @@ Warmup: 2 requests, converged, 2.55 s.
 
 ### Resources
 
-| Case | Server CPU (cores) | System CPU busy (%) | RAM peak / total (GB) | VRAM peak / total (GB) | GPU busy (%) | GPU power (W) | GPU temp (°C) | Swap in / out (pages) | Samples | Max sample gap (s) |
+| Case | Server CPU (cores) | System CPU busy (%) | RAM peak / total (GiB) | VRAM peak / total (GiB) | GPU busy (%) | GPU power (W) | GPU temp (°C) | Swap in / out (pages) | Samples | Max sample gap (s) |
 |---|---|---|---|---|---|---|---|---|---|---|
 | context-8k | 6.83 | 42.58 | 54.9 / 59.2 | 15.3 / 15.9 | 98.45 | 263.37 | 54 | 0 / 0 | 141 | 0.500 |
 | sustained-lru-cache | 8.06 | 50.35 | 54.8 / 59.2 | 15.3 / 15.9 | 99.66 | 273.11 | 54 | 0 / 0 | 38 | 0.500 |

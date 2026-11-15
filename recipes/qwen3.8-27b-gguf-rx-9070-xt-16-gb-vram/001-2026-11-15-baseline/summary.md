@@ -19,10 +19,10 @@ Suite v2 · run complete · model `qwen3.8-27b-gsq-rco` · configured context 13
 | Measurement | Value |
 |---|---|
 | Uptime | 30 min |
-| RAM used / total (GB) | 4.4 / 59.2 |
-| Swap used / total (GB) | 0.3 / 8.0 |
+| RAM used / total (GiB) | 4.4 / 59.2 |
+| Swap used / total (GiB) | 0.3 / 8.0 |
 | GPU busy (%) | 0 |
-| VRAM used / total (GB) | 0.2 / 15.9 |
+| VRAM used / total (GiB) | 0.2 / 15.9 |
 | GPU power (W) | 5.00 |
 | GPU temperature (°C) | 35 |
 
@@ -60,7 +60,7 @@ Cache reuse: unknown — the server reports no cached-token counts. Replaying th
 
 ### Resources
 
-| Case | Server CPU (cores) | System CPU busy (%) | RAM peak / total (GB) | VRAM peak / total (GB) | GPU busy (%) | GPU power (W) | GPU temp (°C) | Swap in / out (pages) | Samples | Max sample gap (s) |
+| Case | Server CPU (cores) | System CPU busy (%) | RAM peak / total (GiB) | VRAM peak / total (GiB) | GPU busy (%) | GPU power (W) | GPU temp (°C) | Swap in / out (pages) | Samples | Max sample gap (s) |
 |---|---|---|---|---|---|---|---|---|---|---|
 | context-8k | 0.314 | 2.23 | 13.2 / 59.2 | 15.7 / 15.9 | 97.66 | 282.80 | 54 | 29 / 0 | 114 | 1.00 |
 | sustained-lru-cache | 0.380 | 2.84 | 13.8 / 59.2 | 15.7 / 15.9 | 88.34 | 260.37 | 53 | 0 / 0 | 2 | 1.00 |

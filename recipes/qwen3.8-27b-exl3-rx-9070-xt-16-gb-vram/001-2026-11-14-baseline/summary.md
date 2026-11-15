@@ -19,10 +19,10 @@ Suite v1 · run complete · model `qwen3.8-27b-exl3-3bpw` · configured context 
 | Measurement | Value |
 |---|---|
 | Uptime | 6 min |
-| RAM used / total (GB) | 3.8 / 59.2 |
-| Swap used / total (GB) | 0.0 / 8.0 |
+| RAM used / total (GiB) | 3.8 / 59.2 |
+| Swap used / total (GiB) | 0.0 / 8.0 |
 | GPU busy (%) | 1 |
-| VRAM used / total (GB) | 0.1 / 15.9 |
+| VRAM used / total (GiB) | 0.1 / 15.9 |
 | GPU power (W) | 6.00 |
 | GPU temperature (°C) | 35 |
 
@@ -45,7 +45,7 @@ Warmup: 4 requests, did not converge, 4.48 s.
 
 ### Resources
 
-| Case | Server CPU (cores) | System CPU busy (%) | RAM peak / total (GB) | VRAM peak / total (GB) | GPU busy (%) | GPU power (W) | GPU temp (°C) | Swap in / out (pages) | Samples | Max sample gap (s) |
+| Case | Server CPU (cores) | System CPU busy (%) | RAM peak / total (GiB) | VRAM peak / total (GiB) | GPU busy (%) | GPU power (W) | GPU temp (°C) | Swap in / out (pages) | Samples | Max sample gap (s) |
 |---|---|---|---|---|---|---|---|---|---|---|
 | context-8k | 1.03 | 6.59 | 9.2 / 59.2 | 15.9 / 15.9 | 99.08 | 284.08 | 54 | 0 / 0 | 199 | 0.500 |
 | sustained-lru-cache | 1.05 | 6.62 | 9.3 / 59.2 | 15.9 / 15.9 | 99.01 | 280.50 | 54 | 0 / 0 | 34 | 0.500 |

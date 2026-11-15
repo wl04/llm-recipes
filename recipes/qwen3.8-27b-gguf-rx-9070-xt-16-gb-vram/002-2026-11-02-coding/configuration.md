@@ -11,8 +11,8 @@
 | GPU | AMD Radeon RX 9070 XT |
 | CPU | AMD Ryzen 7 9800X3D |
 | Memory architecture | discrete |
-| Dedicated VRAM (GB) | 16 |
-| System RAM (GB) | 64 |
+| Dedicated VRAM (GiB) | 16 |
+| System RAM (GiB) | 64 |
 
 
 ## Operating system

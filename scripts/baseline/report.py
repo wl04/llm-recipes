@@ -29,10 +29,10 @@ NOISE_LABELS = (
 # (label, used metric, total metric, decimals); the total is empty for a single value.
 BOOT_ROWS = (
     ("Uptime", "uptime_s", None, 0),
-    ("RAM used / total (GB)", "mem_used_gib", "mem_total_gib", 1),
-    ("Swap used / total (GB)", "swap_used_gib", "swap_total_gib", 1),
+    ("RAM used / total (GiB)", "mem_used_gib", "mem_total_gib", 1),
+    ("Swap used / total (GiB)", "swap_used_gib", "swap_total_gib", 1),
     ("GPU busy (%)", "gpu_busy_percent", None, 0),
-    ("VRAM used / total (GB)", "gpu_vram_used_gib", "gpu_vram_total_gib", 1),
+    ("VRAM used / total (GiB)", "gpu_vram_used_gib", "gpu_vram_total_gib", 1),
     ("GPU power (W)", "gpu_power_w", None, 2),
     ("GPU temperature (°C)", "gpu_temp_c", None, 0),
 )
@@ -289,8 +289,8 @@ def _resources(entries: list[dict[str, Any]], boot_metrics: dict[str, Any]) -> l
     header = [
         "Case",
         *(title for _, title in RESOURCE_SINGLES),
-        "RAM peak / total (GB)",
-        "VRAM peak / total (GB)",
+        "RAM peak / total (GiB)",
+        "VRAM peak / total (GiB)",
         *(title for _, title in RESOURCE_TAIL),
         "Swap in / out (pages)",
         *(title for _, title in RESOURCE_COUNTS),

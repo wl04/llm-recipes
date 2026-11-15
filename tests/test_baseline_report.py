@@ -64,9 +64,9 @@ def test_boot_state_uses_readable_labels_and_used_over_total_pairs() -> None:
     boot = section(render(), "### Boot state")
 
     assert row_of(boot, "Uptime")[1] == "9 min"
-    assert row_of(boot, "RAM used / total (GB)")[1] == "6.5 / 62.6"
-    assert row_of(boot, "Swap used / total (GB)")[1] == "0.0 / 8.0"
-    assert row_of(boot, "VRAM used / total (GB)")[1] == "0.2 / 15.9"
+    assert row_of(boot, "RAM used / total (GiB)")[1] == "6.5 / 62.6"
+    assert row_of(boot, "Swap used / total (GiB)")[1] == "0.0 / 8.0"
+    assert row_of(boot, "VRAM used / total (GiB)")[1] == "0.2 / 15.9"
     assert row_of(boot, "GPU busy (%)")[1] == "2"
     assert row_of(boot, "GPU power (W)")[1] == "9.30"
     assert row_of(boot, "GPU temperature (°C)")[1] == "29"
@@ -86,7 +86,7 @@ def test_boot_state_shows_a_dash_for_a_missing_total() -> None:
 
     boot = section(render(document), "### Boot state")
 
-    assert row_of(boot, "VRAM used / total (GB)")[1] == "0.2 / —"
+    assert row_of(boot, "VRAM used / total (GiB)")[1] == "0.2 / —"
 
 
 def test_render_results_block_lists_boot_warnings() -> None:
@@ -188,8 +188,8 @@ def test_resources_use_used_over_total_columns() -> None:
         "Case",
         "Server CPU (cores)",
         "System CPU busy (%)",
-        "RAM peak / total (GB)",
-        "VRAM peak / total (GB)",
+        "RAM peak / total (GiB)",
+        "VRAM peak / total (GiB)",
         "GPU busy (%)",
         "GPU power (W)",
         "GPU temp (°C)",
@@ -221,15 +221,15 @@ def test_no_phases_section_is_rendered() -> None:
     assert "time to ready" not in text
 
 
-def test_units_are_gb_not_gib_or_mib() -> None:
+def test_rendered_memory_rows_are_labeled_gib() -> None:
     text = render()
 
-    assert "GiB" not in text
+    assert "GiB" in text
+    assert "(GB)" not in text
     assert "MiB" not in text
-    assert "GB" in text
 
 
-def test_a_definitions_line_explains_decode_prefill_and_gb() -> None:
+def test_a_definitions_line_explains_decode_and_prefill() -> None:
     text = render()
 
     assert "Decode is a client estimate" in text
