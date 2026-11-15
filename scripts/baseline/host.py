@@ -113,7 +113,9 @@ def resolve_container(
     Raises:
         HostError: Docker cannot be inspected non-interactively, or no such instance runs.
     """
-    fix = "Run `sudo -v` and retry, or check the Docker service."
+    fix = (
+        "sudo credentials may have timed out; re-run to refresh them, or check the Docker service."
+    )
     listing = run(
         [
             "sudo", "-n", "docker", "ps",

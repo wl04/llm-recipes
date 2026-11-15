@@ -93,7 +93,8 @@ class ContainerControl:
         )  # fmt: skip
         if listing.returncode:
             raise LifecycleError(
-                f"Docker inspection failed: {listing.stderr.strip()}. Run `sudo -v` and retry."
+                f"Docker inspection failed: {listing.stderr.strip()}. "
+                "Re-run to refresh sudo credentials."
             )
         names = listing.stdout.split()
         if names:

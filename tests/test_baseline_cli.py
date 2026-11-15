@@ -31,6 +31,7 @@ class Managed:
             return self.control
 
         monkeypatch.setattr(cli, "ContainerControl", factory)
+        monkeypatch.setattr(cli, "refresh_sudo_ticket", lambda: None)
 
 
 def managed_argv(tmp_path: Path, server: FakeServer, *extra: str, name: str = "run") -> list[str]:
@@ -43,6 +44,27 @@ def run_managed(
 ) -> tuple[int, Managed]:
     managed = Managed(tmp_path, server, monkeypatch)
     return cli.main(managed_argv(tmp_path, server, *extra), suite=SUITE), managed
+
+
+def test_run_baseline_refreshes_sudo_ticket_once_before_noninteractive_calls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    order: list[str] = []
+
+    with FakeServer() as server:
+        control = FakeControl(tmp_path, server)
+
+        def control_factory(recipe: Recipe, options: LaunchOptions, **kwargs: Any) -> FakeControl:
+            order.append("control")
+            return control
+
+        monkeypatch.setattr(cli, "ContainerControl", control_factory)
+        monkeypatch.setattr(cli, "refresh_sudo_ticket", lambda: order.append("refresh"))
+
+        code = cli.main(managed_argv(tmp_path, server), suite=SUITE)
+
+    assert code == ExitCode.OK
+    assert order == ["refresh", "control"]
 
 
 def test_managed_run_writes_results_summary_and_raw_files(

@@ -19,9 +19,10 @@ pytest.importorskip("textual")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 import tui
-from textual.widgets import Static
+from launcher import Recipe
+from textual.widgets import DataTable, Static
 
-RECIPE = tui.Recipe(
+RECIPE = Recipe(
     name="alpha",
     directory=Path("/r/alpha/001-2026-11-14-baseline"),
     runtime="strata",
@@ -36,7 +37,7 @@ RECIPE = tui.Recipe(
     vision="off",
 )
 
-OTHER_RECIPE = tui.Recipe(
+OTHER_RECIPE = Recipe(
     name="beta",
     directory=Path("/r/beta/001-2026-11-14-baseline"),
     runtime="tabbyapi",
@@ -70,13 +71,13 @@ def make_app() -> SilentApp:
     return SilentApp()
 
 
-def test_fill_recipes_renders_one_row_per_recipe_with_pending_doctor():
-    async def scenario():
+def test_fill_recipes_renders_one_row_per_recipe_with_pending_doctor() -> None:
+    async def scenario() -> None:
         app = make_app()
         async with app.run_test() as pilot:
             await pilot.pause()
             app._fill_recipes({"alpha": RECIPE})
-            table = app.query_one("#recipe-table", tui.DataTable)
+            table = app.query_one("#recipe-table", DataTable)
             assert table.row_count == 1
             row = table.get_row_at(0)
             assert row[0] == "alpha"
@@ -87,13 +88,13 @@ def test_fill_recipes_renders_one_row_per_recipe_with_pending_doctor():
     asyncio.run(scenario())
 
 
-def test_fill_recipes_replaces_rows_and_keeps_cursor_within_bounds():
-    async def scenario():
+def test_fill_recipes_replaces_rows_and_keeps_cursor_within_bounds() -> None:
+    async def scenario() -> None:
         app = make_app()
         async with app.run_test() as pilot:
             await pilot.pause()
             app._fill_recipes({"alpha": RECIPE})
-            table = app.query_one("#recipe-table", tui.DataTable)
+            table = app.query_one("#recipe-table", DataTable)
             table.move_cursor(row=0)
             app._fill_recipes({"beta": OTHER_RECIPE})
             assert table.row_count == 1
@@ -103,26 +104,26 @@ def test_fill_recipes_replaces_rows_and_keeps_cursor_within_bounds():
     asyncio.run(scenario())
 
 
-def test_selected_recipe_name_reports_cursor_row_or_none():
-    async def scenario():
+def test_selected_recipe_name_reports_cursor_row_or_none() -> None:
+    async def scenario() -> None:
         app = make_app()
         async with app.run_test() as pilot:
             await pilot.pause()
             assert app._selected_name("#recipe-table") is None
             app._fill_recipes({"alpha": RECIPE})
-            app.query_one("#recipe-table", tui.DataTable).move_cursor(row=0)
+            app.query_one("#recipe-table", DataTable).move_cursor(row=0)
             assert app._selected_name("#recipe-table") == "alpha"
 
     asyncio.run(scenario())
 
 
-def test_fill_instances_renders_status_and_ports():
-    async def scenario():
+def test_fill_instances_renders_status_and_ports() -> None:
+    async def scenario() -> None:
         app = make_app()
         async with app.run_test() as pilot:
             await pilot.pause()
             app._fill_instances([INSTANCE_RECORD])
-            table = app.query_one("#instance-table", tui.DataTable)
+            table = app.query_one("#instance-table", DataTable)
             assert table.row_count == 1
             row = table.get_row_at(0)
             assert row[0] == "strata-alpha"
@@ -132,11 +133,18 @@ def test_fill_instances_renders_status_and_ports():
     asyncio.run(scenario())
 
 
-def test_stop_selected_without_focused_row_does_not_run_any_command(monkeypatch):
-    calls = []
-    monkeypatch.setattr(tui, "execute", lambda command: calls.append(command) or 0)
+def test_stop_selected_without_focused_row_does_not_run_any_command(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
 
-    async def scenario():
+    def execute(command: list[str]) -> int:
+        calls.append(command)
+        return 0
+
+    monkeypatch.setattr(tui, "execute", execute)
+
+    async def scenario() -> None:
         app = make_app()
         async with app.run_test() as pilot:
             await pilot.pause()
@@ -148,11 +156,18 @@ def test_stop_selected_without_focused_row_does_not_run_any_command(monkeypatch)
     asyncio.run(scenario())
 
 
-def test_start_selected_without_focused_row_does_not_run_any_command(monkeypatch):
-    calls = []
-    monkeypatch.setattr(tui, "execute", lambda command: calls.append(command) or 0)
+def test_start_selected_without_focused_row_does_not_run_any_command(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
 
-    async def scenario():
+    def execute(command: list[str]) -> int:
+        calls.append(command)
+        return 0
+
+    monkeypatch.setattr(tui, "execute", execute)
+
+    async def scenario() -> None:
         app = make_app()
         async with app.run_test() as pilot:
             await pilot.pause()
@@ -164,8 +179,8 @@ def test_start_selected_without_focused_row_does_not_run_any_command(monkeypatch
     asyncio.run(scenario())
 
 
-def test_status_updates_status_line():
-    async def scenario():
+def test_status_updates_status_line() -> None:
+    async def scenario() -> None:
         app = make_app()
         async with app.run_test() as pilot:
             await pilot.pause()
@@ -180,5 +195,5 @@ def test_status_updates_status_line():
     ("failures", "expected"),
     [(0, "ok"), (1, "1 fail"), (2, "2 fail")],
 )
-def test_doctor_badge_summarizes_failures(failures, expected):
+def test_doctor_badge_summarizes_failures(failures: int, expected: str) -> None:
     assert tui.doctor_badge(failures) == expected

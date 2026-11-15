@@ -49,9 +49,7 @@ def load_recipes() -> dict[str, Recipe]:
 
 def load_instances() -> list[dict[str, str]]:
     """List running managed instances; empty when Docker reports none."""
-    listing = subprocess.run(
-        instances_command(), check=False, capture_output=True, text=True
-    )
+    listing = subprocess.run(instances_command(), check=False, capture_output=True, text=True)
     if listing.returncode != 0:
         return []
     return parse_instances(listing.stdout)
@@ -215,6 +213,7 @@ class LlmRecipesApp(App[None]):
             badge = "error"
         else:
             badge = doctor_badge(failures)
+
         def apply_badge() -> None:
             table = self.query_one("#recipe-table", DataTable)
             if name in table.rows:

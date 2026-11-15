@@ -132,7 +132,7 @@ def test_resolve_container_reports_docker_failure_with_remedy(tmp_path: Path) ->
     def run(command: list[str]) -> subprocess.CompletedProcess[str]:
         return completed("", 1, "sudo: a password is required")
 
-    with pytest.raises(host.HostError, match="sudo -v"):
+    with pytest.raises(host.HostError, match="timed out"):
         host.resolve_container("coding", run, tmp_path, tmp_path)
 
 

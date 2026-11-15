@@ -566,9 +566,7 @@ def write_settings_profile(
 
 
 def test_render_sampling_mode_single_row(tmp_path: Path) -> None:
-    result = write_settings_profile(
-        tmp_path, {"sampling": {"mode": "conservative"}}
-    )
+    result = write_settings_profile(tmp_path, {"sampling": {"mode": "conservative"}})
 
     document = gen.render(result)
 
@@ -596,9 +594,10 @@ def test_render_renders_notes_section_last(tmp_path: Path) -> None:
             "## Experiment notes",
         )
     )
-    assert "Manual sampling preset; verify on rerun." in document[
-        document.index("## Experiment notes") :
-    ]
+    assert (
+        "Manual sampling preset; verify on rerun."
+        in document[document.index("## Experiment notes") :]
+    )
 
 
 def test_render_uses_registry_labels_for_canonical_sampling_keys(
@@ -663,9 +662,7 @@ def test_render_orders_serving_rows_by_registry_then_alphabetically(
 
 
 def test_render_rejects_unknown_key_in_sampling_section(tmp_path: Path) -> None:
-    profile = write_settings_profile(
-        tmp_path, {"sampling": {"top_k": 20, "temp": 1.0}}
-    )
+    profile = write_settings_profile(tmp_path, {"sampling": {"top_k": 20, "temp": 1.0}})
 
     with pytest.raises(ValueError, match=r"unknown key 'temp' in settings\.sampling"):
         gen.render(profile)

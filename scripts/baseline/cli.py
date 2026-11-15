@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import generate_configurations as generator
-from launcher import Recipe, discover_recipes, resolve_launch_options
+from launcher import Recipe, discover_recipes, refresh_sudo_ticket, resolve_launch_options
 
 from baseline import (
     aggregate,
@@ -294,6 +294,12 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
         return ExitCode.USAGE
     try:
         gpu_address, candidates = (None, []) if args.no_gpu else _find_gpu(args.gpu_pci)
+        if recipe is not None:
+            try:
+                refresh_sudo_ticket()
+            except ValueError as error:
+                print(f"Preflight failed: {error}", file=sys.stderr)
+                return ExitCode.PREFLIGHT_FAILED
         plan = (
             _managed_plan(args, recipe, writer, gpu_address)
             if recipe is not None

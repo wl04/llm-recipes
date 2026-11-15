@@ -187,7 +187,7 @@ def diagnose(recipe: Recipe, models: Path, *, devices: Path = Path("/dev")) -> l
     docker = inspect_command(
         "Docker",
         ["version", "--format", "{{.Server.Version}}"],
-        "Check Docker installation/service; run sudo -v if authentication expired, then retry.",
+        "Check Docker installation/service; re-run to refresh sudo credentials if they timed out.",
     )
     findings = [docker]
     if docker.status == "PASS":

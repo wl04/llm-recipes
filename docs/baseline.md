@@ -7,7 +7,6 @@ The runner measures functional checks, coding workloads, context scaling, and re
 For a container recipe, stop other launcher instances and close GPU-heavy applications. Reboot beforehand if practical, then run from the repository root:
 
 ```bash
-sudo -v
 python3 scripts/run_baseline.py run <recipe>
 ```
 
@@ -15,7 +14,7 @@ The runner starts the recipe as instance `baseline` and stops it afterwards. It 
 
 Output defaults to `<models>/baselines/<recipe>/<date-time>/`, where `<models>` defaults to `~/Models/llm-recipes`. Use `--output` for another new directory outside the repository. Server logs go into `server-logs/` within the run directory.
 
-Ctrl+C or SIGTERM preserves partial records and stops the server started by the runner. `--keep-running` leaves it running. Docker commands use noninteractive sudo; expired authorization can make a later operation fail, including cleanup.
+Ctrl+C or SIGTERM preserves partial records and stops the server started by the runner. `--keep-running` leaves it running. The runner asks for your sudo password once at start; later Docker commands use noninteractive sudo, so credentials expiring mid-run can make a later operation fail, including cleanup — re-run the command to refresh them.
 
 ### Desktop apps
 

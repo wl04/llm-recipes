@@ -22,6 +22,7 @@ class LauncherTests(unittest.TestCase):
     def test_stop_propagates_docker_invocation(self) -> None:
         with (
             patch.object(sys, "argv", ["launch.py", "stop", "exl3"]),
+            patch("launch.refresh_sudo_ticket"),
             patch("launch.run_command", return_value=0) as execute,
         ):
             launch.main()
@@ -33,6 +34,7 @@ class LauncherTests(unittest.TestCase):
     def test_logs_follows_console_when_requested(self) -> None:
         with (
             patch.object(sys, "argv", ["launch.py", "logs", "exl3", "--follow"]),
+            patch("launch.refresh_sudo_ticket"),
             patch("launch.run_command", return_value=0) as execute,
         ):
             launch.main()
@@ -128,9 +130,7 @@ class LauncherTests(unittest.TestCase):
 
     def test_parse_instances_reads_tab_separated_records(self) -> None:
         output = (
-            "alpha\texl3\tUp 2 minutes\t0.0.0.0:5000->5000/tcp\n"
-            "beta\tstrata\tUp 9 seconds\t\n"
-            "\n"
+            "alpha\texl3\tUp 2 minutes\t0.0.0.0:5000->5000/tcp\nbeta\tstrata\tUp 9 seconds\t\n\n"
         )
 
         records = launcher.parse_instances(output)
@@ -174,6 +174,7 @@ class LauncherTests(unittest.TestCase):
         buffer = io.StringIO()
         with (
             patch.object(sys, "argv", ["launch.py", "ps", "--json"]),
+            patch("launch.refresh_sudo_ticket"),
             patch("launch.capture", return_value=completed),
             contextlib.redirect_stdout(buffer),
         ):
@@ -189,15 +190,14 @@ class LauncherTests(unittest.TestCase):
         buffer = io.StringIO()
         with (
             patch.object(sys, "argv", ["launch.py", "status", "gone", "--json"]),
+            patch("launch.refresh_sudo_ticket"),
             patch("launch.capture", return_value=completed),
             contextlib.redirect_stdout(buffer),
         ):
             code = launch.main()
 
         self.assertEqual(code, 0)
-        self.assertEqual(
-            json.loads(buffer.getvalue()), {"instance": "gone", "status": "not-found"}
-        )
+        self.assertEqual(json.loads(buffer.getvalue()), {"instance": "gone", "status": "not-found"})
 
 
 if __name__ == "__main__":

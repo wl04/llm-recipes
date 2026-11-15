@@ -1,8 +1,11 @@
 """Recipe discovery, launch plans, and process operations shared by CLI interfaces."""
 
+import hashlib
 import json
+import os
 import re
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -311,3 +314,104 @@ def run_command(command: list[str]) -> int:
     their own process runner without changing recipe discovery or command planning.
     """
     return subprocess.run(command, check=False).returncode
+
+
+def refresh_sudo_ticket() -> None:
+    """Ask sudo for credentials once, up front, so later ``sudo -n`` calls never prompt.
+
+    Raises:
+        ValueError: elevation could not be obtained; the caller should abort.
+    """
+    print("Docker commands need sudo; entering credentials once...", file=sys.stderr)
+    if subprocess.run(["sudo", "-v"], check=False).returncode != 0:
+        raise ValueError("sudo credentials were not accepted; cannot manage containers")
+
+
+FACTS_NAME = "facts.json"
+
+
+def image_inspect_command(image: str) -> list[str]:
+    """Non-interactive Docker inspection of an image reference for its digests."""
+    return ["sudo", "-n", "docker", "image", "inspect", "--format", "{{json .}}", image]
+
+
+def parse_image_inspect(text: str) -> dict[str, object]:
+    """Extract the image ID and repository digests from ``image_inspect_command`` output.
+
+    Raises:
+        ValueError: the output is not one Docker image object.
+    """
+    try:
+        data = json.loads(text.strip())
+    except json.JSONDecodeError as error:
+        raise ValueError(f"unexpected image inspection output: {text[:80]!r}") from error
+    if not isinstance(data, dict):
+        raise ValueError("image inspection did not return one object")
+    digests = data.get("RepoDigests")
+    return {
+        "image_id": data.get("Id"),
+        "image_digests": digests if isinstance(digests, list) else [],
+    }
+
+
+def file_sha256(path: Path) -> str:
+    """Hex SHA-256 of a file's contents."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def recipe_config_files(recipe: Recipe) -> list[Path]:
+    """Recipe configuration files that pin the served behaviour, in stable order."""
+    engine_file = "tabby.yml" if recipe.adapter == "tabbyapi" else "strata.json"
+    names = ("launch.json", engine_file, "models.lock.json")
+    return [recipe.directory / "config" / name for name in names]
+
+
+def start_facts(
+    recipe: Recipe,
+    options: LaunchOptions,
+    *,
+    host: dict[str, object],
+    image: dict[str, object],
+    started_at: str,
+) -> dict[str, object]:
+    """Assemble the instance ``facts.json`` document: what this start actually ran."""
+    config_hashes: dict[str, str] = {}
+    for config in recipe_config_files(recipe):
+        if config.is_file():
+            config_hashes[config.name] = file_sha256(config)
+    return {
+        "started_at": started_at,
+        "instance": options.name,
+        "recipe": recipe.name,
+        "runtime": recipe.runtime,
+        "adapter": recipe.adapter,
+        "engine": recipe.engine,
+        "image": {"reference": recipe.image, **image},
+        "options": {
+            "port": options.port,
+            "context": options.context,
+            "draft": options.draft,
+            "vision": options.vision,
+            "detached": options.detached,
+        },
+        "mounts": {
+            "recipe": str(recipe.directory),
+            "runtime": str(recipe.runtime_directory),
+            "models": str(options.models),
+            "cache": str(options.models / ".cache"),
+            "logs": str(options.logs),
+        },
+        "config_sha256": config_hashes,
+        "host": host,
+    }
+
+
+def write_json_atomic(path: Path, data: object) -> None:
+    """Write JSON through a temporary file and rename, so readers never see partial data."""
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(json.dumps(data, indent=2) + "\n")
+    os.replace(temporary, path)
