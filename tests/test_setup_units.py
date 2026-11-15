@@ -7,7 +7,6 @@ capacities (``16 GB VRAM``) and explicitly decimal labels
 """
 
 import re
-import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +31,7 @@ def violations(text: str) -> list[str]:
 
 
 def scanned_files() -> list[Path]:
+    """Markdown documents in the repository that carry measured sizes."""
     files = []
     for directory in SCANNED_DIRECTORIES:
         for path in sorted((ROOT / directory).rglob("*.md")):
@@ -42,26 +42,19 @@ def scanned_files() -> list[Path]:
     return files
 
 
-class UnitsInRepositoryMarkdown(unittest.TestCase):
-    def test_detector_flags_measured_gb(self) -> None:
-        self.assertEqual(
-            violations("for 83.63 GB of target shards\n"),
-            ["line 1: 83.63 GB of target shards"],
-        )
-
-    def test_detector_allows_vendor_and_decimal_labels(self) -> None:
-        self.assertEqual(
-            violations("16 GB VRAM, 64 GB RAM, 0.932 GB (decimal, weights), 20 GiB, MiB\n"),
-            [],
-        )
-
-    def test_repository_markdown_uses_binary_units_for_measurements(self) -> None:
-        offenders = []
-        for path in scanned_files():
-            for violation in violations(path.read_text(encoding="utf-8")):
-                offenders.append(f"{path.relative_to(ROOT)}: {violation}")
-        self.assertEqual(offenders, [])
+def test_violations_flags_measured_gb() -> None:
+    assert violations("for 83.63 GB of target shards\n") == ["line 1: 83.63 GB of target shards"]
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_violations_allow_vendor_and_decimal_labels() -> None:
+    assert violations("16 GB VRAM, 64 GB RAM, 0.932 GB (decimal, weights), 20 GiB, MiB\n") == []
+
+
+def test_repository_markdown_uses_binary_units_for_measurements() -> None:
+    offenders = [
+        f"{path.relative_to(ROOT)}: {violation}"
+        for path in scanned_files()
+        for violation in violations(path.read_text(encoding="utf-8"))
+    ]
+
+    assert offenders == []
