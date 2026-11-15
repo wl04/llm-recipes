@@ -73,4 +73,4 @@ See [launcher controls](../../docs/launcher.md#foreground-and-background-executi
 
 ---
 
-[Recipe](recipe.md) · [Runtime](../../docs/runtimes/exllamav3-tabbyapi.md) · [Launcher installation](../../docs/project-instructions.md#machine-roots-and-cutover)
+[Recipe](recipe.md) · [Runtime](../../docs/runtimes/exllamav3-tabbyapi.md)

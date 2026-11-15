@@ -12,7 +12,7 @@ Provide the runtime preparation command with this recipe's directory and externa
 
 ## Launch
 
-The `llm-recipes` command comes from the installed serving snapshot; link to [machine roots](../../docs/project-instructions.md#machine-roots-and-cutover) for installation and refresh. After preparation, check the recipe before starting. Link to [diagnostics](../../docs/launcher.md#diagnose-a-recipe) for check scope and troubleshooting.
+The `llm-recipes` command comes from the installed serving snapshot; link to [Quick start](../../README.md#quick-start) for installation and refresh. After preparation, check the recipe before starting. Link to [diagnostics](../../docs/launcher.md#diagnose-a-recipe) for check scope and troubleshooting.
 
 ```bash
 llm-recipes doctor <recipe>
@@ -47,4 +47,4 @@ Link to [launcher controls](../../docs/launcher.md#foreground-and-background-exe
 
 ---
 
-[Recipe](recipe.md) · [Runtime](../../docs/runtimes/<runtime>.md) · [Launcher installation](../../docs/project-instructions.md#machine-roots-and-cutover)
+[Recipe](recipe.md) · [Runtime](../../docs/runtimes/<runtime>.md)
