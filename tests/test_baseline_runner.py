@@ -145,6 +145,32 @@ def case_of(document: dict[str, Any], case_id: str) -> dict[str, Any]:
     return next(case for case in document["cases"] if case["id"] == case_id)
 
 
+def test_meta_records_launch_facts_from_a_container_start(tmp_path: Path) -> None:
+    facts = {"started_at": "2026-11-15T12:00:00+00:00", "host": {"hostname": "bench"}}
+
+    class FactsControl(FakeControl):
+        def start(self) -> StartedServer:
+            return StartedServer(
+                self.cgroup,
+                {"instance": "baseline", "launch_facts": dict(facts)},
+            )
+
+    with FakeServer() as server:
+        code, raw, _ = execute(tmp_path, server, control=FactsControl(tmp_path, server))
+
+    assert code == ExitCode.OK
+    assert raw.meta["launch_facts"] == facts
+    assert "launch_facts" not in raw.meta["container"]
+
+
+def test_meta_keeps_launch_facts_null_without_a_recorded_start(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        code, raw, _ = execute(tmp_path, server)
+
+    assert code == ExitCode.OK
+    assert raw.meta["launch_facts"] is None
+
+
 def test_run_completes_every_workload_in_the_fixed_order(tmp_path: Path) -> None:
     with FakeServer() as server:
         code, raw, _ = execute(tmp_path, server)

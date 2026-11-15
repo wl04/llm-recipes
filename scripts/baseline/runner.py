@@ -138,6 +138,7 @@ class Runner:
                 "reasoning_request": workloads.reasoning_request(config.kind, config.request_extra),
             },
             "target": config.target,
+            "launch_facts": None,
             "phases": {},
             "workload": {
                 "suite": dataclasses.asdict(config.suite),
@@ -239,7 +240,9 @@ class Runner:
         with self._phase("load") as entry:
             self._start_attempted = True
             started = self._control.start()
-            self._meta["container"] = started.meta
+            container_meta = dict(started.meta)
+            self._meta["launch_facts"] = container_meta.pop("launch_facts", None)
+            self._meta["container"] = container_meta
             added, target = monitor.target_sources(started.cgroup, self._config.gpu_address)
             self._meta["target"] = target
             if self._sampler is not None:

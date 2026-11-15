@@ -1,6 +1,7 @@
 """Starting and stopping a launcher container for a baseline, with Docker faked."""
 
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -48,6 +49,7 @@ def make_control(
     *,
     findings: list[Finding] | None = None,
     vram_gib: float | None = 0.2,
+    record_facts: Callable[[], dict[str, object]] = lambda: {},
 ) -> lifecycle.ContainerControl:
     options = LaunchOptions(
         "baseline", tmp_path / "models", tmp_path / "logs", 131072, "on", "cpu", 8080, True
@@ -66,6 +68,7 @@ def make_control(
         gpu_vram_gib=lambda: vram_gib,
         resolve=resolve,
         gpu_groups=lambda: [44, 105],
+        record_facts=record_facts,
     )
 
 
@@ -113,6 +116,27 @@ def test_start_runs_a_detached_labeled_container_and_resolves_its_cgroup(tmp_pat
     assert started.meta["container_id"] == "abc123"
     assert started.meta["image_id"] == "sha256:img"
     assert started.meta["instance"] == "baseline"
+    assert started.meta["launch_facts"] is None
+
+
+def test_start_attaches_recorded_facts_to_the_started_meta(tmp_path: Path) -> None:
+    facts = {"started_at": "2026-11-15T12:00:00+00:00", "host": {"hostname": "bench"}}
+
+    started = make_control(tmp_path, FakeDocker(), record_facts=lambda: dict(facts)).start()
+
+    assert started.meta["launch_facts"] == facts
+
+
+def test_start_refuses_to_launch_when_facts_cannot_be_recorded(tmp_path: Path) -> None:
+    def broken_facts() -> dict[str, object]:
+        raise OSError("log directory is not writable")
+
+    docker = FakeDocker()
+
+    with pytest.raises(lifecycle.LifecycleError, match="start facts"):
+        make_control(tmp_path, docker, record_facts=broken_facts).start()
+
+    assert not any("run" in command for command in docker.commands)
 
 
 def test_start_reports_a_failed_launch_with_docker_output(tmp_path: Path) -> None:

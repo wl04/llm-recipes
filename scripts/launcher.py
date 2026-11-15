@@ -6,8 +6,12 @@ import os
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
+
+import host_facts
 
 
 @dataclass(frozen=True)
@@ -415,3 +419,37 @@ def write_json_atomic(path: Path, data: object) -> None:
     temporary = path.with_name(path.name + ".tmp")
     temporary.write_text(json.dumps(data, indent=2) + "\n")
     os.replace(temporary, path)
+
+
+def _capture_quiet(command: list[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(command, check=False, capture_output=True, text=True)
+
+
+def record_start_facts(
+    recipe: Recipe,
+    options: LaunchOptions,
+    *,
+    run: Callable[[list[str]], subprocess.CompletedProcess[str]] | None = None,
+    host: Callable[[], dict[str, object]] | None = None,
+    started_at: Callable[[], str] = lambda: datetime.now(UTC).isoformat(timespec="seconds"),
+) -> dict[str, object]:
+    """Collect image identity and host facts, and atomically write the instance facts file.
+
+    Returns the written document. The image must already be present locally; a missing
+    image or an unwritable log directory raises, so a start never proceeds silently
+    without its record.
+    """
+    inspect = run if run is not None else _capture_quiet
+    collect = host if host is not None else host_facts.collect
+    inspection = inspect(image_inspect_command(recipe.image))
+    if inspection.returncode:
+        raise ValueError((inspection.stderr.strip() or "docker image inspect failed")[:200])
+    facts = start_facts(
+        recipe,
+        options,
+        host=collect(),
+        image=parse_image_inspect(inspection.stdout),
+        started_at=started_at(),
+    )
+    write_json_atomic(options.logs / FACTS_NAME, facts)
+    return facts

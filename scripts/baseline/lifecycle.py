@@ -56,6 +56,7 @@ class ContainerControl:
         resolve: Callable[[str], host.ContainerInfo] = host.resolve_container,
         gpu_groups: Callable[[], list[int]] = launcher.gpu_groups,
         sleep: Callable[[float], None] = time.sleep,
+        record_facts: Callable[[], dict[str, object]] = lambda: {},
     ) -> None:
         self._recipe = recipe
         self._options = options
@@ -66,6 +67,7 @@ class ContainerControl:
         self._resolve = resolve
         self._gpu_groups = gpu_groups
         self._sleep = sleep
+        self._record_facts = record_facts
         self._container = "llm-recipes-" + options.name
 
     def preflight(self) -> None:
@@ -126,6 +128,10 @@ class ContainerControl:
             launcher.prepare_start(self._recipe, self._options)
         except (ValueError, OSError) as error:
             raise LifecycleError(f"Cannot start {self._recipe.name}: {error}") from error
+        try:
+            facts = self._record_facts()
+        except (ValueError, OSError) as error:
+            raise LifecycleError(f"Cannot record the start facts: {error}") from error
         command = _non_interactive(command)
         result = self._slow_run(command)
         if result.returncode:
@@ -140,6 +146,7 @@ class ContainerControl:
                 "image_id": info.image_id,
                 "logs": str(self._options.logs),
                 "launch_command": shlex.join(command),
+                "launch_facts": facts or None,
             },
         )
 

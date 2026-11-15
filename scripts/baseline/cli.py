@@ -17,7 +17,14 @@ from pathlib import Path
 from typing import Any
 
 import generate_configurations as generator
-from launcher import Recipe, discover_recipes, refresh_sudo_ticket, resolve_launch_options
+import host_facts
+from launcher import (
+    Recipe,
+    discover_recipes,
+    record_start_facts,
+    refresh_sudo_ticket,
+    resolve_launch_options,
+)
 
 from baseline import (
     aggregate,
@@ -144,6 +151,15 @@ class Plan:
     meta_extra: dict[str, Any] = field(default_factory=dict)
 
 
+def _system_facts() -> dict[str, object] | None:
+    """Host facts for ``meta.json``; a missing fact degrades to null instead of failing the run."""
+    try:
+        return host_facts.collect()
+    except OSError as error:
+        _progress(f"Host facts unavailable: {error}")
+        return None
+
+
 def _find_gpu(requested: str | None) -> tuple[str | None, list[str]]:
     if requested:
         return requested, [requested]
@@ -195,7 +211,12 @@ def _managed_plan(
         port=args.port,
         detached=True,
     )
-    control = ContainerControl(recipe, options, gpu_vram_gib=lambda: _gpu_vram_gib(gpu_address))
+    control = ContainerControl(
+        recipe,
+        options,
+        gpu_vram_gib=lambda: _gpu_vram_gib(gpu_address),
+        record_facts=lambda: record_start_facts(recipe, options),
+    )
     launch = {
         "context": options.context,
         "draft": options.draft,
@@ -315,6 +336,7 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
             "revision": host.repository_revision(root),
             "python": platform.python_version(),
             "kernel": platform.release(),
+            "system": _system_facts(),
         },
         "workload": {"image": str(args.image or "assets/checks/amdgpu-top.png")},
         "gpu": {"address": gpu_address, "candidates": candidates},

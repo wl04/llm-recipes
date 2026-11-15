@@ -25,7 +25,7 @@ _GPU_LINE = re.compile(
 )
 
 
-class HostFactsError(Exception):
+class HostFactsError(OSError):
     """A required host fact could not be read; the message names the path."""
 
 

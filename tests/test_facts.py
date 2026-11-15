@@ -99,6 +99,47 @@ def test_parse_image_inspect_rejects_malformed_output() -> None:
         launcher.parse_image_inspect('["not a dict"]')
 
 
+def test_record_start_facts_writes_the_instance_file_and_returns_it(
+    tmp_path: Path,
+) -> None:
+    recipe = make_recipe(tmp_path)
+    options = make_options(tmp_path)
+    options.logs.mkdir()
+    output = json.dumps({"Id": IMAGE["image_id"], "RepoDigests": IMAGE["image_digests"]})
+
+    facts = launcher.record_start_facts(
+        recipe,
+        options,
+        run=lambda command: subprocess.CompletedProcess(command, 0, stdout=output, stderr=""),
+        host=lambda: dict(HOST),
+        started_at=lambda: "2026-11-15T12:00:00+00:00",
+    )
+
+    written = json.loads((options.logs / "facts.json").read_text())
+    assert written == facts
+    assert facts["started_at"] == "2026-11-15T12:00:00+00:00"
+    assert facts["image"] == {"reference": "registry/img:latest", **IMAGE}
+    assert facts["host"] == HOST
+
+
+def test_record_start_facts_refuses_when_the_image_is_absent(tmp_path: Path) -> None:
+    recipe = make_recipe(tmp_path)
+    options = make_options(tmp_path)
+    options.logs.mkdir()
+
+    with pytest.raises(ValueError, match="No such image"):
+        launcher.record_start_facts(
+            recipe,
+            options,
+            run=lambda command: subprocess.CompletedProcess(
+                command, 1, stdout="", stderr="No such image: registry/img:latest"
+            ),
+            host=lambda: dict(HOST),
+        )
+
+    assert not (options.logs / "facts.json").exists()
+
+
 def start_argv(tmp_path: Path, port: str) -> list[str]:
     return [
         "start",
@@ -123,12 +164,12 @@ def drive_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, port: str) -> P
     monkeypatch.setattr(launch, "run_command", lambda command: 0)
     monkeypatch.setattr(host_facts, "collect", lambda: dict(HOST))
 
-    def fake_capture(command: list[str]) -> subprocess.CompletedProcess[str]:
+    def fake_inspect(command: list[str]) -> subprocess.CompletedProcess[str]:
         assert command[:4] == ["sudo", "-n", "docker", "image"]
         output = json.dumps({"Id": IMAGE["image_id"], "RepoDigests": IMAGE["image_digests"]})
         return subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
 
-    monkeypatch.setattr(launch, "capture", fake_capture)
+    monkeypatch.setattr(launcher, "_capture_quiet", fake_inspect)
     logs = tmp_path / "logs"
     logs.mkdir()
     code = launch.main(start_argv(tmp_path, port))
@@ -157,8 +198,8 @@ def test_facts_json_start_survives_a_missing_image_inspect(
     monkeypatch.setattr(launch, "gpu_groups", lambda: [])
     monkeypatch.setattr(launch, "run_command", lambda command: 0)
     monkeypatch.setattr(
-        launch,
-        "capture",
+        launcher,
+        "_capture_quiet",
         lambda command: subprocess.CompletedProcess(command, 1, stdout="", stderr="No such image"),
     )
     logs = tmp_path / "logs"
