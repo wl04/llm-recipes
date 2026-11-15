@@ -137,7 +137,7 @@ def quantize(root: Path, lock: dict[str, Any]) -> None:
         },
     )
     print(f"Converted draft: {output}", flush=True)
-    print(f"Weight size: {sum(path.stat().st_size for path in weights) / 1e9:.3f} GB")
+    print(f"Weight size: {sum(path.stat().st_size for path in weights) / 1024**3:.3f} GiB")
 
 
 @contextmanager

@@ -61,7 +61,7 @@
 | Draft repository | z-lab/Qwen3.8-27B-DFlash2 |
 | Draft revision | [50307d4c](https://huggingface.co/z-lab/Qwen3.8-27B-DFlash2/commit/50307d4c4cde6860d4eee73e2547cd786fe8e8a4) |
 | Draft quantization | 3.0 bpw, mul1 codebook, --out_scales always |
-| Converted draft weight size | 0.932 GB (decimal, converted weights) |
+| Converted draft weight size | 0.868 GiB (converted weights) |
 
 
 ## Serving

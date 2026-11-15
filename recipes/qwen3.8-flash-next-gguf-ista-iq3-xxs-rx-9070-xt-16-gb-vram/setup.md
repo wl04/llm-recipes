@@ -4,7 +4,7 @@
 
 Build and check the shared [Strata runtime](../../docs/runtimes/strata.md#build-and-check).
 
-Allow at least **100 GB free disk space** for approximately 82 GB of downloads and preparation outputs. The tested configuration uses 16 GB VRAM and 64 GB RAM; its expert arena is 39.97 GiB.
+Allow at least **100 GiB free disk space** for approximately 79 GiB of downloads and preparation outputs. The tested configuration uses 16 GB VRAM and 64 GB RAM; its expert arena is 39.97 GiB.
 
 ## Prepare models
 

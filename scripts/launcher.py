@@ -209,7 +209,15 @@ def start_command(
     if detached:
         command.append("--detach")
     if recipe.adapter == "strata":
-        command += ["--ulimit", "memlock=-1:-1", "--shm-size", "2g", "--stop-timeout", "120"]
+        command += [
+            "--ulimit",
+            "memlock=-1:-1",
+            # Docker reads suffixed units such as "2g" as decimal; pass exact bytes.
+            "--shm-size",
+            str(2 * 1024**3),
+            "--stop-timeout",
+            "120",
+        ]
     command += ["--user", f"{uid}:{gid}"]
     for group in sorted(set(groups)):
         command += ["--group-add", str(group)]

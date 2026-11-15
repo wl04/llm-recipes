@@ -40,7 +40,7 @@ model:
   draft_repository: z-lab/Qwen3.8-27B-DFlash2
   draft_revision: https://huggingface.co/z-lab/Qwen3.8-27B-DFlash2/commit/50307d4c4cde6860d4eee73e2547cd786fe8e8a4
   draft_quantization: 3.0 bpw, mul1 codebook, --out_scales always
-  draft_size: 0.932 GB (decimal, converted weights)
+  draft_size: 0.868 GiB (converted weights)
 settings:
   serving:
     speculative_decoding: DFlash2 enabled

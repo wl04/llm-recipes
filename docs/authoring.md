@@ -174,7 +174,7 @@ The folder name is derived by lowercasing the parts, replacing runs of character
 
 All results in a recipe use the same `id`. The generator checks the folder name and identifiers before writing. Different hardware or memory capacities belong in separate recipe folders. Different model families or independently maintained quantizations also receive separate recipes; sampling, context, and vision changes normally remain experiments.
 
-Measured capacities use binary units: GiB and MiB in display labels and result statistics, matching the `_gib` keys and the `unit` fields in `results.json`. Use decimal GB only for vendor capacities in identifiers and product prose, such as `16 GB VRAM` in `id`; a deliberately decimal measurement stays explicitly labeled, such as `GB (decimal)`.
+Measured capacities use binary units: GiB and MiB in display labels and result statistics, matching the `_gib` keys and the `unit` fields in `results.json`. Use decimal GB only for vendor capacities in identifiers and product prose, such as `16 GB VRAM` in `id`; a deliberately decimal measurement stays explicitly labeled, such as `GB (decimal)`. Disk and memory requirements in setup guides are measurements too: state them in GiB and derive the figures from the byte sizes in `config/models.lock.json` or the prepare script's output, never from marketplace or file-manager displays.
 
 The generated guide omits null values, blank strings, empty lists/mappings, and sections containing only empty values. Numeric zero and boolean false remain visible.
 

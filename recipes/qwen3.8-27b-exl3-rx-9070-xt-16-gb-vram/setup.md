@@ -8,7 +8,7 @@ Build and check the shared [ExLlamaV3 / TabbyAPI runtime](../../docs/runtimes/ex
 
 ## Prepare models
 
-Allow approximately 17.3 GB for downloads, plus space for converted weights, conversion working files, and the image/build cache. From the repository root:
+Allow approximately 16 GiB for downloads, plus space for converted weights, conversion working files, and the image/build cache. From the repository root:
 
 ```bash
 recipe=recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram

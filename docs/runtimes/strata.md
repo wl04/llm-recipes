@@ -38,7 +38,7 @@ prepared.json        # Completion record matching model and runtime locks
 
 ## Serving
 
-The [launcher](../launcher.md#shared-runtimes) provides the mounts and entry point. The Strata adapter adds unlimited memory locking, 2 GB shared memory, and a 120-second stop timeout.
+The [launcher](../launcher.md#shared-runtimes) provides the mounts and entry point. The Strata adapter adds unlimited memory locking, 2 GiB shared memory, and a 120-second stop timeout.
 
 The serving helper checks the completion receipt against the selected model and runtime locks, checks all shard sizes and required artifacts, selects the RX 9070 XT, and creates a temporary native configuration. `--context`, `--draft`, and `--vision cpu|off` override that recipe's defaults. The GPU-resident KV setting is capped at 32,768 cells by this integration. The API is published on host loopback; offline mode disables external fetching. Readiness is `/health`.
 
