@@ -53,6 +53,18 @@ More detail: [launcher guide](docs/launcher.md) · [machine roots](docs/project-
 
 ## Structure
 
+The repository holds the recipes with their results, the shared container runtimes, and the tooling that serves and measures them:
+
+```text
+recipes/            # Experiments grouped by model, format, and hardware
+runtimes/           # Shared container runtimes: Dockerfiles, locks, serving scripts
+scripts/            # Launcher, baseline harness, installer, and generators
+docs/               # Launcher, runtime, baseline, and client guides
+templates/          # Scaffolds for new recipes, experiments, and runtimes
+assets/             # Screenshots referenced by the guides
+tests/              # Repository test suite, run by scripts/check.sh
+```
+
 Each recipe groups dated experiments for a model, format, and hardware combination:
 
 ```text
@@ -66,24 +78,30 @@ recipes/<model-format-hardware-memory>/
     assets/            # Optional screenshots used in the report
 ```
 
-Container recipes select a shared runtime and keep their model-specific configuration:
+Container recipes add a setup guide and keep their model-specific configuration; experiments follow the layout above:
 
 ```text
 recipes/<model-format-hardware-memory>/
   setup.md             # Model preparation, launch, and client configuration
   config/
     launch.json        # Shared runtime, port, context, drafting, and vision defaults
-    <server-config>    # Native serving settings
-    models.lock.json   # Model revisions and preparation options
+    <server-config>    # Native serving settings, such as tabby.yml or strata.json
+    models.lock.json   # Model revisions, file sizes, and preparation options
     pi.models.json     # Pi provider metadata
-  NNN-YYYY-MM-DD-description/
 
 runtimes/<runtime>/
-  runtime.json         # API server, engine, and image reference
+  runtime.json         # Adapter, engine, and image reference
   container/           # Dockerfile, dependency locks, build helpers
   scripts/             # Shared preparation, serving, and API checks
 
 docs/runtimes/         # Shared build and operation guides
+```
+
+The installed launcher keeps code and machine data outside this checkout:
+
+```text
+~/.llm-recipes/        # App snapshot: scripts, runtimes, virtualenv, VERSION
+~/llm-recipes/         # Data root: prepared recipes/, baselines/, logs/, .cache/
 ```
 
 Different models or independently maintained quantizations have separate recipes. Context, sampling, and vision changes are recorded as experiments within the same recipe.
