@@ -671,12 +671,18 @@ def test_render_rejects_unknown_key_in_sampling_section(tmp_path: Path) -> None:
         gen.render(profile)
 
 
+def test_render_rejects_request_policy_prose_key(tmp_path: Path) -> None:
+    profile = write_settings_profile(tmp_path, {"Request policy": "temperature 1"})
+
+    with pytest.raises(ValueError, match="not allowed"):
+        gen.render(profile)
+
+
 @pytest.mark.parametrize(
     ("settings", "message"),
     [
         ({"thinking": {"effort": "high"}}, "unknown key 'effort' in settings.thinking"),
         ({"requests": {"api_key": "x"}}, "unknown key 'api_key' in settings.requests"),
-        ({"Request policy": "temperature 1"}, "not allowed"),
         ({"serving": {"Top K": 20}}, "must be snake_case"),
         ({"serving": {"vision": {"enabled": True}}}, "must not nest"),
         ({"notes": ["a", "b"]}, "notes must be a single string"),
