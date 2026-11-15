@@ -6,7 +6,6 @@ be running; without ``--base-url``/``--context`` the run is set up by the guided
 
 import argparse
 import json
-import os
 import platform
 import signal
 import sys
@@ -19,6 +18,7 @@ from typing import Any
 
 import generate_configurations as generator
 import host_facts
+import paths
 import yaml
 from launcher import (
     Recipe,
@@ -54,7 +54,7 @@ from baseline.workloads import SuiteConfig
 ROOT = Path(__file__).resolve().parents[2]
 SERVER_KINDS = schema.SERVER_KINDS
 GIB = 1024**3
-DEFAULT_MODELS = Path.home() / "Models/llm-recipes"
+DEFAULT_MODELS = paths.data_home()
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -141,11 +141,6 @@ def render_run(directory: Path, root: Path = ROOT) -> Path:
     path, _, rendered = generator.update_results_block(directory)
     generator.write_atomic(path, rendered)
     return directory / "results.json"
-
-
-def default_state_home() -> Path:
-    """Per-user state directory, same rule ``launch.py`` uses for instance logs."""
-    return Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
 
 
 def session_run(
@@ -523,7 +518,7 @@ def main(
         log_dir = (
             args.logs.expanduser().resolve()
             if args.logs is not None
-            else default_state_home() / "llm-recipes" / args.instance
+            else paths.logs_dir(paths.data_home(), args.instance)
         )
         try:
             document = session_run(

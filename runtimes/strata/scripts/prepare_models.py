@@ -167,7 +167,7 @@ def prepare(recipe: Path, root: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--models", type=Path, default=Path.home() / "Models/llm-recipes")
+    parser.add_argument("--models", type=Path, default=Path.home() / "llm-recipes")
     parser.add_argument("--recipe", type=Path, required=True, help="recipe directory")
     parser.add_argument("--inside-container", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()

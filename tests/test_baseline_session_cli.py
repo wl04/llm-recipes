@@ -165,12 +165,12 @@ def test_session_cli_prints_document_without_experiment(
 def test_session_cli_detects_strata_by_instance_name(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setenv("LLM_RECIPES_HOME", str(tmp_path / "data"))
     log_dir = _log_dir(
         tmp_path, None, ("engine.log", STRATA_ENGINE_LOG), ("server.log", STRATA_SERVER_LOG)
     )
-    (tmp_path / "state" / "llm-recipes").mkdir(parents=True)
-    log_dir.rename(tmp_path / "state" / "llm-recipes" / "coding-x")
+    (tmp_path / "data" / "logs").mkdir(parents=True)
+    log_dir.rename(tmp_path / "data" / "logs" / "coding-x")
 
     code = cli.main(["session", "coding-x"], root=tmp_path)
 

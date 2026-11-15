@@ -23,7 +23,7 @@ The image name and API-server/engine pairing live in [`runtime.json`](../../runt
 
 The recipe's setup guide supplies the `prepare-models.sh` commands for `download` and `quantize-draft`. Its model lock defines downloads, directory names, and conversion arguments.
 
-An optional third argument selects the host models directory; its default is `~/Models/llm-recipes`. Both commands run as the host UID and mount the recipe and runtime read-only. Quantization also receives GPU access. Downloads verify file sizes and Git/LFS hashes, then save checksum manifests. Converted drafts record source metadata, build pins, conversion arguments, and output checksums. Preparation is locked against another writer in the same model directory.
+An optional third argument selects the host models directory; its default is `~/llm-recipes`. Both commands run as the host UID and mount the recipe and runtime read-only. Quantization also receives GPU access. Downloads verify file sizes and Git/LFS hashes, then save checksum manifests. Converted drafts record source metadata, build pins, conversion arguments, and output checksums. Preparation is locked against another writer in the same model directory.
 
 Interrupted downloads can be rerun. Conversion requires fresh output and work directories: move failed outputs aside before retrying. Paths are declared by the model lock.
 

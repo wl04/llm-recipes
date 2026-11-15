@@ -12,13 +12,13 @@ Provide the runtime preparation command with this recipe's directory and externa
 
 ## Launch
 
-After preparation, check the recipe with `python3 scripts/launch.py doctor <recipe> --models "$HOME/Models/llm-recipes"`. Link to [diagnostics](../../docs/launcher.md#diagnose-a-recipe) for check scope and troubleshooting.
+After preparation, check the recipe with `python3 scripts/launch.py doctor <recipe> --models "$HOME/llm-recipes"`. Link to [diagnostics](../../docs/launcher.md#diagnose-a-recipe) for check scope and troubleshooting.
 
 Run from the repository root:
 
 ```bash
 python3 scripts/launch.py start <recipe> --name coding --detach \
-  --models "$HOME/Models/llm-recipes"
+  --models "$HOME/llm-recipes"
 python3 scripts/launch.py logs coding --follow
 ```
 

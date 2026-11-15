@@ -13,10 +13,10 @@ Run from the repository root with the serving instance stopped:
 ```bash
 python3 runtimes/strata/scripts/prepare_models.py \
   --recipe recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram \
-  --models "$HOME/Models/llm-recipes"
+  --models "$HOME/llm-recipes"
 ```
 
-The [model lock](config/models.lock.json) selects two target shards, a BF16 CPU projector, and Q2_0 MTP. Target tensors retain their native formats. Files are prepared under `$HOME/Models/llm-recipes/strata`.
+The [model lock](config/models.lock.json) selects two target shards, a BF16 CPU projector, and Q2_0 MTP. Target tensors retain their native formats. Files are prepared under `$HOME/llm-recipes/strata`.
 
 ## Launch
 
@@ -24,12 +24,12 @@ Run one model instance at a time on the RX 9070 XT workstation. Stop the other r
 
 ```bash
 python3 scripts/launch.py doctor qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram \
-  --models "$HOME/Models/llm-recipes"
+  --models "$HOME/llm-recipes"
 python3 scripts/launch.py start qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram \
   --name strata-coding --detach \
   --draft on --vision cpu --context 131072 \
-  --models "$HOME/Models/llm-recipes" \
-  --logs "$HOME/Models/llm-recipes/logs/strata-coding"
+  --models "$HOME/llm-recipes" \
+  --logs "$HOME/llm-recipes/logs/strata-coding"
 python3 scripts/launch.py logs strata-coding --follow
 ```
 
@@ -46,7 +46,7 @@ sudo -v
 python3 scripts/run_baseline.py run qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram
 ```
 
-Results and the server logs go to `~/Models/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
+Results and the server logs go to `~/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
 
 ## Pi
 

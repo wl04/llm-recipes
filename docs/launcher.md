@@ -9,7 +9,7 @@ A recipe defines a prepared model/server setup. An instance is one launch of tha
 ```bash
 python3 scripts/launch.py list
 python3 scripts/launch.py start <recipe> --name coding --detach \
-  --models "$HOME/Models/llm-recipes"
+  --models "$HOME/llm-recipes"
 python3 scripts/launch.py ps
 python3 scripts/launch.py status coding
 python3 scripts/launch.py logs coding --follow
@@ -23,7 +23,7 @@ Replace `<recipe>` with a directory identifier from `list`. Without `--name`, th
 ## Diagnose a recipe
 
 ```bash
-python3 scripts/launch.py doctor <recipe> --models "$HOME/Models/llm-recipes"
+python3 scripts/launch.py doctor <recipe> --models "$HOME/llm-recipes"
 ```
 
 `doctor` reads the recipe defaults and reports `PASS`, `WARN`, `FAIL`, or `SKIP` for:
@@ -54,7 +54,7 @@ Explicit CLI options override the recipe's launch defaults.
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `--name NAME` | Recipe identifier | Instance name |
-| `--models DIRECTORY` | `~/Models/llm-recipes` | Prepared model directory |
+| `--models DIRECTORY` | `~/llm-recipes` | Prepared model directory |
 | `--logs DIRECTORY` | Per-instance state directory | Persistent server file logs |
 | `--port PORT` | Manifest port | Host loopback port; update the client's API address when changed |
 | `--context TOKENS` | Manifest context | Context capacity |
@@ -69,7 +69,7 @@ Run `python3 scripts/launch.py start --help` for CLI help.
 
 ## Persistent logs
 
-The default directory is `${XDG_STATE_HOME:-$HOME/.local/state}/llm-recipes/<instance>`. Use `--logs` to choose another location, including an existing log directory.
+The default directory is `<models>/logs/<instance>`, with `<models>` the data root (`~/llm-recipes`, overridable with `LLM_RECIPES_HOME`). Use `--logs` to choose another location, including an existing log directory.
 
 `logs --follow` reads console output while the container exists. After it exits, read the files in the host log directory. Server-specific filenames, rotation, and retention are documented in the [runtime guides](#shared-runtimes).
 

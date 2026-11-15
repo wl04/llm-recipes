@@ -12,7 +12,7 @@ python3 scripts/run_baseline.py run <recipe>
 
 The runner starts the recipe as instance `baseline` and stops it afterwards. It checks host diagnostics and refuses to start while another launcher instance is running or the selected GPU holds more than 2 GiB. Recipe defaults can be overridden with `--models`, `--context`, `--draft`, `--vision`, and `--port`.
 
-Output defaults to `<models>/baselines/<recipe>/<date-time>/`, where `<models>` defaults to `~/Models/llm-recipes`. Use `--output` for another new directory outside the repository. Server logs go into `server-logs/` within the run directory.
+Output defaults to `<models>/baselines/<recipe>/<date-time>/`, where `<models>` defaults to `~/llm-recipes`. Use `--output` for another new directory outside the repository. Server logs go into `server-logs/` within the run directory.
 
 Ctrl+C or SIGTERM preserves partial records and stops the server started by the runner. `--keep-running` leaves it running. The runner asks for your sudo password once at start; later Docker commands use noninteractive sudo, so credentials expiring mid-run can make a later operation fail, including cleanup — re-run the command to refresh them.
 

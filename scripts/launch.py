@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import paths
 from doctor import diagnose
 from launcher import (
     FACTS_NAME,
@@ -45,7 +46,7 @@ def parser() -> argparse.ArgumentParser:
     doctor = commands.add_parser("doctor", help="read-only host and recipe diagnostics")
     doctor.add_argument("--json", action="store_true", help="machine-readable output")
     doctor.add_argument("recipe", help="recipe directory name; see list")
-    doctor.add_argument("--models", type=Path, default=Path.home() / "Models/llm-recipes")
+    doctor.add_argument("--models", type=Path, default=paths.data_home())
     start = commands.add_parser("start")
     start.add_argument("recipe", help="recipe directory name; see list")
     start.add_argument("--name", help="instance name (default: recipe directory name)")
@@ -55,7 +56,7 @@ def parser() -> argparse.ArgumentParser:
     )
     start.add_argument("--context", type=int)
     start.add_argument("--port", type=int)
-    start.add_argument("--models", type=Path, default=Path.home() / "Models/llm-recipes")
+    start.add_argument("--models", type=Path, default=paths.data_home())
     start.add_argument(
         "--logs", type=Path, help="persistent directory (default: per-instance state)"
     )
@@ -150,12 +151,12 @@ def main(argv: list[str] | None = None) -> int:
             )
             return int(any(item.status == "FAIL" for item in findings))
         name = args.name if args.name is not None else recipe.name
-        state = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+        models = args.models.expanduser().resolve()
         options = resolve_launch_options(
             recipe,
             name=name,
-            models=args.models.expanduser().resolve(),
-            logs=(args.logs if args.logs is not None else state / "llm-recipes" / name)
+            models=models,
+            logs=(args.logs if args.logs is not None else paths.logs_dir(models, name))
             .expanduser()
             .resolve(),
             context=args.context,

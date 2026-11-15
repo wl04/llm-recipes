@@ -100,7 +100,7 @@ def test_managed_run_passes_recipe_defaults_and_log_location_to_the_launcher(
     assert (options.name, options.detached) == ("baseline", True)
     assert (options.context, options.draft, options.vision) == (131072, "on", "cpu")
     assert options.logs == (tmp_path / "run").resolve() / "server-logs"
-    assert options.models == (Path.home() / "Models/llm-recipes").resolve()
+    assert options.models == (Path.home() / "llm-recipes").resolve()
 
 
 def test_managed_run_applies_explicit_launch_overrides(
@@ -180,14 +180,14 @@ def test_run_without_output_writes_under_the_home_models_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
-    (tmp_path / "home" / "Models" / "llm-recipes").mkdir(parents=True)
-    monkeypatch.setattr(cli, "DEFAULT_MODELS", tmp_path / "home" / "Models" / "llm-recipes")
+    (tmp_path / "home" / "llm-recipes").mkdir(parents=True)
+    monkeypatch.setattr(cli, "DEFAULT_MODELS", tmp_path / "home" / "llm-recipes")
     with FakeServer() as server:
         Managed(tmp_path, server, monkeypatch)
         port = server.base_url.rsplit(":", 1)[1]
         code = cli.main(["run", RECIPE, "--port", port, "--no-gpu"], suite=SUITE)
 
-    runs = list((tmp_path / "home/Models/llm-recipes/baselines" / RECIPE).iterdir())
+    runs = list((tmp_path / "home/llm-recipes/baselines" / RECIPE).iterdir())
     assert code == ExitCode.OK
     assert len(runs) == 1
     assert (runs[0] / "results.json").is_file()

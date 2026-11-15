@@ -16,7 +16,7 @@ bash runtimes/exllamav3-tabbyapi/scripts/prepare-models.sh "$recipe" download
 bash runtimes/exllamav3-tabbyapi/scripts/prepare-models.sh "$recipe" quantize-draft
 ```
 
-The optional third argument selects an external model directory, defaulting to `~/Models/llm-recipes`. Use that same directory with the launcher's `--models`. The [model lock](config/models.lock.json) specifies source revisions and conversion options: a 3.0-bit draft target, `mul1` codebook, and output scales enabled.
+The optional third argument selects an external model directory, defaulting to `~/llm-recipes`. Use that same directory with the launcher's `--models`. The [model lock](config/models.lock.json) specifies source revisions and conversion options: a 3.0-bit draft target, `mul1` codebook, and output scales enabled.
 
 | External directory | Contents |
 |---|---|
@@ -31,10 +31,10 @@ See [preparation and retry behavior](../../docs/runtimes/exllamav3-tabbyapi.md#p
 
 ```bash
 python3 scripts/launch.py doctor qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
-  --models "$HOME/Models/llm-recipes"
+  --models "$HOME/llm-recipes"
 python3 scripts/launch.py start qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
   --name coding --detach --draft on --vision on --context 131072 \
-  --models "$HOME/Models/llm-recipes"
+  --models "$HOME/llm-recipes"
 python3 scripts/launch.py logs coding --follow
 ```
 
@@ -55,7 +55,7 @@ python3 scripts/run_baseline.py run qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
   --request-extra '{"chat_template_kwargs":{"enable_thinking":false}}'
 ```
 
-The options match the launch command above, because the manifest defaults to a 4,096-token context with vision off. The explicit model selects the target from TabbyAPI's available models. The request override disables thinking for the baseline. Results and the server logs go to `~/Models/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
+The options match the launch command above, because the manifest defaults to a 4,096-token context with vision off. The explicit model selects the target from TabbyAPI's available models. The request override disables thinking for the baseline. Results and the server logs go to `~/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
 
 ## Pi
 

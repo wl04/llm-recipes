@@ -8,13 +8,13 @@ runtime_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 recipe_dir=$(cd -- "$1" && pwd)
 action=$2
 image=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["image"])' "$runtime_dir/runtime.json")
-for mount_path in "$runtime_dir" "$recipe_dir" "${3:-$HOME/Models/llm-recipes}"; do
+for mount_path in "$runtime_dir" "$recipe_dir" "${3:-$HOME/llm-recipes}"; do
     if [[ "$mount_path" == *","* || "$mount_path" == *$'\n'* ]]; then
         echo "Mount paths must not contain commas or newlines" >&2
         exit 2
     fi
 done
-model_dir=${3:-"$HOME/Models/llm-recipes"}
+model_dir=${3:-"$HOME/llm-recipes"}
 mkdir -p -- "$model_dir"
 model_dir=$(cd -- "$model_dir" && pwd)
 gpu_args=()

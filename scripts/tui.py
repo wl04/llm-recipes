@@ -12,6 +12,7 @@ from collections import deque
 from pathlib import Path
 from typing import ClassVar
 
+import paths
 from doctor import diagnose
 from launcher import (
     Recipe,
@@ -38,7 +39,7 @@ except ModuleNotFoundError as import_error:  # pragma: no cover - depends on ext
     ) from import_error
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MODELS = Path.home() / "Models/llm-recipes"
+DEFAULT_MODELS = paths.data_home()
 LOG_HISTORY = 500
 
 
@@ -264,12 +265,11 @@ class LlmRecipesApp(App[None]):
             self.call_from_thread(self._status, f"Unknown recipe: {name}")
             return
         try:
-            state = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
             options = resolve_launch_options(
                 recipe,
                 name=name,
                 models=DEFAULT_MODELS,
-                logs=state / "llm-recipes" / name,
+                logs=paths.logs_dir(DEFAULT_MODELS, name),
                 context=None,
                 draft=None,
                 vision=None,
