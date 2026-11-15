@@ -1,7 +1,7 @@
 server kind: lmstudio
 base url: http://127.0.0.1:1234
 model id: qwen3.8-27b-gsq-rco
-captured (UTC): 2026-11-15 00:10:57
+captured (UTC): 2026-11-15 13:32:16
 client: curl 8.20.0 (x86_64-pc-linux-gnu) libcurl/8.20.0 OpenSSL/4.0.3 zlib/1.3.2 brotli/1.2.0 zstd/1.5.7 libidn2/2.3.8 libpsl/0.23.3 libssh2/1.11.1 nghttp2/1.70.0 mit-krb5/1.22.1 OpenLDAP/2.6.13
 token-count route: unavailable (/v1/token/encode -> 200; body: {"error":"Unexpected endpoint or method. (POST /v1/token/encode)"} /v1/messages/count_tokens -> 200; body: {"error":"Unexpected endpoint or method. (POST /v1/messages/count_tokens)"} /api/v0/tokenize -> 200; body: {"error":"Unexpected endpoint or method. (POST /api/v0/tokenize)"})
 
@@ -11,22 +11,22 @@ X-Powered-By: Express
 Content-Type: application/json; charset=utf-8
 Content-Length: 279
 ETag: W/"117-xKSF+vpMgklYV3wN+F64bIxuTSU"
-Date: Sun, 15 Nov 2026 00:10:53 GMT
+Date: Sun, 15 Nov 2026 13:32:03 GMT
 Connection: keep-alive
 Keep-Alive: timeout=5
 
 
+Add here: engine and server version, image digest or app build.
+
 Engine and server version:
   app: LM Studio Bionic 1.2.0 (build 2), local developer server (Express)
+  engine: llama.cpp Vulkan backend 2.73.0 (confirmed by the operator)
   model: qwen3.8-27b-gsq-rco (GGUF)
 
 Behavior notes from this capture:
+  - Requests sent reasoning_effort: none; the usage chunk reports
+    reasoning_tokens: 0 and the deltas carry visible content directly.
   - Unknown model ids are ACCEPTED with HTTP 200 (see error.json / error.status).
   - No token-count route: /v1/token/encode, /v1/messages/count_tokens, and
     /api/v0/tokenize all answer HTTP 200 with error bodies, so the OpenAI-compatible
     surface cannot count tokens (see token_count.unavailable.txt).
-  - Object tool_choice is rejected (only the string values none, auto, required are
-    supported); with tool_choice "required" and one tool, the forced call streams
-    correctly as tool_calls deltas finishing with finish_reason tool_calls.
-  - With the 8-token budget the request was spent entirely on reasoning: content
-    is empty while reasoning is non-empty.
