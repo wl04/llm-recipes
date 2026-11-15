@@ -73,6 +73,10 @@ The default directory is `${XDG_STATE_HOME:-$HOME/.local/state}/llm-recipes/<ins
 
 `logs --follow` reads console output while the container exists. After it exits, read the files in the host log directory. Server-specific filenames, rotation, and retention are documented in the [runtime guides](#shared-runtimes).
 
+Each start also writes `facts.json` into the log directory: the image reference and digests, effective launch options, recipe configuration hashes, and host facts (CPU, RAM, GPU, driver) read from `/proc` and `/sys` without elevated access. `launch.py start` and the baseline runner record it atomically; the last start wins on restart, and a write failure only warns — the container still starts. `run_baseline.py session <instance>` and `run_baseline.py import` read it; the [session report](baseline.md#session-report) uses it to seed experiment profiles.
+
+Queries (`list`, `ps`, `status`) accept `--json` for machine-readable output, used by the optional dashboard (`scripts/tui.py`, installed with the `tui` extra).
+
 ## Launch manifest
 
 The launcher discovers `recipes/*/config/launch.json`. The recipe directory supplies its identifier. Every manifest field is required:

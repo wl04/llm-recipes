@@ -125,23 +125,22 @@ software:
   base_image: rocm/dev-ubuntu-24.04@sha256:5ed1362ea542a928651e4c710b44024ebe98870f74159cb70f0265aec8ef0abe
 labels:
   software.base_image_tag: Base image tag at preparation
-  software.base_image: Pinned base image
 ```
+
+The optional `labels` mapping overrides the built-in label for one path; see [Display labels](#display-labels).
 
 Docker Hub tag links display as `repository:tag`. Tags can move; the full digest identifies the image used. Tag pages provide image metadata, while the profile and build lock retain the recorded digest. These fields apply to container recipes.
 
 ## Display labels
 
-Each profile has a `labels` mapping for readable field names and section headings. Keys are dotted YAML paths, for example `hardware.memory.dedicated_vram_gib: Dedicated VRAM (GB)`. Labels affect the generated guide; values stay in their existing fields.
-
-When adding a setting, add its label too, for example `settings.Context length: Context length (tokens)`. The generator reports missing labels instead of displaying internal field paths. Keep units in labels where useful. The labels mapping itself is omitted from the generated guide.
+The generator owns a built-in label registry for every canonical profile path, so a profile needs no `labels` mapping for standard fields. The section headings are `Serving`, `Sampling`, `Thinking`, `Requests`, and `Experiment notes`. Add an optional `labels` mapping only to override one path for that experiment, for example `labels: {requests.max_output_tokens: Response length limit}`; keys are dotted paths within `settings`. Unknown dotted paths render from their key and are reported when generating, so extend the generator's registry in a code change when a new standard field appears. Keep units in labels where useful. The labels mapping itself is omitted from the generated guide.
 
 The profile identifier supplies the generated document title. Both Markdown documents end with links to their companions: configuration guides link to Recipe, Results, and Profile YAML; summaries link to Recipe, Configuration, and Profile YAML. When a recipe has `setup.md`, use these footers:
 
 - Configuration: `[Recipe](../recipe.md) · [Results](summary.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)`
 - Summary: `[Recipe](../recipe.md) · [Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)`
 
-The generator adds the Build and run link automatically when `setup.md` exists in the recipe folder. Update the authored summary footer to match. Recipes without `setup.md` link to Recipe and their two companion files. The configuration footer is generated. Record speculative decoding under `settings` alongside the other inference settings.
+The generator adds the Build and run link automatically when `setup.md` exists in the recipe folder. Update the authored summary footer to match. Recipes without `setup.md` link to Recipe and their two companion files. The configuration footer is generated. Record speculative decoding under `settings.serving` alongside the other serving rows.
 
 ## Recipe identity and folder name
 
