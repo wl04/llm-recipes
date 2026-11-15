@@ -44,7 +44,7 @@
 | Backend API version | 1.4.354 |
 | GPU driver | Mesa RADV |
 | GPU driver version | 26.2.4-1ubuntu1 |
-| Software configuration basis | Model, context length, request policy, corpus hash, and runner commit f78d3db recorded by the baseline run; application settings carried over from the 002-2026-11-02-coding record |
+| Software configuration basis | Model, context length, request policy, corpus hash, and runner commit f78d3db recorded by the baseline run |
 
 
 ## Model
@@ -79,7 +79,6 @@
 | Keep model in memory / mmap | Both on |
 | Speculative decoding | MTP |
 | Max / min draft tokens / draft probability | 3 / 0 / 0 |
-| Application UI settings | Carried over from the 002-2026-11-02-coding record |
 | Workload suite | 2 |
 | Request policy | Performance: temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, presence penalty 0. Functional checks: temperature 0. Concurrency 1. Output caps: 1,024 for context cases, 2,048 for sustained generation, 1,536 for reasoning, 512 for vision, 256 for text and conversation. |
 | Thinking control | Per request: reasoning_effort none for performance and functional requests, reasoning_effort high for the reasoning case |
