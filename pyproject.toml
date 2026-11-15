@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "Language model configurations, results, and serving recipes"
 requires-python = ">=3.12"
 
+[project.optional-dependencies]
+tui = ["textual>=8.2,<9"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
@@ -25,6 +28,7 @@ files = [
     "scripts/generate_configurations.py",
     "scripts/launch.py",
     "scripts/launcher.py",
+    "scripts/tui.py",
     "scripts/doctor.py",
     "scripts/baseline",
     "scripts/run_baseline.py",
