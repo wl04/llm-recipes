@@ -299,16 +299,18 @@ def migrate(profile: Path) -> bool:
                 "software.configuration_basis was dropped but EXPERIMENT_EDITS"
                 " carries no replacement note"
             )
-    groups = {group: values for group, values in groups.items() if values}
+    settings_groups: dict[str, object] = {
+        group: values for group, values in groups.items() if values
+    }
     if note_sentences:
-        groups["notes"] = " ".join(note_sentences)
+        settings_groups["notes"] = " ".join(note_sentences)
     rebuilt: dict[str, object] = {
         key_name: data[key_name] for key_name in ("id", "title") if key_name in data
     }
     for key_name in ("hardware", "os", "software", "model"):
         if key_name in data:
             rebuilt[key_name] = data[key_name]
-    rebuilt["settings"] = groups
+    rebuilt["settings"] = settings_groups
     if problems:
         raise ValueError(f"{profile}: {'; '.join(problems)}")
     profile.write_text(yaml.safe_dump(rebuilt, allow_unicode=True, sort_keys=False, width=88))
