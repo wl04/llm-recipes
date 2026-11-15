@@ -16,4 +16,17 @@ Connection: keep-alive
 Keep-Alive: timeout=5
 
 
-Add here: engine and server version, image digest or app build.
+Engine and server version:
+  app: LM Studio Bionic 1.2.0 (build 2), local developer server (Express)
+  model: qwen3.8-27b-gsq-rco (GGUF)
+
+Behavior notes from this capture:
+  - Unknown model ids are ACCEPTED with HTTP 200 (see error.json / error.status).
+  - No token-count route: /v1/token/encode, /v1/messages/count_tokens, and
+    /api/v0/tokenize all answer HTTP 200 with error bodies, so the OpenAI-compatible
+    surface cannot count tokens (see token_count.unavailable.txt).
+  - Object tool_choice is rejected: "Invalid tool_choice type: 'object'. Supported
+    string values: none, auto, required" (see tools.sse; the recording script now
+    sends "required" for this server — rerun to capture a real tool-call stream).
+  - With the 8-token budget the request was spent entirely on reasoning: content
+    is empty while reasoning is non-empty.
