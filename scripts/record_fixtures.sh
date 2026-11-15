@@ -115,9 +115,6 @@ samplers='"temperature":0.0,"top_k":20,"top_p":0.95,"min_p":0.0,"repetition_pena
 if [[ $kind == strata ]]; then
     limit_field=max_completion_tokens
     thinking=',"reasoning_effort":"none"'
-elif [[ $kind == lmstudio ]]; then
-    limit_field=max_tokens
-    thinking=',"chat_template_kwargs":{"enable_thinking":false}'
 else
     limit_field=max_tokens
     thinking=

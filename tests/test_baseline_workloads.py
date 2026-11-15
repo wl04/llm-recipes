@@ -306,18 +306,17 @@ def test_reasoning_request_records_the_enabling_control_per_kind() -> None:
     }
 
 
-def test_request_payload_turns_off_thinking_for_lmstudio_via_chat_template_kwargs() -> None:
+def test_request_payload_sends_no_thinking_control_for_lmstudio_by_default() -> None:
     payload = workloads.request_payload(
         "lmstudio", "m", [], workloads.PERFORMANCE, max_tokens=7, extra={}, stream=False
     )
 
-    assert payload["chat_template_kwargs"] == {"enable_thinking": False}
+    assert "chat_template_kwargs" not in payload
+    assert "reasoning_effort" not in payload
 
 
-def test_thinking_request_records_lmstudio_chat_template_kwargs() -> None:
-    assert workloads.thinking_request("lmstudio", {}) == {
-        "chat_template_kwargs": {"enable_thinking": False}
-    }
-    assert workloads.thinking_request("lmstudio", {"temperature": 1}) == {
-        "chat_template_kwargs": {"enable_thinking": False}
+def test_thinking_request_records_lmstudio_only_user_supplied_controls() -> None:
+    assert workloads.thinking_request("lmstudio", {}) == {}
+    assert workloads.thinking_request("lmstudio", {"enable_thinking": False}) == {
+        "enable_thinking": False
     }
