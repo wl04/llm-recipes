@@ -13,7 +13,7 @@ recipes/<model-format-hardware-memory>/
 
 1. Set `id` in `profile.yaml` using the naming rule below; the configuration title is generated from it. An overview in `configuration.md` is optional. Keep the generated-section markers in place.
 2. Name the experiment folder `NNN-YYYY-MM-DD-description`: a three-digit sequence within the recipe, result date, and lowercase hyphen-separated workload or variant. Start at `001` and assign the next number for each new experiment, including those on the same day. Continue numbering across dates and keep assigned numbers fixed.
-3. Fill in `profile.yaml` with the hardware, software, model, and effective settings used for that result. Use `null` for unknown values. Record the client in `software.harness`, the API server in `software.server`, and the inference engine in `software.engine`, with their versions or revisions.
+3. Fill in `profile.yaml` with the hardware, software, model, and effective settings used for that result, following the [profile structure](#experiment-profile). Use `null` for unknown values. Record the client in `software.harness`, the API server in `software.server`, and the inference engine in `software.engine`, with their versions or revisions.
 4. Fill in `summary.md` with the workload, statistics, memory measurements, and observations. The generator owns the title line: it writes `# NNN · YYYY-MM-DD — Description` from the folder name, or from the `title` key in `profile.yaml` when you need different wording. Within the report, number sessions #1, #2, and so on. Remove unused sections.
 5. Generate the configuration section using the commands below, and regenerate the experiment table in `recipe.md`. Add one root catalog row per recipe, linking to `recipe.md`.
 
@@ -34,6 +34,24 @@ For example, three experiments in one recipe can be:
 ```
 
 Folders sort by sequence in GitHub and file browsers; the recipe index shows the highest number first. The suffix identifies the workload or configuration variant. Keep changing status such as “current” out of folder names.
+
+## Experiment profile
+
+`profile.yaml` is the single source of truth for `configuration.md`, which is generated output between markers; edit the profile, never the generated block. Structure:
+
+| Section | Content |
+|---|---|
+| `id` | Model / format / hardware / memory identity; must re-slug to the recipe folder name. |
+| `hardware`, `os` | Measured host facts (CPU, RAM, GPU, driver). |
+| `software` | Harness, engine, server, image pins, revisions. |
+| `model` | Identity and quantization from the recipe locks. |
+| `settings.serving` | Context, cache, drafting, vision — what the server was set to. |
+| `settings.sampling` | `mode` preset name and/or explicit sampler parameters. |
+| `settings.thinking` | Whether and how thinking was enabled. |
+| `settings.requests` | Endpoint, streaming, output caps, concurrency. |
+| `settings.notes` | The only free-text field; rendered last as "Experiment notes". |
+
+Keys inside the `sampling`, `thinking`, and `requests` groups come from fixed whitelists — an unknown key is a generation error, so extend the generator's registry in a code change when the domain grows. Values already recorded by `results.json` (baseline sampling policy) must not be duplicated in the profile; the generator renders them from the run. A baseline experiment's whole profile comes from `run_baseline.py import`; a session experiment's from `run_baseline.py session` — hand-editing is then a deliberate correction, not the normal path.
 
 ## Container recipes
 
