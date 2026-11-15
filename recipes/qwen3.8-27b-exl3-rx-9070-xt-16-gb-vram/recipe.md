@@ -1,4 +1,4 @@
-# Qwen3.8-27B / EXL3 / RX 9070 XT
+# Qwen3.8-27B / EXL3 / RX 9070 XT / 16 GB VRAM
 
 Run Qwen3.8-27B with TabbyAPI and ExLlamaV3 on ROCm, using a 3 bpw target, DFlash2 drafting, and optional vision.
 

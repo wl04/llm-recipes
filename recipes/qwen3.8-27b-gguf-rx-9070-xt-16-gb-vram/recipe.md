@@ -1,4 +1,4 @@
-# Qwen3.8-27B / GGUF / RX 9070 XT
+# Qwen3.8-27B / GGUF / RX 9070 XT / 16 GB VRAM
 
 Run Qwen3.8-27B IQ3_XXS GGUF in LM Studio Bionic with the Vulkan backend. Recorded configurations include the model, hardware, and application settings.
 
