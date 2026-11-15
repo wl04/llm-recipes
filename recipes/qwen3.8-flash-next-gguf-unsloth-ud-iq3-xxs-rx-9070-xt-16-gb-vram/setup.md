@@ -24,7 +24,6 @@ Run one model instance at a time on the RX 9070 XT workstation. Stop the other r
 ```bash
 llm-recipes doctor qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram
 llm-recipes start qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram --detach
-llm-recipes logs qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram --follow
 ```
 
 The instance name defaults to the recipe identifier; file logs land in `$HOME/llm-recipes/logs/<instance>`. The manifest already holds the tested configuration, so the command passes no capacity options.
@@ -46,7 +45,7 @@ Results and the server logs go to `~/llm-recipes/baselines/<recipe>/<date-time>/
 
 ## Pi
 
-Follow [Pi setup](../../docs/clients/pi.md#configure-a-recipe) using [`config/pi.models.json`](config/pi.models.json). Select `strata-unsloth` with `/model`. The example uses 131,072 context tokens and text/image input.
+Follow [Pi setup](../../docs/clients/pi.md#configure-a-recipe) using [`config/pi.models.json`](config/pi.models.json). Select `strata-unsloth` with `/model`. The entry mirrors the launch defaults: 131,072 context tokens, text/image input.
 
 ## Logs and stopping
 

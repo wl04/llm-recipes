@@ -35,7 +35,6 @@ See [preparation and retry behavior](../../docs/runtimes/exllamav3-tabbyapi.md#p
 llm-recipes doctor qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
 llm-recipes start qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
   --detach --vision on --context 131072
-llm-recipes logs qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram --follow
 ```
 
 The instance name defaults to the recipe identifier; file logs land in `$HOME/llm-recipes/logs/<instance>`.
@@ -57,7 +56,7 @@ python3 scripts/run_baseline.py run qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
   --request-extra '{"chat_template_kwargs":{"enable_thinking":false}}'
 ```
 
-The options match the launch command above, because the manifest defaults to a 4,096-token context with vision off. The explicit model selects the target from TabbyAPI's available models. The request override disables thinking for the baseline. Results and the server logs go to `~/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
+The options match the launch command above. The explicit model selects the target from TabbyAPI's available models. The request override disables thinking for the baseline. Results and the server logs go to `~/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
 
 ## Pi
 

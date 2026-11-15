@@ -12,11 +12,11 @@ Provide the runtime preparation command with this recipe's directory and externa
 
 ## Launch
 
-After preparation, check the recipe with `llm-recipes doctor <recipe>`. Link to [diagnostics](../../docs/launcher.md#diagnose-a-recipe) for check scope and troubleshooting.
+After preparation, check the recipe before starting. Link to [diagnostics](../../docs/launcher.md#diagnose-a-recipe) for check scope and troubleshooting.
 
 ```bash
+llm-recipes doctor <recipe>
 llm-recipes start <recipe> --detach
-llm-recipes logs <recipe> --follow
 ```
 
 The instance name defaults to the recipe identifier and the model data root defaults to `~/llm-recipes`; add `--name`, `--models`, or capacity options only where the launch deviates from these defaults or from `config/launch.json`. Link [launch options](../../docs/launcher.md#launch-options) where the guide tells readers how to override defaults per launch or in the manifest. Include the API address and readiness check. Link `config/launch.json` and native settings. Explain any differences between the command and manifest defaults.
@@ -39,6 +39,7 @@ Link to [Pi setup](../../docs/clients/pi.md#configure-a-recipe) and `config/pi.m
 ## Logs and stopping
 
 ```bash
+llm-recipes logs <recipe> --follow
 llm-recipes stop <recipe>
 ```
 
