@@ -18,6 +18,8 @@ tool() {
 tool ruff check .
 tool ruff format --check .
 tool mypy
+# The Strata runtime is checked on its own: both runtimes carry same-named helpers.
+tool mypy runtimes/strata
 tool pytest
 tool python scripts/generate_configurations.py --check
 

@@ -35,9 +35,8 @@ files = [
     "scripts/install.py",
     "scripts/baseline",
     "scripts/run_baseline.py",
-    "runtimes/exllamav3-tabbyapi/scripts/gpu.py",
-    "runtimes/exllamav3-tabbyapi/scripts/serve.py",
-    "runtimes/exllamav3-tabbyapi/scripts/prepare_models.py",
+    "runtimes/exllamav3-tabbyapi/container",
+    "runtimes/exllamav3-tabbyapi/scripts",
     "tests",
 ]
 strict = true
@@ -54,5 +53,7 @@ module = [
     "exllamav3_ext",
     "common",
     "common.*",
+    "serve",
+    "serve.*",
 ]
 ignore_missing_imports = true
