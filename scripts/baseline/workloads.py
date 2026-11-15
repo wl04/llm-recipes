@@ -345,7 +345,9 @@ class SuiteConfig:
     settle_server_cpu_cores: float = 0.25
     loaded_idle_seconds: float = 10.0
     unload_seconds: float = 10.0
-    sample_interval_s: float = 0.5
+    # 1 s keeps roughly 15 samples even for the shortest observed cases (~15 s) while
+    # halving sysfs and fdinfo polling compared to 0.5 s; polling can miss brief peaks.
+    sample_interval_s: float = 1.0
     request_timeout_s: float = 3600.0
 
 

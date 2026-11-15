@@ -282,8 +282,8 @@ Acceptance: tests drive the prompts with scripted answers and a fake server.
 
 - Pilot Strata ISTA and Unsloth, then ExLlamaV3/TabbyAPI and LM Studio, each from a freshly booted machine with one execution.
 - Compare sampled measurements with live tools; validate memory scope, CPU units, PCI selection, and cache classification.
-- Run matched cases with monitoring enabled/disabled to quantify observer overhead.
-- Set the warmup tolerance and maximum count, the quiet-system thresholds, and the minimum sustained output length from pilot data. Done from the twelve recorded runs (see the calibration paragraph in `docs/baseline.md`): thresholds kept; draft-enabled servers keep warmup non-convergence as a reported state. Remaining: monitoring on/off overhead comparison, which needs matched GPU runs.
+- Run matched cases with monitoring enabled/disabled to quantify observer overhead. Not pursued: judged not worth the GPU time; instead the sampling interval was raised from 0.5 s to 1 s (median 44 samples per case at 0.5 s; the shortest cases keep roughly 15 at 1 s, and the sampler never fell behind — max gap was always 0.5 s).
+- Set the warmup tolerance and maximum count, the quiet-system thresholds, and the minimum sustained output length from pilot data. Done from the twelve recorded runs (see the calibration paragraph in `docs/baseline.md`): thresholds kept; draft-enabled servers keep warmup non-convergence as a reported state.
 - Confirm the proposed lengths and context matrix yield useful durations without exhausting memory. Record actual suite duration before documenting an estimate.
 - Replace setup-guide validation blocks with the unified command where a setup guide exists (desktop recipes have none). Update runtime/client instructions, authoring guidance, and templates.
 - The Strata `check_generation.py` helper and its tests were removed once the managed Strata baseline was verified; the TabbyAPI `check_generation.py` and `check_long_context.py` helpers were removed once its baseline covered the same checks (text, tools, vision, context matrix to 120k).
@@ -330,7 +330,7 @@ The initial implementation is complete when one execution per recipe produces us
   phases, `--yes`, served-model and context confirmation, and LM Studio process detection;
   tested with scripted answers and the fake server. What remains is running it on the
   workstation with the app open (LM Studio baseline `001`).
-- Stage 3: threshold calibration is done (twelve recorded runs, see `docs/baseline.md`). Remaining: LM Studio workstation baseline and monitoring overhead measurements, which need GPU time. The Strata and TabbyAPI/ExLlamaV3 recipes have recorded baselines.
+- Stage 3: threshold calibration is done (twelve recorded runs, see `docs/baseline.md`); the monitoring overhead comparison was declined and replaced by a 1 s sampling interval. Remaining: the LM Studio workstation baseline, which needs GPU time. The Strata and TabbyAPI/ExLlamaV3 recipes have recorded baselines.
 - Stage 4: conversation reuse and the reasoning-enabled workload are implemented (suite v2): the conversation is sent cold, then its growing prefixes are replayed, and reports show fresh versus reused prompt processing with cache reuse reported as observed or explicitly unknown; the reasoning request enables thinking where a control is verified and records reasoning separately from visible text. Remaining on GPU: confirm reuse is observable and reasoning behavior is as expected on real servers.
 
 Profiles retain hardware, software/model versions, image identities, Python version, and vision configuration. Results retain measurements and the request policy. `policy.thinking_request` records explicit thinking controls after overrides, without claiming the server applied them. Historical results retain their recorded default flag. No additional corpus or environment metadata is required in the durable results.

@@ -77,7 +77,7 @@ The default image is [`assets/checks/amdgpu-top.png`](../assets/checks/amdgpu-to
 
 ## Measurements
 
-Resources are sampled every 500 ms and summarized over active request intervals, excluding prompt preparation. Polling can miss brief peaks.
+Resources are sampled every 1 s and summarized over active request intervals, excluding prompt preparation. Polling can miss brief peaks. The interval was raised from 0.5 s after twelve runs showed a median of 44 samples per case; at 1 s even the shortest cases keep roughly 15 samples, and an observer on/off comparison was judged not worth the GPU time.
 
 | Scope | Sources and measurements |
 |---|---|
@@ -92,7 +92,7 @@ Client first-output latency and decode rate are separate from engine timings. De
 
 Engine timings and draft acceptance come from Strata's `engine.log` or TabbyAPI's timestamped `.log` files in `server-logs/`, matched to requests in order. A mismatch stops matching. TabbyAPI durations/rates are rounded in the log; its aggregate decode rate is derived from reported token counts and rates. LM Studio engine metrics remain unavailable.
 
-Calibration from the twelve recorded workstation runs: warmup converges within the 10% tolerance on Strata (2–3 requests of at most 4); with TabbyAPI's draft model the 64-token warmup output does not converge (the two latest decode rates vary by 21–25% because draft acceptance fluctuates), so such runs report "did not converge" and continue. The quiet-system thresholds are met immediately: settle finishes in 0–4 s. Full-suite duration, including load, is 5–6 min per Strata recipe and about 11 min for TabbyAPI; time-to-ready is 8–36 s. Repeated-case noise floors are comparable across recipes (first-token spread median 0.7–2.8%, decode 4.2–5.8%). The 512-token minimum sustained output never bound (observed minimum 1706 tokens). Monitoring overhead and LM Studio thresholds still need validation on the workstation.
+Calibration from the twelve recorded workstation runs: warmup converges within the 10% tolerance on Strata (2–3 requests of at most 4); with TabbyAPI's draft model the 64-token warmup output does not converge (the two latest decode rates vary by 21–25% because draft acceptance fluctuates), so such runs report "did not converge" and continue. The quiet-system thresholds are met immediately: settle finishes in 0–4 s. Full-suite duration, including load, is 5–6 min per Strata recipe and about 11 min for TabbyAPI; time-to-ready is 8–36 s. Repeated-case noise floors are comparable across recipes (first-token spread median 0.7–2.8%, decode 4.2–5.8%). The 512-token minimum sustained output never bound (observed minimum 1706 tokens). LM Studio thresholds still need validation on the workstation.
 
 ## Saved results
 

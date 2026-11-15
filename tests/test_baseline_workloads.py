@@ -179,7 +179,7 @@ def test_default_suite_matches_the_documented_matrix() -> None:
     assert config.noise_runs == 5
     assert config.largest_context_runs == 2
     assert config.sustained_output == 2048
-    assert config.sample_interval_s == 0.5
+    assert config.sample_interval_s == 1.0
 
 
 def irregular_count(prompt: workloads.Prompt) -> int:
