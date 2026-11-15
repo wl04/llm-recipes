@@ -39,12 +39,12 @@
 | Harness version | 1.2.0 (build 2) |
 | Inference engine | llama.cpp |
 | Engine version | 2.73.0 |
-| Engine version notes | LM Studio-specific llama.cpp build selected for the Vulkan server, reported by the operator; upstream llama.cpp version unknown |
+| Engine version notes | LM Studio-specific version; upstream llama.cpp version unknown |
 | Compute backend | Vulkan |
 | Backend API version | 1.4.354 |
 | GPU driver | Mesa RADV |
 | GPU driver version | 26.2.4-1ubuntu1 |
-| Software configuration basis | Model, context length, suite v2 request policy, corpus hash, and runner commit f78d3db recorded by the baseline run; llama.cpp Vulkan backend build confirmed by the operator after the run; application and host rows transcribed from the 002-2026-11-02-coding record and the 2026-11-15 capture notes |
+| Software configuration basis | Model, context length, request policy, corpus hash, and runner commit f78d3db recorded by the baseline run; application settings carried over from the 002-2026-11-02-coding record |
 
 
 ## Model
@@ -79,15 +79,14 @@
 | Keep model in memory / mmap | Both on |
 | Speculative decoding | MTP |
 | Max / min draft tokens / draft probability | 3 / 0 / 0 |
-| Application UI settings | Carried over from the 002-2026-11-02-coding record; only the context length was reconfirmed by the baseline run |
+| Application UI settings | Carried over from the 002-2026-11-02-coding record |
 | Workload suite | 2 |
 | Request policy | Performance: temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, presence penalty 0. Functional checks: temperature 0. Concurrency 1. Output caps: 1,024 for context cases, 2,048 for sustained generation, 1,536 for reasoning, 512 for vision, 256 for text and conversation. |
-| Thinking control | Per request, verified by live probe 2026-11-15: reasoning_effort none for performance and functional requests, reasoning_effort high for the reasoning case. chat_template_kwargs, enable_thinking, and reasoning are accepted but inert on this build; reasoning_effort off answers HTTP 400. |
-| Forced tool call | tool_choice required (string form; the object form is rejected with HTTP 400) |
+| Thinking control | Per request: reasoning_effort none for performance and functional requests, reasoning_effort high for the reasoning case |
+| Forced tool call | tool_choice required (string form) |
 | Request endpoint | /v1/chat/completions; streamed performance requests |
-| Token counting | Unavailable — LM Studio exposes no usable tokenize route (tests/fixtures/lmstudio/token_count.unavailable.txt) |
-| Cache reuse | Server reports no cached-token counts; the identical warm replay reached first output in 0.47 s versus 2.11 s cold |
-| Vision | true — functional check passed (identity 2/2, detail 7/7) with the mmproj adapter loaded |
+| Token counting | Unavailable — LM Studio exposes no usable tokenize route |
+| Vision | true — vision adapter mmproj-Qwen3.8-27B-BF16.gguf loaded |
 
 ---
 
