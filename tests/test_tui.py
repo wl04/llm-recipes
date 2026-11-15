@@ -9,14 +9,11 @@ app's own logic; workers only move IO calls off the UI thread.
 from __future__ import annotations
 
 import asyncio
-import sys
 from pathlib import Path
 
 import pytest
 
 pytest.importorskip("textual")
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 import tui
 from launcher import Recipe

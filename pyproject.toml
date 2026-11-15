@@ -23,6 +23,8 @@ select = ["E", "F", "I", "UP", "B", "RUF"]
 "tests/test_baseline_session_cli.py" = ["E501"]
 # Container build scripts import and validate after runtime lock checks by design.
 "runtimes/*/container/*.py" = ["E402", "I001"]
+# The app is imported after the Textual availability skip; conftest puts scripts/ on the path.
+"tests/test_tui.py" = ["E402"]
 
 [tool.mypy]
 files = [
