@@ -193,3 +193,87 @@ def test_parse_strata_records_timestamps_when_lines_carry_them() -> None:
 
     assert entries[0].timestamp == datetime(2026, 11, 15, 8, 0)
     assert entries[0].read_tokens == 80
+
+
+LMSTUDIO_LOG = """\
+[2026-11-15 00:44:28][INFO][LM STUDIO SERVER] Success! HTTP server listening on port 1234
+[2026-11-15 00:44:39][DEBUG] Received request: POST to /v1/chat/completions with body {
+  "model": "qwen3.8-27b-gsq-rco",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Say hi. }"
+    }
+  ],
+  "max_tokens": 8,
+  "temperature": 0,
+  "top_k": 20,
+  "top_p": 0.95,
+  "min_p": 0,
+  "repetition_penalty": 1,
+  "presence_penalty": 0,
+  "stream": true
+}
+[2026-11-15 00:44:39][DEBUG] 2.22.343.603 I slot get_availabl: id  0 | task -1 | selected slot by LRU
+[2026-11-15 00:44:39][DEBUG] 2.22.374.417 I slot launch_slot_: id  0 | task 27 | processing task
+[2026-11-15 00:44:39][INFO][qwen3.8-27b-gsq-rco] Prompt processing progress: 100.0%
+[2026-11-15 00:44:42][DEBUG] 2.24.841.586 I slot print_timing: id  0 | task 27 | prompt eval time =     275.45 ms /    55 tokens (    5.01 ms per token,   199.67 tokens per second)
+2.24.841.588 I slot print_timing: id  0 | task 27 |        eval time =    2191.61 ms /     8 tokens (  313.09 ms per token,     3.19 tokens per second)
+2.24.841.589 I slot print_timing: id  0 | task 27 |       total time =    2467.06 ms /    63 tokens
+2.24.841.592 I slot print_timing: id  0 | task 27 | draft acceptance = 1.00000 (    5 accepted /     5 generated), mean len =  3.50
+2.24.841.615 I slot      release: id  0 | task 27 | stop processing: n_tokens = 62, truncated = 0
+[2026-11-15 00:44:42][INFO][qwen3.8-27b-gsq-rco] Finished streaming response
+[2026-11-15 00:44:44][ERROR] Unexpected endpoint or method. (POST /v1/token/encode). Returning 200 anyway
+[2026-11-15 00:50:01][DEBUG] 5.10.000.100 I slot print_timing: id  0 | task 31 | prompt eval time =     100.00 ms /    10 tokens (   10.00 ms per token,   100.00 tokens per second)
+5.10.000.101 I slot print_timing: id  0 | task 31 |        eval time =     200.00 ms /    20 tokens (   10.00 ms per token,   100.00 tokens per second)
+5.10.000.102 I slot print_timing: id  0 | task 31 |       total time =     300.00 ms /    30 tokens
+5.10.000.103 I slot      release: id  0 | task 31 | stop processing: n_tokens = 30, truncated = 0
+"""
+
+
+def test_parse_lmstudio_reads_timing_blocks_closed_by_slot_release() -> None:
+    entries = engine_log.parse_lmstudio(LMSTUDIO_LOG)
+
+    assert len(entries) == 2
+    first = entries[0]
+    assert (first.read_tokens, first.prefill_ms) == (55, 275.45)
+    assert (first.generated_tokens, first.decode_ms) == (8, 2191.61)
+    assert (first.drafts_accepted, first.drafts_proposed) == (5, 5)
+    assert first.timestamp == datetime(2026, 11, 15, 0, 44, 42)
+    assert not first.cancelled
+
+
+def test_parse_lmstudio_leaves_draft_counts_empty_when_the_line_has_none() -> None:
+    second = engine_log.parse_lmstudio(LMSTUDIO_LOG)[-1]
+
+    assert second.drafts_accepted is None and second.drafts_proposed is None
+    assert second.prompt_tokens == 10 and second.reused_tokens == 0
+
+
+def test_parse_lmstudio_ignores_noise_without_slot_release() -> None:
+    noise = LMSTUDIO_LOG.split("5.10.000.103")[0]
+
+    assert [e for e in engine_log.parse_lmstudio(noise) if e.prompt_tokens == 10] == []
+
+
+def test_lmstudio_sampling_reads_the_last_request_body_with_parameters() -> None:
+    text = LMSTUDIO_LOG + (
+        'Received request: POST to /v1/chat/completions with body {\n  "max_tokens": 8\n}\n'
+    )
+
+    found = engine_log.lmstudio_sampling_from_log(text)
+
+    assert found == {
+        "temperature": 0,
+        "top_k": 20,
+        "top_p": 0.95,
+        "min_p": 0,
+        "repetition_penalty": 1,
+        "presence_penalty": 0,
+    }
+
+
+def test_lmstudio_sampling_absent_when_no_request_body_echoed() -> None:
+    assert (
+        engine_log.lmstudio_sampling_from_log("[2026-11-15 00:44:28][INFO] Server stopped.") is None
+    )

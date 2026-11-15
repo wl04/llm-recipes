@@ -135,7 +135,7 @@ python3 scripts/run_baseline.py session --logs <dir>        # any directory of *
 python3 scripts/run_baseline.py session <instance> --experiment recipes/<recipe>/<NNN-...>
 ```
 
-It reads every `*.log` file in the instance's persistent log directory (the one `launch.py` prints at start) plus `facts.json` when present. The output document `session-results.json` is validated by `schema.py`; with `--experiment` the command writes it into the experiment folder, replaces the generated session block in `summary.md`, and seeds `profile.yaml` from `facts.json` and the sampler parameters the engine echoed to its log — an existing profile is never overwritten. Without `--experiment` the document prints to stdout.
+It reads every `*.log` file in the instance's persistent log directory (the one `launch.py` prints at start) plus `facts.json` when present; a directory without `*.log` files at the top level is searched recursively, which covers LM Studio's dated files rotated into month directories. The output document `session-results.json` is validated by `schema.py`; with `--experiment` the command writes it into the experiment folder, replaces the generated session block in `summary.md`, and seeds `profile.yaml` from `facts.json` and the sampler parameters the engine echoed to its log — an existing profile is never overwritten. An LM Studio log has no `facts.json`, so its profile is seeded from the recipe name and the sampler echo alone. Without `--experiment` the document prints to stdout.
 
 What each engine can provide:
 
@@ -143,6 +143,7 @@ What each engine can provide:
 |---|---|---|---|
 | TabbyAPI file logs | per line | `client disconnected` line | started `#N` ids without a summary |
 | Strata `engine.log` / `server.log` | none | `cancel=True` in `server.log` | unavailable |
+| LM Studio (llama.cpp) server logs | per block | not logged distinctly | unavailable |
 
 `--since`/`--until` (ISO timestamps) filter the entries and only work on timestamped logs; the command fails instead of silently ignoring them. Metrics a log cannot provide appear as `unavailable`, matching the baseline convention.
 

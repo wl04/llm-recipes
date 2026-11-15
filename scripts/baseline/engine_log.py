@@ -1,8 +1,9 @@
 """Engine-reported timings from the server's own log.
 
-Strata and TabbyAPI log per-completion prompt processing, generation, and draft counters.
-These are kept separate from client timings. Entries are matched to requests in order;
-a mismatch stops matching instead of guessing. TabbyAPI rates and durations are rounded.
+Strata, TabbyAPI, and the llama.cpp server behind LM Studio log per-completion prompt
+processing, generation, and draft counters. These are kept separate from client
+ timings. Entries are matched to requests in order; a mismatch stops matching instead
+of guessing. TabbyAPI rates and durations are rounded.
 
 File logs may carry a per-line timestamp prefix; entries record it when present and
 ``None`` otherwise. Cancelled completions are kept as entries so session reports can
@@ -145,6 +146,105 @@ def parse_tabbyapi(text: str) -> list[EngineRequest]:
             )
         )
     return found
+
+
+LMSTUDIO_TIMESTAMP = re.compile(r"^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]")
+LMSTUDIO_TIMING = re.compile(
+    r"slot print_timing: id\s+(\d+) \| task (-?\d+) \|\s+"
+    r"(prompt eval time|eval time|total time) =\s+([\d.]+) ms /\s+(\d+) tokens"
+)
+LMSTUDIO_DRAFT = re.compile(
+    r"slot print_timing: id\s+(\d+) \| task (-?\d+) \|\s+draft acceptance = [\d.]+ "
+    r"\(\s*(\d+) accepted /\s*(\d+) generated\)"
+)
+LMSTUDIO_RELEASE = re.compile(r"slot\s+release: id\s+(\d+) \| task (-?\d+) \|")
+
+
+def _lmstudio_timestamp(line: str) -> datetime | None:
+    match = LMSTUDIO_TIMESTAMP.match(line)
+    return datetime.fromisoformat(match[1]) if match else None
+
+
+def parse_lmstudio(text: str) -> list[EngineRequest]:
+    """Timing blocks of the llama.cpp server as logged by LM Studio, in close order.
+
+    A block starts at ``print_timing`` lines and is closed by its ``slot release``;
+    continuation lines of a block carry no timestamp prefix, so the timestamp comes
+    from the first prefixed line. llama.cpp reports only processed prompt tokens, so
+    the cached share stays invisible and ``reused_tokens`` is 0. LM Studio does not
+    log cancelled generations distinctly, so cancelled entries never appear.
+    """
+    found: list[EngineRequest] = []
+    blocks: dict[tuple[str, str], dict[str, Any]] = {}
+    for line in text.splitlines():
+        match = LMSTUDIO_TIMING.search(line)
+        if match is not None:
+            block = blocks.setdefault((match[1], match[2]), {})
+            block[match[3]] = (float(match[4]), int(match[5]))
+            stamp = _lmstudio_timestamp(line)
+            if stamp is not None and "timestamp" not in block:
+                block["timestamp"] = stamp
+            continue
+        draft = LMSTUDIO_DRAFT.search(line)
+        if draft is not None:
+            existing = blocks.get((draft[1], draft[2]))
+            if existing is not None:
+                existing["draft"] = (int(draft[3]), int(draft[4]))
+            continue
+        release = LMSTUDIO_RELEASE.search(line)
+        if release is not None:
+            closed = blocks.pop((release[1], release[2]), None)
+            if closed is None:
+                continue
+            prompt, decode = closed.get("prompt eval time"), closed.get("eval time")
+            if prompt is None or decode is None:
+                continue
+            accepted, proposed = closed.get("draft", (None, None))
+            found.append(
+                EngineRequest(
+                    prompt[1],
+                    0,
+                    prompt[1],
+                    prompt[0],
+                    decode[1],
+                    decode[0],
+                    accepted,
+                    proposed,
+                    timestamp=closed.get("timestamp"),
+                )
+            )
+    return found
+
+
+LMSTUDIO_BODY_OPEN = re.compile(
+    r"Received request: POST to /v1/(?:chat/completions|completions) with body \{"
+)
+
+
+def lmstudio_sampling_from_log(text: str) -> dict[str, object] | None:
+    """Sampling parameters of the last echoed request body carrying any of them.
+
+    LM Studio pretty-prints each request body as JSON; conversation content can make
+    a body unparseable, so parameters are read per line instead of by JSON structure.
+    """
+    last: dict[str, object] | None = None
+    inside = False
+    body: dict[str, object] = {}
+    for line in text.splitlines():
+        if not inside:
+            if LMSTUDIO_BODY_OPEN.search(line) is not None:
+                inside, body = True, {}
+            continue
+        if line == "}":
+            inside = False
+            if body:
+                last = body
+            continue
+        for name in SAMPLING_PARAMETERS:
+            match = re.search(rf'"{name}":\s*(-?[\d.eE+]+)', line)
+            if match is not None:
+                body[name] = _count_or_float(match[1])
+    return last
 
 
 def tabby_unclosed_requests(text: str) -> list[int]:

@@ -154,7 +154,7 @@ def validate_results(document: object) -> None:
 
 SESSION_SCHEMA_VERSION = 1
 SESSION_KIND = "session"
-SESSION_ENGINES = ("strata", "tabbyapi")
+SESSION_ENGINES = ("strata", "tabbyapi", "lm-studio")
 SESSION_COUNT_KEYS = (
     "requests",
     "cancelled",

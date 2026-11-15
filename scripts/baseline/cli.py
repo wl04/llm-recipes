@@ -155,7 +155,9 @@ def session_run(
 
     With ``--experiment``: writes ``session-results.json``, replaces the generated
     session block in ``summary.md``, and seeds ``profile.yaml`` from the instance
-    ``facts.json`` plus the log's sampler echo when the experiment has none.
+    ``facts.json`` plus the log's sampler echo when the experiment has none; an LM
+    Studio log has no ``facts.json``, so its profile is seeded from the recipe name
+    and the log alone. An existing profile is never overwritten.
 
     Raises:
         ValueError: logs are unreadable, filters are unusable, or the experiment path
@@ -191,7 +193,7 @@ def session_run(
     report.write_session_block(summary, report.render_session(document))
     profile = experiment / "profile.yaml"
     if not profile.exists():
-        if not facts:
+        if not facts and engine != "lm-studio":
             raise ValueError(f"{log_dir} has no facts.json; cannot seed {profile}")
         profile.write_text(
             yaml.safe_dump(

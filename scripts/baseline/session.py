@@ -5,6 +5,7 @@ processing, generation, draft counters, and cancellations. Metrics a server's lo
 cannot provide are reported as unavailable instead of guessed.
 """
 
+import re
 from datetime import datetime
 from pathlib import Path
 from statistics import median
@@ -13,7 +14,7 @@ from typing import Any
 from baseline import engine_log
 from baseline.engine_log import EngineRequest
 
-ENGINE_KINDS = ("tabbyapi", "strata")
+ENGINE_KINDS = ("tabbyapi", "strata", "lm-studio")
 
 # Reviewed prompt-size bands; a request is counted in the first band it fits into.
 CONTEXT_BUCKETS: tuple[tuple[int, str], ...] = (
@@ -152,6 +153,7 @@ def session_stats(
 
 
 STRATA_MARKERS = ("engine.log", "server.log")
+LMSTUDIO_FILE = re.compile(r"\d{4}-\d{2}-\d{2}\.\d+\.log")
 
 
 def read_engine_logs(
@@ -160,21 +162,36 @@ def read_engine_logs(
     """Parse every ``*.log`` file of an instance log directory.
 
     The engine defaults to the file layout: Strata names its logs ``engine.log`` and
-    ``server.log``. Returns the engine, entries in file order, Tabby-only unclosed
-    request ids (None for Strata), the file names read, and sampler parameters the
-    engine echoed to its log.
+    ``server.log``, LM Studio rotates dated files into month directories. Returns the
+    engine, entries in file order, Tabby-only unclosed request ids (None otherwise),
+    the file paths read relative to the directory, and sampler parameters the engine
+    echoed to its log.
 
     Raises:
         ValueError: the directory has no ``.log`` files or the engine is unknown.
     """
     files = sorted(p for p in log_dir.iterdir() if p.is_file() and p.suffix == ".log")
     if not files:
+        files = sorted(p for p in log_dir.rglob("*.log") if p.is_file())
+    if not files:
         raise ValueError(f"{log_dir} contains no .log files")
-    names = tuple(p.name for p in files)
-    chosen = engine or ("strata" if any(name in STRATA_MARKERS for name in names) else "tabbyapi")
+    names = tuple(p.relative_to(log_dir).as_posix() for p in files)
+    if engine is None:
+        if any(name in STRATA_MARKERS for name in names):
+            chosen = "strata"
+        elif any(LMSTUDIO_FILE.fullmatch(name.rsplit("/", 1)[-1]) for name in names):
+            chosen = "lm-studio"
+        else:
+            chosen = "tabbyapi"
+    else:
+        chosen = engine
     if chosen not in ENGINE_KINDS:
         raise ValueError(f"engine must be one of {', '.join(ENGINE_KINDS)}")
-    parse = engine_log.parse_strata if chosen == "strata" else engine_log.parse_tabbyapi
+    parse = {
+        "strata": engine_log.parse_strata,
+        "lm-studio": engine_log.parse_lmstudio,
+        "tabbyapi": engine_log.parse_tabbyapi,
+    }[chosen]
     entries: list[EngineRequest] = []
     unclosed = 0
     texts: list[str] = []
@@ -185,9 +202,10 @@ def read_engine_logs(
         if chosen == "tabbyapi":
             unclosed += len(engine_log.tabby_unclosed_requests(text))
     joined = "\n".join(texts)
-    sampling = (
-        engine_log.tabby_sampling_from_log(joined)
-        if chosen == "tabbyapi"
-        else engine_log.strata_sampling_from_log(joined)
-    )
+    if chosen == "tabbyapi":
+        sampling = engine_log.tabby_sampling_from_log(joined)
+    elif chosen == "lm-studio":
+        sampling = engine_log.lmstudio_sampling_from_log(joined)
+    else:
+        sampling = engine_log.strata_sampling_from_log(joined)
     return chosen, entries, (unclosed if chosen == "tabbyapi" else None), names, sampling

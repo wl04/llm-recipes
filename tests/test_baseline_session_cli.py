@@ -203,3 +203,54 @@ def test_session_cli_requires_instance_or_logs(
 
     assert code != 0
     assert "instance name or --logs" in capsys.readouterr().err
+
+
+LMSTUDIO_LOG = """\
+[2026-11-15 00:44:39][DEBUG] Received request: POST to /v1/chat/completions with body {
+  "model": "qwen3.8-27b-gsq-rco",
+  "temperature": 0.6,
+  "top_k": 20,
+  "top_p": 0.95,
+  "min_p": 0,
+  "repetition_penalty": 1,
+  "presence_penalty": 0
+}
+[2026-11-15 00:44:42][DEBUG] 2.24.841.586 I slot print_timing: id  0 | task 27 | prompt eval time =     275.45 ms /   500 tokens (    0.55 ms per token,  1815.00 tokens per second)
+2.24.841.588 I slot print_timing: id  0 | task 27 |        eval time =    2191.61 ms /     8 tokens (  273.95 ms per token,     3.65 tokens per second)
+2.24.841.592 I slot print_timing: id  0 | task 27 | draft acceptance = 1.00000 (    5 accepted /     5 generated), mean len =  3.50
+2.24.841.615 I slot      release: id  0 | task 27 | stop processing: n_tokens = 508, truncated = 0
+[2026-11-15 00:50:01][DEBUG] 5.10.000.100 I slot print_timing: id  0 | task 31 | prompt eval time =     100.00 ms / 30000 tokens (    0.00 ms per token, 300000.00 tokens per second)
+5.10.000.101 I slot print_timing: id  0 | task 31 |        eval time =     200.00 ms /    20 tokens (   10.00 ms per token,   100.00 tokens per second)
+5.10.000.103 I slot      release: id  0 | task 31 | stop processing: n_tokens = 30020, truncated = 0
+"""
+
+
+def test_session_cli_detects_lm_studio_by_rotated_file_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = runfixtures._make_repo(tmp_path)
+    monkeypatch.setattr(
+        importer, "_repository_url", lambda _root: "https://github.com/wl04/llm-recipes"
+    )
+    log_dir = tmp_path / "server-logs" / "2026-11"
+    log_dir.mkdir(parents=True)
+    (log_dir / "2026-11-15.1.log").write_text(LMSTUDIO_LOG)
+    experiment = _experiment(root)
+
+    code = cli.main(
+        ["session", "--logs", str(tmp_path / "server-logs"), "--experiment", str(experiment)],
+        root=root,
+    )
+
+    assert code == 0
+    document = json.loads((experiment / "session-results.json").read_text())
+    schema.validate_session(document)
+    assert document["engine"] == "lm-studio"
+    assert document["log_files"] == ["2026-11/2026-11-15.1.log"]
+    totals = document["totals"]
+    assert totals["requests"] == 2
+    assert totals["unclosed_requests"] is None
+    assert totals["drafts_accepted"] == 5
+    assert totals["context_buckets"][1]["requests"] == 1  # the 30,000-token prompt
+    profile = yaml.safe_load((experiment / "profile.yaml").read_text())
+    assert profile["settings"]["sampling"]["temperature"] == 0.6
