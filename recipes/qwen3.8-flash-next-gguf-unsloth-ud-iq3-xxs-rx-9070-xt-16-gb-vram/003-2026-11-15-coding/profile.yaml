@@ -1,0 +1,65 @@
+id: Qwen3.8-Flash-Next / GGUF Unsloth UD-IQ3_XXS / RX 9070 XT / 16 GB VRAM
+hardware:
+  gpu: Radeon RX 9070/9070 XT/9070 GRE (gfx1201)
+  cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+  memory:
+    architecture: discrete
+    dedicated_vram_gib: 16
+    system_ram_gib: 59
+    unified_memory_gib: null
+os:
+  name: Ubuntu
+  version: '26.10'
+  kernel: 7.3.0-10-generic
+  kernel_driver: amdgpu
+software:
+  harness: llm-recipes baseline suite
+  harness_version: https://github.com/wl04/llm-recipes/commit/2dc098535faaafee44b55ca61fa0e6c077ba5d16
+    (dirty)
+  engine: Strata
+  engine_version: Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0
+  engine_version_note: null
+  backend: null
+  backend_api_version: null
+  gpu_driver: amdgpu
+  gpu_driver_version: null
+  pytorch: null
+  python: null
+  base_image_tag: https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags
+  base_image: rocm/dev-ubuntu-24.04@sha256:5ed1362ea542a928651e4c710b44024ebe98870f74159cb70f0265aec8ef0abe
+  server: Strata
+  server_version: Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0
+  host_python: 3.14.8
+  running_image_id: sha256:afe7c1bff2f14085879a86bfcdc5729996a66beac14edee40207c08e255feca6
+model:
+  name: Qwen3.8-Flash-Next UD-IQ3_XXS · Strata
+  format: GGUF Unsloth UD IQ3 XXS
+  quantization: null
+  repository: null
+  artifacts: []
+  revision: null
+settings:
+  serving:
+    expert_cache: auto
+    prefill: auto
+    max_draft_tokens: '4'
+    min_draft_probability: '0.5'
+    kv_cache: int8
+    gpu_resident_kv_cells: '32768'
+    vision: cpu
+    vision_min_image_tokens: 1024
+    vision_max_image_tokens: 1024
+    context_length_tokens: 131072
+    speculative_decoding: true
+    image_digest: llm-recipes/strata-rdna4@sha256:afe7c1bff2f14085879a86bfcdc5729996a66beac14edee40207c08e255feca6
+  sampling:
+    temperature: 1
+    top_k: 20
+    top_p: 0.95
+    min_p: 0
+    repetition_penalty: 1
+    presence_penalty: 0
+  thinking: null
+  requests:
+    endpoint: /v1/chat/completions
+  notes: null

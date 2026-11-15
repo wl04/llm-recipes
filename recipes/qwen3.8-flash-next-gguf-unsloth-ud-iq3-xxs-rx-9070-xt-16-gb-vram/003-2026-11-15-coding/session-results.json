@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "kind": "session",
+  "engine": "strata",
+  "log_files": [
+    "engine.log",
+    "server.log"
+  ],
+  "window": {
+    "since": null,
+    "until": null
+  },
+  "first_request": null,
+  "last_request": null,
+  "availability": {
+    "timestamps": false,
+    "draft_acceptance": true,
+    "unclosed_requests": false
+  },
+  "totals": {
+    "requests": 1926,
+    "cancelled": 0,
+    "unclosed_requests": null,
+    "prompt_tokens": 137750552,
+    "reused_prompt_tokens": 133646462,
+    "read_prompt_tokens": 4104090,
+    "generated_tokens": 1195540,
+    "prefill_seconds": 2110.7,
+    "decode_seconds": 13669.3,
+    "prefill_tok_s": 1944.4,
+    "decode_tok_s": 87.5,
+    "decode_tok_s_median": 86.0,
+    "drafts_accepted": 722779,
+    "drafts_proposed": 983273,
+    "draft_acceptance": 0.7,
+    "context_buckets": [
+      {
+        "label": "under 2,048 tokens",
+        "requests": 33,
+        "prompt_tokens": 12967,
+        "generated_tokens": 17016
+      },
+      {
+        "label": "2,048-8,191 tokens",
+        "requests": 9,
+        "prompt_tokens": 54228,
+        "generated_tokens": 8066
+      },
+      {
+        "label": "8,192-32,767 tokens",
+        "requests": 58,
+        "prompt_tokens": 1110647,
+        "generated_tokens": 35728
+      },
+      {
+        "label": "32,768-131,071 tokens",
+        "requests": 1826,
+        "prompt_tokens": 136572710,
+        "generated_tokens": 1134730
+      }
+    ]
+  }
+}
