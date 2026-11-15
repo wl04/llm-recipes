@@ -283,7 +283,7 @@ Acceptance: tests drive the prompts with scripted answers and a fake server.
 - Pilot Strata ISTA and Unsloth, then ExLlamaV3/TabbyAPI and LM Studio, each from a freshly booted machine with one execution.
 - Compare sampled measurements with live tools; validate memory scope, CPU units, PCI selection, and cache classification.
 - Run matched cases with monitoring enabled/disabled to quantify observer overhead.
-- Set the warmup tolerance and maximum count, the quiet-system thresholds, and the minimum sustained output length from pilot data. Check that noise floors are plausible and comparable across recipes.
+- Set the warmup tolerance and maximum count, the quiet-system thresholds, and the minimum sustained output length from pilot data. Done from the twelve recorded runs (see the calibration paragraph in `docs/baseline.md`): thresholds kept; draft-enabled servers keep warmup non-convergence as a reported state. Remaining: monitoring on/off overhead comparison, which needs matched GPU runs.
 - Confirm the proposed lengths and context matrix yield useful durations without exhausting memory. Record actual suite duration before documenting an estimate.
 - Replace setup-guide validation blocks with the unified command where a setup guide exists (desktop recipes have none). Update runtime/client instructions, authoring guidance, and templates.
 - The Strata `check_generation.py` helper and its tests were removed once the managed Strata baseline was verified; the TabbyAPI `check_generation.py` and `check_long_context.py` helpers were removed once its baseline covered the same checks (text, tools, vision, context matrix to 120k).
