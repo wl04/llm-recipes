@@ -326,7 +326,10 @@ The initial implementation is complete when one execution per recipe produces us
 ## Current remaining work
 
 - Stage 1: complete. HTTP response fixtures recorded for Strata, TabbyAPI, and LM Studio (`tests/fixtures/`, via `scripts/record_fixtures.sh`) with capability findings: all three servers accept unknown model ids with HTTP 200; LM Studio has no token-count route and only string `tool_choice` values; Qwen servers can spend a small output budget entirely on reasoning.
-- Stage 2d: guided desktop lifecycle and confirmations; desktop attachment is implemented.
+- Stage 2d: implemented in `scripts/baseline/guided.py` — guided interview with prompt-driven
+  phases, `--yes`, served-model and context confirmation, and LM Studio process detection;
+  tested with scripted answers and the fake server. What remains is running it on the
+  workstation with the app open (LM Studio baseline `001`).
 - Stage 3: LM Studio workstation baseline, monitoring overhead measurements, and calibration of thresholds. The Strata and TabbyAPI/ExLlamaV3 recipes have recorded baselines.
 - Stage 4: conversation reuse and reasoning-enabled workloads.
 

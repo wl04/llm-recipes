@@ -19,15 +19,15 @@ Ctrl+C or SIGTERM preserves partial records and stops the server started by the 
 
 ### Desktop apps
 
-Start the app, load the model using the experiment's configuration guide, and start its API server:
+Start the app, load the model using the experiment's configuration guide, and start its API server. Then run the guided interview:
 
 ```bash
-python3 scripts/run_baseline.py run <recipe> \
-  --base-url http://127.0.0.1:<port>/v1 \
-  --model <served-model-id> --context <tokens> --pid <server-pid>
+python3 scripts/run_baseline.py run <recipe>
 ```
 
-The runner attaches without starting or stopping the app. `--pid` selects its cgroup for CPU/RAM and process VRAM measurements; a shared scope produces a warning. Without it, only system/device telemetry is available.
+It confirms the server URL, the served model (read live from `/v1/models`), the context length configured in the app, and the app's process id for CPU/RAM and process VRAM measurements — detecting a running LM Studio and offering it as the default. Press Enter to accept a default; a wrong model id or a non-positive context is re-asked. Nothing is recorded until you approve the summary. `--yes` accepts every determinable default and stops instead of guessing when models are ambiguous (pass `--model`); it never asks.
+
+Fully explicit options skip the interview: `--base-url http://127.0.0.1:<port>/v1 --model <served-model-id> --context <tokens> --pid <server-pid>`. The runner attaches without starting or stopping the app. `--pid` selects its cgroup; a shared scope produces a warning. Without it, only system/device telemetry is available. A guided run must match the app's real model and context; changing either in the app mid-run invalidates the run.
 
 Other options include `--gpu-pci` (default: the AMD GPU with most VRAM), `--no-gpu`, `--server-kind` (desktop default: `lmstudio`), `--image`, and `--request-extra` (JSON fields merged into request bodies).
 

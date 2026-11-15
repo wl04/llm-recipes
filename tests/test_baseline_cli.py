@@ -2,12 +2,13 @@
 
 import json
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import generate_configurations as generator
 import pytest
-from baseline import cli, host, schema
+from baseline import cli, guided, host, schema
 from baseline.schema import ExitCode
 from fake_server import FakeServer
 from launcher import LaunchOptions, Recipe
@@ -227,7 +228,7 @@ def test_instance_option_no_longer_exists() -> None:
     assert raised.value.code == 2
 
 
-def test_run_needs_endpoint_and_context_for_a_desktop_recipe(
+def test_run_without_endpoint_starts_the_guided_interview_and_stops_without_input(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     recipes = tmp_path / "recipes"
@@ -238,7 +239,7 @@ def test_run_needs_endpoint_and_context_for_a_desktop_recipe(
     )
 
     assert code == ExitCode.USAGE
-    assert "--base-url and --context" in capsys.readouterr().err
+    assert "Guided setup stopped" in capsys.readouterr().err
 
 
 def test_run_refuses_to_reuse_an_output_directory(
@@ -272,3 +273,133 @@ def test_render_rejects_a_directory_that_is_not_a_run(tmp_path: Path) -> None:
     (tmp_path / "empty").mkdir()
 
     assert cli.main(["render", str(tmp_path / "empty")]) == ExitCode.USAGE
+
+
+def _in_order(answers: list[str]) -> Callable[[str], str]:
+    remaining = list(answers)
+
+    def answer(prompt: str) -> str:
+        return remaining.pop(0)
+
+    return answer
+
+
+@pytest.fixture
+def no_app_processes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep host process detection out of tests; the app is not running on CI."""
+    monkeypatch.setattr(guided, "find_app_pids", lambda: [])
+
+
+def desktop_recipe_dir(tmp_path: Path) -> Path:
+    recipes = tmp_path / "recipes"
+    (recipes / "desktop-recipe").mkdir(parents=True)
+    return recipes
+
+
+def test_guided_desktop_run_answers_prompts_and_completes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, no_app_processes: None
+) -> None:
+    recipes = desktop_recipe_dir(tmp_path)
+    with FakeServer() as server:
+        monkeypatch.setattr("builtins.input", _in_order([server.base_url, "", "2048", "", ""]))
+        code = cli.main(
+            ["run", "desktop-recipe", "--output", str(tmp_path / "run"), "--no-gpu"],
+            suite=SUITE,
+            recipes=recipes,
+        )
+
+    meta = json.loads((tmp_path / "run" / "meta.json").read_text())
+    assert code == ExitCode.OK
+    assert meta["server"]["kind"] == "lmstudio"
+    assert meta["server"]["model"] == "test-model"
+    assert meta["server"]["context_tokens"] == 2048
+    assert meta["desktop"]["pid"] is None
+
+
+def test_guided_yes_accepts_every_default_against_the_fake_server(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, no_app_processes: None
+) -> None:
+    recipes = desktop_recipe_dir(tmp_path)
+
+    def forbidden_input(prompt: str) -> str:
+        raise AssertionError(f"--yes asked interactively: {prompt!r}")
+
+    monkeypatch.setattr("builtins.input", forbidden_input)
+    with FakeServer() as server:
+        code = cli.main(
+            [
+                "run",
+                "desktop-recipe",
+                "--output",
+                str(tmp_path / "run"),
+                "--no-gpu",
+                "--base-url",
+                server.base_url,
+                "--yes",
+            ],
+            suite=SUITE,
+            recipes=recipes,
+        )
+
+    meta = json.loads((tmp_path / "run" / "meta.json").read_text())
+    assert code == ExitCode.OK
+    assert meta["server"]["model"] == "test-model"
+    assert meta["server"]["context_tokens"] == guided.DEFAULT_CONTEXT
+
+
+def test_guided_yes_stops_when_several_models_are_listed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    no_app_processes: None,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    recipes = desktop_recipe_dir(tmp_path)
+    with FakeServer() as server:
+        server.models = ["model-a", "model-b"]
+        code = cli.main(
+            [
+                "run",
+                "desktop-recipe",
+                "--output",
+                str(tmp_path / "run"),
+                "--no-gpu",
+                "--base-url",
+                server.base_url,
+                "--yes",
+            ],
+            suite=SUITE,
+            recipes=recipes,
+        )
+
+    assert code == ExitCode.USAGE
+    assert "pass --model" in capsys.readouterr().err
+    assert not (tmp_path / "run").exists()
+
+
+def test_guided_declining_the_summary_cancels_before_the_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    no_app_processes: None,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    recipes = desktop_recipe_dir(tmp_path)
+    with FakeServer() as server:
+        monkeypatch.setattr("builtins.input", _in_order([server.base_url, "", "2048", "", "n"]))
+        code = cli.main(
+            ["run", "desktop-recipe", "--output", str(tmp_path / "run"), "--no-gpu"],
+            suite=SUITE,
+            recipes=recipes,
+        )
+
+    assert code == ExitCode.USAGE
+    assert "cancelled" in capsys.readouterr().err
+    assert not (tmp_path / "run").exists()
+
+
+def test_yes_option_is_rejected_for_container_recipes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code = cli.main(["run", RECIPE, "--output", str(tmp_path / "out"), "--yes"], suite=SUITE)
+
+    assert code == ExitCode.USAGE
+    assert "--yes" in capsys.readouterr().err

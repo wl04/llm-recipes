@@ -1,7 +1,7 @@
 """Command line for the baseline runner: ``run`` a suite against a recipe, or ``render`` a run.
 
-Container recipes are started and stopped by the runner. Desktop recipes still need the app to be
-running; their guided mode is not available yet.
+Container recipes are started and stopped by the runner. Desktop recipes need the app to
+be running; without ``--base-url``/``--context`` the run is set up by the guided interview.
 """
 
 import argparse
@@ -19,7 +19,18 @@ from typing import Any
 import generate_configurations as generator
 from launcher import Recipe, discover_recipes, resolve_launch_options
 
-from baseline import aggregate, host, lifecycle, monitor, schema, sources, vision, workloads
+from baseline import (
+    aggregate,
+    api,
+    guided,
+    host,
+    lifecycle,
+    monitor,
+    schema,
+    sources,
+    vision,
+    workloads,
+)
 from baseline.lifecycle import ContainerControl
 from baseline.rawlog import RunWriter, read_run
 from baseline.runner import RunConfig, Runner, ServerControl
@@ -65,6 +76,11 @@ def _parser() -> argparse.ArgumentParser:
     desktop.add_argument(
         "--server-kind", choices=SERVER_KINDS, help="API server (default: lmstudio)"
     )
+    desktop.add_argument(
+        "--yes",
+        action="store_true",
+        help="with a guided setup, accept every determinable default",
+    )
     render = commands.add_parser("render", help="Render results.json and summary.md for a run")
     render.add_argument("run_dir", type=Path)
     return parser
@@ -100,6 +116,20 @@ def default_output(models: Path, recipe: str, now: datetime | None = None) -> Pa
 
 def _normalize_url(url: str) -> str:
     return url.rstrip("/").removesuffix("/v1").rstrip("/")
+
+
+def _ask(question: str, default: str | None) -> str:
+    """One interactive answer; empty input means the default."""
+    suffix = f" [{default}]" if default is not None else " (Enter to skip)"
+    try:
+        return input(f"[baseline] {question}{suffix}: ").strip()
+    except (EOFError, OSError) as error:
+        raise guided.GuidedAborted("input closed before an answer") from error
+
+
+def _served_model_ids(base_url: str) -> list[str]:
+    data = api.post_json(base_url, "/v1/models", None, timeout=10)
+    return [m["id"] for m in data.get("data", []) if isinstance(m, dict) and "id" in m]
 
 
 @dataclass
@@ -221,6 +251,9 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
             file=sys.stderr,
         )
         return ExitCode.USAGE
+    if recipe is not None and args.yes:
+        print("--yes belongs to the guided desktop setup", file=sys.stderr)
+        return ExitCode.USAGE
     output = args.output or default_output(args.models, args.recipe)
     if output.resolve().is_relative_to(root.resolve()):
         print("--output must be outside the repository", file=sys.stderr)
@@ -234,6 +267,24 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
         if not isinstance(extra, dict) or not extra:
             print("--request-extra must be a non-empty JSON object", file=sys.stderr)
             return ExitCode.USAGE
+    if recipe is None and (args.yes or args.base_url is None or args.context is None):
+        try:
+            setup = guided.guide(
+                _served_model_ids,
+                guided.find_app_pids,
+                _ask,
+                _progress,
+                yes=args.yes,
+                base_url=args.base_url,
+                model=args.model,
+                context=args.context,
+                pid=args.pid,
+            )
+        except guided.GuidedAborted as error:
+            print(f"Guided setup stopped: {error}", file=sys.stderr)
+            return ExitCode.USAGE
+        args.base_url, args.model = setup.base_url, setup.model
+        args.context, args.pid = setup.context, setup.pid
     try:
         expectations = vision.load_expectations(root / "assets/checks/amdgpu-top.expected.json")
         corpus = workloads.load_corpus(workloads.default_corpus_directory())
