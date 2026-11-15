@@ -5,12 +5,12 @@
 #   base_url defaults to http://127.0.0.1:1234; the model defaults to the single
 #   served model, or set MODEL=.
 #
-# LM Studio Bionic 1.2.0 was measured to ignore chat_template_kwargs and to accept
-# top-level reasoning_effort without acting on it, so thinking-off has to be set in
-# the app's model settings. This script re-checks that per-request verdict after an
-# LM Studio update: it streams the same short prompt once per candidate field and
-# prints which variants produced visible output without any reasoning content.
-# Exits 0 if at least one per-request control worked, 1 otherwise.
+# LM Studio Bionic 1.2.0 measured 2026-11-15: reasoning_effort "none" disables thinking,
+# "off" answers HTTP 400, and chat_template_kwargs, enable_thinking, and reasoning are all
+# accepted but inert. This script re-checks every candidate after an LM Studio update: it
+# streams the same short prompt once per candidate field and prints which variants produced
+# visible output without any reasoning content. Exits 0 if at least one control worked.
+# Measured thinking is on by default; a working "none" makes "high" worth checking too.
 set -euo pipefail
 
 base=${1:-http://127.0.0.1:1234}
@@ -60,6 +60,7 @@ VARIANTS = [
     ("control (no thinking field)", {}),
     ('reasoning_effort "none"', {"reasoning_effort": "none"}),
     ('reasoning_effort "off"', {"reasoning_effort": "off"}),
+    ('reasoning_effort "high"', {"reasoning_effort": "high"}),
     ("top-level enable_thinking false", {"enable_thinking": False}),
     ("chat_template_kwargs enable_thinking false", {"chat_template_kwargs": {"enable_thinking": False}}),
     ("chat_template_kwargs reasoning_effort none", {"chat_template_kwargs": {"reasoning_effort": "none"}}),
@@ -97,7 +98,7 @@ def stream_counts(extra):
 
 
 print(f"probing {base} model {model}")
-working = []
+working: list[tuple[str, dict]] = []
 for name, extra in VARIANTS:
     try:
         reasoning, visible = stream_counts(extra)
@@ -110,12 +111,13 @@ for name, extra in VARIANTS:
         verdict = f"thinking ON, late answer ({reasoning} reasoning, {visible} visible chars)"
     elif visible:
         verdict = f"thinking OFF candidate ({visible} visible chars, no reasoning content)"
-        working.append(name)
+        working.append((name, extra))
     else:
         verdict = "no output at all"
     print(f"  {name:52s} {verdict}")
 
 pixel = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg=="  # 1x1 opaque red PNG
+vision_extra = working[0][1] if working else {}
 vision_body = {
     "model": model,
     "messages": [{
@@ -127,21 +129,23 @@ vision_body = {
     }],
     "max_tokens": 32,
     "temperature": 0.0,
+    **vision_extra,
 }
 try:
     with open_request("/v1/chat/completions", vision_body) as response:
         message = json.load(response)["choices"][0]["message"]
     answer = message.get("content")
+    note = f" (with {working[0][0]} applied)" if working else ""
     if answer:
-        print(f"\nvision: answered {str(answer)[:80]!r} — the image is one opaque red pixel")
+        print(f"\nvision: answered {str(answer)[:80]!r}{note} — the image is one opaque red pixel")
     else:
-        print("\nvision: empty visible answer — vision may be unsupported, or thinking consumed the output")
+        print(f"\nvision: empty visible answer{note} — vision may be unsupported")
 except Exception as error:
     print(f"\nvision: request failed: {error}")
 
 if working:
     print("\nworking per-request controls (add one to --request-extra and record it in the recipe):")
-    for name in working:
+    for name, _ in working:
         print(f"  {name}")
 else:
     print("\nno per-request control disabled thinking on this build; use the app's model settings and update this probe after an LM Studio update")

@@ -115,6 +115,10 @@ samplers='"temperature":0.0,"top_k":20,"top_p":0.95,"min_p":0.0,"repetition_pena
 if [[ $kind == strata ]]; then
     limit_field=max_completion_tokens
     thinking=',"reasoning_effort":"none"'
+elif [[ $kind == lmstudio ]]; then
+    # Live probe 2026-11-15: "none" disables thinking; "off" answers HTTP 400.
+    limit_field=max_tokens
+    thinking=',"reasoning_effort":"none"'
 else
     limit_field=max_tokens
     thinking=

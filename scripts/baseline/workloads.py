@@ -17,11 +17,13 @@ FIT_TOLERANCE = 0.01
 FIT_ROUNDS = 8
 
 # Verified field names; other servers need their own settings supplied with --request-extra.
-# LM Studio is deliberately absent: on Bionic 1.2.0 its OpenAI endpoint silently ignores
-# per-request thinking controls (chat_template_kwargs is passed through nowhere; top-level
-# reasoning_effort is accepted but has no effect, lmstudio-bug-tracker #2413). Disable thinking
-# in the app's model settings and verify with scripts/probe_lmstudio_thinking.sh.
-THINKING_OFF: dict[str, dict[str, Any]] = {"strata": {"reasoning_effort": "none"}}
+THINKING_OFF: dict[str, dict[str, Any]] = {
+    "strata": {"reasoning_effort": "none"},
+    # Live probe 2026-11-15 (Bionic 1.2.0): "none" disables the template's default thinking,
+    # "off" answers HTTP 400, and chat_template_kwargs, enable_thinking, and reasoning are
+    # accepted but inert. scripts/probe_lmstudio_thinking.sh re-checks all candidates.
+    "lmstudio": {"reasoning_effort": "none"},
+}
 # Verified enabling control for the reasoning case; other servers keep template defaults.
 THINKING_ON: dict[str, dict[str, Any]] = {"strata": {"reasoning_effort": "high"}}
 TOKEN_LIMIT_FIELD = {"strata": "max_completion_tokens"}
