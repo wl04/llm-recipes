@@ -5,13 +5,11 @@ template by hand, replace the placeholder so it matches the folder. -->
 
 ## Workload
 
-Describe what you were doing: the project, the tasks, harness options, tool use,
-and context compaction.
+The Pi coding session developing this exact repository scripts and documentation
 
 ## Observations
 
-Describe responsiveness, useful results, tool behavior, repetitive output,
-truncation, interruptions, and adjustments.
+There were some mistakes in tool calling and using the todo plugin in Pi, besides this was smooth.
 
 <!-- BEGIN GENERATED SESSION -->
 
