@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import generate_configurations as generator
+import paths
 import pytest
 from baseline import cli, guided, host, schema
 from baseline.schema import ExitCode
@@ -93,6 +94,8 @@ def test_managed_run_writes_results_summary_and_raw_files(
 def test_managed_run_passes_recipe_defaults_and_log_location_to_the_launcher(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    data_home = tmp_path / "data-home"
+    monkeypatch.setenv(paths.DATA_HOME_ENV, str(data_home))
     with FakeServer() as server:
         _, managed = run_managed(tmp_path, server, monkeypatch)
 
@@ -100,7 +103,7 @@ def test_managed_run_passes_recipe_defaults_and_log_location_to_the_launcher(
     assert (options.name, options.detached) == ("baseline", True)
     assert (options.context, options.draft, options.vision) == (131072, "on", "cpu")
     assert options.logs == (tmp_path / "run").resolve() / "server-logs"
-    assert options.models == (Path.home() / "llm-recipes").resolve()
+    assert options.models == data_home.resolve()
 
 
 def test_managed_run_applies_explicit_launch_overrides(
@@ -176,18 +179,18 @@ def test_default_output_is_resolved_from_the_models_directory_and_time() -> None
     assert path == Path("/data/models/baselines/my-recipe/2026-11-14-1351")
 
 
-def test_run_without_output_writes_under_the_home_models_directory(
+def test_run_without_output_writes_under_the_data_home(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("HOME", str(tmp_path / "home"))
-    (tmp_path / "home" / "llm-recipes").mkdir(parents=True)
-    monkeypatch.setattr(cli, "DEFAULT_MODELS", tmp_path / "home" / "llm-recipes")
+    data_home = tmp_path / "home" / "llm-recipes"
+    data_home.mkdir(parents=True)
+    monkeypatch.setenv(paths.DATA_HOME_ENV, str(data_home))
     with FakeServer() as server:
         Managed(tmp_path, server, monkeypatch)
         port = server.base_url.rsplit(":", 1)[1]
         code = cli.main(["run", RECIPE, "--port", port, "--no-gpu"], suite=SUITE)
 
-    runs = list((tmp_path / "home/llm-recipes/baselines" / RECIPE).iterdir())
+    runs = list((data_home / "baselines" / RECIPE).iterdir())
     assert code == ExitCode.OK
     assert len(runs) == 1
     assert (runs[0] / "results.json").is_file()

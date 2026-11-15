@@ -55,7 +55,6 @@ from baseline.workloads import SuiteConfig
 ROOT = Path(__file__).resolve().parents[2]
 SERVER_KINDS = schema.SERVER_KINDS
 GIB = 1024**3
-DEFAULT_MODELS = paths.data_home()
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -68,7 +67,7 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         help="New directory outside the repository (default: <models>/baselines/<recipe>/<time>)",
     )
-    run.add_argument("--models", type=Path, default=DEFAULT_MODELS, help="Model directory")
+    run.add_argument("--models", type=Path, help="Model directory (default: the data home)")
     run.add_argument("--context", type=int, help="Context length (default: the recipe's)")
     run.add_argument("--draft", choices=("on", "off"), help="Drafting (default: the recipe's)")
     run.add_argument(
@@ -261,6 +260,11 @@ def session_run(
     return document
 
 
+def models_dir(models: Path | None) -> Path:
+    """The models a run reads from: the requested directory, or the data home."""
+    return paths.data_home() if models is None else models
+
+
 def default_output(models: Path, recipe: str, now: datetime | None = None) -> Path:
     """Where a run is written when ``--output`` is not given."""
     stamp = (now or datetime.now()).strftime("%Y-%m-%d-%H%M")
@@ -342,10 +346,14 @@ def _gpu_vram_gib(gpu_address: str | None) -> float | None:
 
 
 def _managed_plan(
-    args: argparse.Namespace, recipe: Recipe, writer: RunWriter, gpu_address: str | None
+    args: argparse.Namespace,
+    models_root: Path,
+    recipe: Recipe,
+    writer: RunWriter,
+    gpu_address: str | None,
 ) -> Plan:
     """A container recipe: the runner starts the server through the launcher and stops it."""
-    models = args.models.expanduser().resolve()
+    models = models_root.expanduser().resolve()
     options = resolve_launch_options(
         recipe,
         name=lifecycle.INSTANCE,
@@ -421,7 +429,8 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
     if recipe is not None and args.yes:
         print("--yes belongs to the guided desktop setup", file=sys.stderr)
         return ExitCode.USAGE
-    output = args.output or default_output(args.models, args.recipe)
+    models = models_dir(args.models)
+    output = args.output or default_output(models, args.recipe)
     if output.resolve().is_relative_to(root.resolve()):
         print("--output must be outside the repository", file=sys.stderr)
         return ExitCode.USAGE
@@ -468,7 +477,7 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
                 print(f"Preflight failed: {error}", file=sys.stderr)
                 return ExitCode.PREFLIGHT_FAILED
         plan = (
-            _managed_plan(args, recipe, writer, gpu_address)
+            _managed_plan(args, models, recipe, writer, gpu_address)
             if recipe is not None
             else _attached_plan(args, recipe, gpu_address)
         )
