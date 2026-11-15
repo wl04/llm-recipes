@@ -54,37 +54,54 @@
 | Model files | Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf<br>mmproj-Qwen3.8-27B-BF16.gguf |
 
 
-## Inference settings
-
+## Serving
 
 | Setting | Value |
 |---|---|
-| Automatic hardware optimization | Off |
-| Context length | 131072 |
+| Speculative decoding | MTP |
+| Context length (tokens) | 131072 |
+| Concurrent predictions | 1 |
+| Automatic hardware optimization | False |
 | GPU offload | 65 (maximum in the UI) |
 | CPU thread pool | 6 |
 | Evaluation batch size | 2048 |
 | Physical batch size | 512 |
-| Concurrent predictions | 1 |
-| Flash Attention | On |
+| Flash Attention | True |
 | K / V cache quantization | Q8_0 / Q8_0 |
 | KV cache GPU offload / Unified KV cache | Both on |
 | Context checkpoints | 32 |
 | Keep model in memory / mmap | Both on |
-| Speculative decoding | MTP |
 | Max / min draft tokens / draft probability | 3 / 0 / 0 |
+| Context overflow | Truncate Middle |
+| On-demand tensor loading | Auto |
+
+
+## Sampling
+
+| Setting | Value |
+|---|---|
 | Temperature | 1 |
 | Top K | 20 |
 | Top P | 0.95 |
 | Min P | 0 |
-| Repeat penalty | 1 |
+| Repetition penalty | 1 |
 | Presence penalty | 0 |
 | Seed | Random |
-| Enable Thinking | On |
+
+
+## Thinking
+
+| Setting | Value |
+|---|---|
+| Thinking enabled | True |
 | Reasoning budget | 8192 |
-| Limit response length | Off |
-| Context overflow | Truncate Middle |
-| On-demand tensor loading | Auto |
+
+
+## Requests
+
+| Setting | Value |
+|---|---|
+| Maximum output tokens | Off |
 
 ---
 

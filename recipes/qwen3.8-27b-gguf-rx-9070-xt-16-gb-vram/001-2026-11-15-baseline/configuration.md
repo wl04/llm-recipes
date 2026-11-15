@@ -44,7 +44,6 @@
 | Backend API version | 1.4.354 |
 | GPU driver | Mesa RADV |
 | GPU driver version | 26.2.4-1ubuntu1 |
-| Software configuration basis | Model, context length, request policy, corpus hash, and runner commit f78d3db recorded by the baseline run |
 
 
 ## Model
@@ -59,33 +58,63 @@
 | Model files | Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf<br>mmproj-Qwen3.8-27B-BF16.gguf |
 
 
-## Inference settings
-
+## Serving
 
 | Setting | Value |
 |---|---|
 | Served model id | qwen3.8-27b-gsq-rco |
-| Automatic hardware optimization | Off |
-| Context length | 131072 |
+| Speculative decoding | MTP |
+| Context length (tokens) | 131072 |
+| Concurrent predictions | 1 |
+| Automatic hardware optimization | False |
 | GPU offload | 65 (maximum in the UI) |
 | CPU thread pool | 6 |
 | Evaluation batch size | 2048 |
 | Physical batch size | 512 |
-| Concurrent predictions | 1 |
-| Flash Attention | On |
+| Flash Attention | True |
 | K / V cache quantization | Q8_0 / Q8_0 |
 | KV cache GPU offload / Unified KV cache | Both on |
 | Context checkpoints | 32 |
 | Keep model in memory / mmap | Both on |
-| Speculative decoding | MTP |
 | Max / min draft tokens / draft probability | 3 / 0 / 0 |
-| Workload suite | 2 |
-| Request policy | Performance: temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, presence penalty 0. Functional checks: temperature 0. Concurrency 1. Output caps: 1,024 for context cases, 2,048 for sustained generation, 1,536 for reasoning, 512 for vision, 256 for text and conversation. |
-| Thinking control | Per request: reasoning_effort none for performance and functional requests, reasoning_effort high for the reasoning case |
-| Forced tool call | tool_choice required (string form) |
-| Request endpoint | /v1/chat/completions; streamed performance requests |
-| Token counting | Unavailable — LM Studio exposes no usable tokenize route |
 | Vision | true — vision adapter mmproj-Qwen3.8-27B-BF16.gguf loaded |
+
+
+## Sampling
+
+| Setting | Value |
+|---|---|
+| Temperature | 1 |
+| Top K | 20 |
+| Top P | 0.95 |
+| Min P | 0 |
+| Repetition penalty | 1 |
+| Presence penalty | 0 |
+
+
+## Thinking
+
+| Setting | Value |
+|---|---|
+| Thinking enabled | False |
+| Thinking control | Per request: reasoning_effort none for performance and functional requests, reasoning_effort high for the reasoning case |
+
+
+## Requests
+
+| Setting | Value |
+|---|---|
+| Workload suite | 2 |
+| Request endpoint | /v1/chat/completions |
+| Streaming | Performance requests streamed |
+| Concurrency | 1 |
+| Token counting | Unavailable — LM Studio exposes no usable tokenize route |
+| Forced tool call | tool_choice required (string form) |
+
+
+## Experiment notes
+
+Request policy: functional checks run at temperature 0. Output caps: 1,024 for context cases, 2,048 for sustained generation, 1,536 for reasoning, 512 for vision, 256 for text and conversation. Software configuration basis: model, context length, request policy, corpus hash, and runner commit f78d3db were recorded by the baseline run.
 
 ---
 

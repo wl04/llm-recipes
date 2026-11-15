@@ -27,7 +27,6 @@ software:
   vision_revision: https://github.com/ggml-org/llama.cpp/commit/3cf03257f219afbe7334045ff7c6a06ac68c627d
   host_python: 3.14.8
   running_image_id: sha256:afe7c1bff2f14085879a86bfcdc5729996a66beac14edee40207c08e255feca6
-  configuration_basis: Repository runtime and model locks; the running image ID and the engine startup log were captured by the baseline run
 model:
   name: Qwen3.8-Flash-Next
   format: GGUF
@@ -40,95 +39,39 @@ model:
   vision_projector: mmproj-Qwen3.8-Flash-Next-BF16.gguf
   preparation: compat-bf16 for small tensors; native experts and PLE
 settings:
-  Context length: 131072
-  KV cache: INT8 K and V
-  GPU resident KV cells: 32768
-  Expert cache: auto; 4628 slots / 8.82 GiB at startup
-  Prefill: auto; 8192-token chunks selected at runtime
-  Speculative decoding: MTP enabled
-  Maximum draft tokens: 4
-  Minimum draft probability: 0.5
-  Draft vocabulary: draft_vocab.bin; 106299 tokens in the loaded draft head
-  Vision: CPU; 8 threads
-  Expert pool: 7 workers plus host thread
-  Conversation cache: 1280 MiB; up to 4 parked conversations
-  Hyper connection projections: Q8_0 (upstream default)
-  Route tail skip: 7
-  Server sampling:
-    Temperature: 1.0
-    Top k: 20
-    Top p: 0.95
-    Min p: 0
-    Repetition penalty: 1
-    Presence penalty: 0
-  Workload suite: '1'
-  Request policy: 'Performance cases: temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, presence penalty 0, thinking disabled, concurrency 1. Functional checks: temperature 0. Output caps: 1,024 tokens for the 8K and context cases, 2,048 for sustained generation, 256 for text and tools, 512 for vision. Streamed /v1/chat/completions; prompts sized with /v1/messages/count_tokens.'
-  Vision minimum image tokens: 1024
-  Vision maximum image tokens: 1024
-labels:
-  hardware: Hardware
-  hardware.gpu: GPU
-  hardware.cpu: CPU
-  hardware.memory: Memory
-  hardware.memory.architecture: Memory architecture
-  hardware.memory.dedicated_vram_gib: Dedicated VRAM (GB)
-  hardware.memory.system_ram_gib: System RAM (GB)
-  hardware.memory.speed_mt_s: RAM speed (MT/s)
-  os: Operating system
-  os.name: Operating system
-  os.version: OS version
-  os.kernel: Kernel version
-  os.kernel_driver: Kernel driver
-  software: Software
-  software.harness: Harness
-  software.harness_version: Harness revision
-  software.server: API server
-  software.engine: Engine
-  software.engine_version: Engine version
-  software.revision: Strata revision
-  software.backend: Compute backend
-  software.rocm_image_release: Base image tag at preparation
-  software.base_image: Pinned base image
-  software.vision_engine: Vision engine
-  software.vision_version: Vision engine release
-  software.vision_revision: Vision revision
-  model: Model
-  model.name: Model name
-  model.format: Format
-  model.quantization: Weight quantization
-  model.repository: Model repository
-  model.revision: Model revision
-  model.draft_repository: Draft repository
-  model.draft_revision: Draft revision
-  model.draft_quantization: Draft quantization
-  model.vision_projector: Vision projector
-  settings: Inference settings
-  settings.Context length: Context length (tokens)
-  settings.KV cache: KV cache
-  settings.GPU resident KV cells: GPU resident KV cells
-  settings.Expert cache: Expert cache
-  settings.Prefill: Prefill
-  settings.Speculative decoding: Speculative decoding
-  settings.Maximum draft tokens: Maximum draft tokens
-  settings.Minimum draft probability: Minimum draft probability
-  settings.Draft vocabulary: Draft vocabulary
-  settings.Vision: Vision
-  settings.Server sampling: Server sampling
-  settings.Server sampling.Temperature: Temperature
-  settings.Server sampling.Top k: Top k
-  settings.Server sampling.Top p: Top p
-  settings.Server sampling.Min p: Min p
-  settings.Server sampling.Repetition penalty: Repetition penalty
-  settings.Server sampling.Presence penalty: Presence penalty
-  software.host_python: Host Python
-  software.running_image_id: Running image ID
-  settings.Vision maximum image tokens: Maximum image tokens
-  software.configuration_basis: Software configuration basis
-  model.preparation: Preparation
-  settings.Vision minimum image tokens: Minimum image tokens
-  settings.Expert pool: Expert pool
-  settings.Conversation cache: Conversation cache
-  settings.Hyper connection projections: Hyper connection projections
-  settings.Route tail skip: Route tail skip
-  settings.Workload suite: Workload suite
-  settings.Request policy: Request policy
+  serving:
+    context_length_tokens: 131072
+    kv_cache: INT8 K and V
+    gpu_resident_kv_cells: 32768
+    expert_cache: auto; 4628 slots / 8.82 GiB at startup
+    prefill: auto; 8192-token chunks selected at runtime
+    speculative_decoding: MTP enabled
+    max_draft_tokens: 4
+    min_draft_probability: 0.5
+    draft_vocabulary: draft_vocab.bin; 106299 tokens in the loaded draft head
+    vision: CPU; 8 threads
+    expert_pool: 7 workers plus host thread
+    conversation_cache: 1280 MiB; up to 4 parked conversations
+    hyper_connection_projections: Q8_0 (upstream default)
+    route_tail_skip: 7
+    vision_min_image_tokens: 1024
+    vision_max_image_tokens: 1024
+  sampling:
+    temperature: 1.0
+    top_k: 20
+    top_p: 0.95
+    min_p: 0.0
+    repetition_penalty: 1.0
+    presence_penalty: 0.0
+  thinking:
+    enabled: false
+    control: reasoning_effort=none for performance requests
+  requests:
+    endpoint: /v1/chat/completions
+    streaming: Performance requests streamed
+    concurrency: 1
+    token_counting: /v1/messages/count_tokens
+  notes: 'Request policy: functional checks run at temperature 0. Output caps: 1,024 tokens
+    for the 8K and context cases, 2,048 for sustained generation, 256 for text and tools,
+    512 for vision. Software configuration basis: repository runtime and model locks; the
+    running image ID and the engine startup log were captured by the baseline run.'

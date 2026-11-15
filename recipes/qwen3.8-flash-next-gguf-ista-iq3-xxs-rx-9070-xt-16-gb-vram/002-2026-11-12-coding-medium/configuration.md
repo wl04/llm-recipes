@@ -31,11 +31,11 @@
 
 | Setting | Value |
 |---|---|
-| Harness | Pi |
+| Agent / harness | Pi |
 | API server | Strata serve.server |
-| Engine | Strata |
+| Inference engine | Strata |
 | Engine version | 0.1.59.1 |
-| Strata revision | [dbb2d168](https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0) |
+| Engine source revision | [dbb2d168](https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0) |
 | Compute backend | ROCm / HIP |
 | Base image tag at preparation | [rocm/dev-ubuntu-24.04:10.1.0-full](https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags?name=10.1.0-full) |
 | Pinned base image | rocm/dev-ubuntu-24.04@sha256:5ed1362ea542a928651e4c710b44024ebe98870f74159cb70f0265aec8ef0abe |
@@ -51,7 +51,7 @@
 | Setting | Value |
 |---|---|
 | Model name | Qwen3.8-Flash-Next |
-| Format | GGUF |
+| Model format | GGUF |
 | Weight quantization | GSQ-RCO IQ3_XXS |
 | Model repository | ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF |
 | Model revision | [ed59f920](https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF/commit/ed59f92082b1e93c0e96d60a8b11aab089b52f09) |
@@ -61,37 +61,54 @@
 | Vision projector | mmproj-Qwen3.8-Flash-Next-BF16.gguf |
 
 
-## Inference settings
-
+## Serving
 
 | Setting | Value |
 |---|---|
+| Speculative decoding | MTP enabled |
 | Context length (tokens) | 131072 |
 | KV cache | INT8 K and V |
 | GPU resident KV cells | 32768 |
 | Expert cache | auto |
 | Prefill | auto |
-| Speculative decoding | MTP enabled |
 | Maximum draft tokens | 4 |
 | Minimum draft probability | 0.5 |
 | Draft vocabulary | draft_vocab.bin |
 | Vision | CPU |
+| Minimum image tokens | 1024 |
+| Maximum image tokens | 1024 |
 | Expert pool | automatic |
 | Conversation cache | automatic |
 | Hyper connection projections | Q8_0 (upstream default) |
 | Route tail skip | 7 |
-| Temperature | 1.0 |
-| Top k | 20 |
-| Top p | 0.95 |
-| Min p | 0 |
+
+
+## Sampling
+
+| Setting | Value |
+|---|---|
+| Temperature | 1 |
+| Top K | 20 |
+| Top P | 0.95 |
+| Min P | 0 |
 | Repetition penalty | 1 |
 | Presence penalty | 0 |
-| Maximum image tokens | 1024 |
-| Minimum image tokens | 1024 |
-| Thinking during coding session | enabled |
-| Pi reasoning effort | medium |
-| Output allowance | Usually 16384 tokens; varies by request |
-| Reasoning allowance | Automatic answer room; usually 12288 tokens within the output allowance |
+
+
+## Thinking
+
+| Setting | Value |
+|---|---|
+| Thinking enabled | True |
+| Thinking control | Pi reasoning effort: medium |
+| Reasoning budget | Automatic answer room; usually 12288 tokens within the output allowance |
+
+
+## Requests
+
+| Setting | Value |
+|---|---|
+| Maximum output tokens | Usually 16384 tokens; varies by request |
 
 ---
 

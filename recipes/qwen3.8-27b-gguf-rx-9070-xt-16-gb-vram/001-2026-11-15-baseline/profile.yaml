@@ -14,17 +14,14 @@ os:
   kernel_driver: amdgpu
 software:
   harness: LM Studio Bionic
-  harness_version: '1.2.0 (build 2)'
+  harness_version: 1.2.0 (build 2)
   engine: llama.cpp
-  engine_version: '2.73.0'
+  engine_version: 2.73.0
   engine_version_note: LM Studio-specific version; upstream llama.cpp version unknown
   backend: Vulkan
   backend_api_version: 1.4.354
   gpu_driver: Mesa RADV
-  gpu_driver_version: 26.2.4-1ubuntu1 # From the supplied system information
-  configuration_basis: >-
-    Model, context length, request policy, corpus hash, and runner commit f78d3db
-    recorded by the baseline run
+  gpu_driver_version: 26.2.4-1ubuntu1
 model:
   name: Qwen3.8-27B
   format: GGUF
@@ -34,82 +31,41 @@ model:
   - Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf
   - mmproj-Qwen3.8-27B-BF16.gguf
 settings:
-  Served model id: qwen3.8-27b-gsq-rco
-  Automatic hardware optimization: 'Off'
-  Context length: '131072'
-  GPU offload: 65 (maximum in the UI)
-  CPU thread pool: '6'
-  Evaluation batch size: '2048'
-  Physical batch size: '512'
-  Concurrent predictions: '1'
-  Flash Attention: 'On'
-  K / V cache quantization: Q8_0 / Q8_0
-  KV cache GPU offload / Unified KV cache: Both on
-  Context checkpoints: '32'
-  Keep model in memory / mmap: Both on
-  Speculative decoding: MTP
-  Max / min draft tokens / draft probability: 3 / 0 / 0
-  Workload suite: '2'
-  Request policy: 'Performance: temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, presence penalty 0. Functional checks: temperature 0. Concurrency 1. Output caps: 1,024 for context cases, 2,048 for sustained generation, 1,536 for reasoning, 512 for vision, 256 for text and conversation.'
-  Thinking control: 'Per request: reasoning_effort none for performance and functional requests, reasoning_effort high for the reasoning case'
-  Forced tool call: 'tool_choice required (string form)'
-  Request endpoint: /v1/chat/completions; streamed performance requests
-  Token counting: Unavailable — LM Studio exposes no usable tokenize route
-  Vision: 'true — vision adapter mmproj-Qwen3.8-27B-BF16.gguf loaded'
-
-# Display labels keyed by dotted YAML path.
-labels:
-  hardware: Hardware
-  hardware.gpu: GPU
-  hardware.cpu: CPU
-  hardware.memory.architecture: Memory architecture
-  hardware.memory.dedicated_vram_gib: Dedicated VRAM (GB)
-  hardware.memory.system_ram_gib: System RAM (GB)
-  hardware.memory.unified_memory_gib: Unified memory (GB)
-  os: Operating system
-  os.name: Operating system
-  os.version: OS version
-  os.kernel: Kernel version
-  os.kernel_driver: Kernel driver
-  software: Software
-  software.harness: Agent / harness
-  software.harness_version: Harness version
-  software.engine: Inference engine
-  software.engine_version: Engine version
-  software.engine_version_note: Engine version notes
-  software.backend: Compute backend
-  software.backend_api_version: Backend API version
-  software.gpu_driver: GPU driver
-  software.gpu_driver_version: GPU driver version
-  software.configuration_basis: Software configuration basis
-  model: Model
-  model.name: Model name
-  model.format: Model format
-  model.quantization: Weight quantization
-  model.repository: Model repository
-  model.artifacts: Model files
-  settings: Inference settings
-  settings.Served model id: Served model id
-  settings.Automatic hardware optimization: Automatic hardware optimization
-  settings.Context length: Context length
-  settings.GPU offload: GPU offload
-  settings.CPU thread pool: CPU thread pool
-  settings.Evaluation batch size: Evaluation batch size
-  settings.Physical batch size: Physical batch size
-  settings.Concurrent predictions: Concurrent predictions
-  settings.Flash Attention: Flash Attention
-  settings.K / V cache quantization: K / V cache quantization
-  settings.KV cache GPU offload / Unified KV cache: KV cache GPU offload / Unified
-    KV cache
-  settings.Context checkpoints: Context checkpoints
-  settings.Keep model in memory / mmap: Keep model in memory / mmap
-  settings.Speculative decoding: Speculative decoding
-  settings.Max / min draft tokens / draft probability: Max / min draft tokens / draft
-    probability
-  settings.Workload suite: Workload suite
-  settings.Request policy: Request policy
-  settings.Thinking control: Thinking control
-  settings.Forced tool call: Forced tool call
-  settings.Request endpoint: Request endpoint
-  settings.Token counting: Token counting
-  settings.Vision: Vision
+  serving:
+    served_model_id: qwen3.8-27b-gsq-rco
+    auto_hardware_optimization: false
+    context_length_tokens: 131072
+    gpu_offload: 65 (maximum in the UI)
+    cpu_thread_pool: 6
+    eval_batch_size: 2048
+    physical_batch_size: 512
+    parallel_predictions: 1
+    flash_attention: true
+    kv_cache_quantization: Q8_0 / Q8_0
+    kv_gpu_offload_unified: Both on
+    ctx_checkpoints: 32
+    memory_map: Both on
+    speculative_decoding: MTP
+    draft_token_limits: 3 / 0 / 0
+    vision: true — vision adapter mmproj-Qwen3.8-27B-BF16.gguf loaded
+  sampling:
+    temperature: 1.0
+    top_k: 20
+    top_p: 0.95
+    min_p: 0.0
+    repetition_penalty: 1.0
+    presence_penalty: 0.0
+  thinking:
+    control: 'Per request: reasoning_effort none for performance and functional requests,
+      reasoning_effort high for the reasoning case'
+    enabled: false
+  requests:
+    forced_tool_call: tool_choice required (string form)
+    endpoint: /v1/chat/completions
+    token_counting: Unavailable — LM Studio exposes no usable tokenize route
+    streaming: Performance requests streamed
+    concurrency: 1
+  notes: 'Request policy: functional checks run at temperature 0. Output caps: 1,024 for context
+    cases, 2,048 for sustained generation, 1,536 for reasoning, 512 for vision, 256 for text
+    and conversation. Software configuration basis: model, context length, request policy,
+    corpus hash, and runner commit f78d3db were recorded by the baseline run.'
