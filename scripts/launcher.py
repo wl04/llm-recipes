@@ -171,7 +171,7 @@ def engine_command(recipe: Recipe, context: int, draft: str, vision: str) -> lis
         "--context",
         str(context),
         "--recipe",
-        "/recipe",
+        f"/recipes/{recipe.name}",
     ]
 
 
@@ -226,7 +226,7 @@ def start_command(
         "PYTHONUNBUFFERED=1",
     ):
         command += ["--env", setting]
-    command += mount(recipe.directory, "/recipe", readonly=True)
+    command += mount(recipe.directory, f"/recipes/{recipe.name}", readonly=True)
     command += mount(recipe.runtime_directory, "/runtime", readonly=True)
     command += mount(models, "/models", readonly=True)
     command += mount(models / ".cache", "/cache")

@@ -182,11 +182,11 @@ def test_prepare_host_mounts_runtime_and_selected_recipe(tmp_path: Path) -> None
     ):
         assert prepare.main() == 0
     command = run.call_args.args[0]
-    assert f"type=bind,src={UNSLOTH},dst=/recipe,readonly" in command
+    assert f"type=bind,src={UNSLOTH},dst=/recipes/{UNSLOTH.name},readonly" in command
     assert f"type=bind,src={RUNTIME},dst=/runtime,readonly" in command
     assert command[-4:] == [
         "/runtime/scripts/prepare_models.py",
         "--recipe",
-        "/recipe",
+        f"/recipes/{UNSLOTH.name}",
         "--inside-container",
     ]

@@ -162,7 +162,8 @@ def test_discover_resolves_two_models_to_one_runtime(tmp_path: Path) -> None:
     )
     assert f"type=bind,src={runtime},dst=/runtime,readonly" in command
     assert "/runtime/scripts/serve.py" in command
-    assert command[-2:] == ["--recipe", "/recipe"]
+    assert command[-2:] == ["--recipe", "/recipes/unsloth"]
+    assert f"type=bind,src={recipes['unsloth'].directory},dst=/recipes/unsloth,readonly" in command
 
 
 @pytest.mark.parametrize("field,value", [("runtime", "../other")])

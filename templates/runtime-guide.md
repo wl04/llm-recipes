@@ -12,7 +12,7 @@ Describe the preparation helper, model lock schema, verification, resumability, 
 
 ## Serving
 
-Describe how `/runtime/scripts/serve.py --recipe /recipe` reads native settings, validates prepared files, and starts the API server. Document engine-specific overrides, GPU selection, file logs, and retention. Link the launcher guide for common mounts and lifecycle behavior.
+Describe how `/runtime/scripts/serve.py --recipe /recipes/<recipe-id>` reads native settings, validates prepared files, and starts the API server. Document engine-specific overrides, GPU selection, file logs, and retention. Link the launcher guide for common mounts and lifecycle behavior.
 
 ## Baseline and clients
 

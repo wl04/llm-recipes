@@ -62,7 +62,16 @@ class LauncherTests(unittest.TestCase):
         self.assertIn("127.0.0.1:5001:5000", command)
         self.assertEqual(
             command[-8:],
-            ["--draft", "on", "--vision", "on", "--context", "131072", "--recipe", "/recipe"],
+            [
+                "--draft",
+                "on",
+                "--vision",
+                "on",
+                "--context",
+                "131072",
+                "--recipe",
+                f"/recipes/{RECIPE.name}",
+            ],
         )
 
     def test_start_rejects_invalid_context_before_execution(self) -> None:

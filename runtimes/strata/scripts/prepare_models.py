@@ -196,7 +196,7 @@ def main() -> int:
             "--env",
             "XDG_CACHE_HOME=/cache",
             "--mount",
-            f"type=bind,src={recipe},dst=/recipe,readonly",
+            f"type=bind,src={recipe},dst=/recipes/{recipe.name},readonly",
             "--mount",
             f"type=bind,src={RUNTIME},dst=/runtime,readonly",
             "--mount",
@@ -207,7 +207,7 @@ def main() -> int:
             "python3",
             "/runtime/scripts/prepare_models.py",
             "--recipe",
-            "/recipe",
+            f"/recipes/{recipe.name}",
             "--inside-container",
         ]
         return subprocess.run(command, check=False).returncode
