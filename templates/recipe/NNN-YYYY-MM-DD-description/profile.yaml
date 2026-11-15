@@ -30,7 +30,9 @@ settings:
   serving:
     speculative_decoding: null
   sampling:
-    # Only these keys are allowed:
+    # Only these keys are allowed. A named preset (e.g. conservative) can
+    # stand alone; explicit parameters may be listed instead or alongside.
+    mode: null
     temperature: null
     top_k: null
     top_p: null

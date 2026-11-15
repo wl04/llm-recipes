@@ -565,6 +565,19 @@ def write_settings_profile(
     return result
 
 
+def test_render_sampling_mode_as_single_row(tmp_path: Path) -> None:
+    result = write_settings_profile(
+        tmp_path, {"sampling": {"mode": "conservative"}}
+    )
+
+    document = gen.render(result)
+
+    sampling = document[document.index("## Sampling") :]
+    assert "| Mode | conservative |" in sampling
+    assert "| Temperature" not in sampling
+    assert "## Thinking" not in document
+
+
 def test_render_uses_registry_labels_and_canonical_order_for_sampling_keys(
     tmp_path: Path,
 ) -> None:

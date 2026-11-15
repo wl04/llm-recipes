@@ -32,6 +32,7 @@ GROUP_TITLES = {
     "notes": "Experiment notes",
 }
 SAMPLING_KEYS = (
+    "mode",
     "temperature",
     "top_k",
     "top_p",
@@ -191,6 +192,7 @@ LABELS: dict[str, str] = {
     "serving.gpu_selection": "GPU selection",
     "serving.recurrent_state": "Recurrent state",
     "serving.sysmem_recurrent_cache_mib": "System recurrent cache budget (MB)",
+    "sampling.mode": "Mode",
     "sampling.temperature": "Temperature",
     "sampling.top_k": "Top K",
     "sampling.top_p": "Top P",
