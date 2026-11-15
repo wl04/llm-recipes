@@ -42,6 +42,7 @@ class FakeServer:
         self.behave: Callable[[dict[str, Any]], str | None] = lambda payload: None
         self.release = threading.Event()
         self.counts_tokens = True
+        self.reasoning_tokens = 0
         self.count_requests: list[dict[str, Any]] = []
         self.vision_answer: dict[str, Any] = dict(VISION_ANSWER)
         self.requests: list[dict[str, Any]] = []
@@ -163,10 +164,14 @@ class FakeServer:
             def _stream(self, payload: dict[str, Any], prompt_tokens: int, truncate: bool) -> None:
                 limit = payload.get("max_completion_tokens") or payload.get("max_tokens") or 10**6
                 count = min(limit, outer.output_tokens)
+                thoughts = min(limit - count, outer.reasoning_tokens) if limit else 0
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream")
                 self.end_headers()
                 self._event({"choices": [{"delta": {"role": "assistant"}}]})
+                for index in range(thoughts):
+                    time.sleep(outer.token_delay_s)
+                    self._event({"choices": [{"delta": {"reasoning_content": f"thk{index} "}}]})
                 for index in range(count):
                     time.sleep(outer.token_delay_s)
                     self._event({"choices": [{"delta": {"content": f"tok{index} "}}]})

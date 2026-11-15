@@ -112,6 +112,19 @@ def _case_metrics(
         ),
         **_engine_metrics(ok, kind, aligned, engine_reason),
     }
+    if any(r.get("workload") == "reasoning" for r in ok):
+        first_visible = [r["first_content_s"] for r in ok if r.get("first_content_s") is not None]
+        metrics["first_visible_output_s"] = _median_metric(
+            first_visible, "s", CLIENT_SOURCE, "no visible output was received"
+        )
+        for name, key in (
+            ("reasoning_chars", "reasoning_chars"),
+            ("visible_chars", "visible_chars"),
+        ):
+            values = [r[key] for r in ok if r.get(key) is not None]
+            metrics[name] = _median_metric(
+                values, "chars", "client stream text", "no text recorded"
+            )
     if any(r.get("noise_probe") for r in ok) and len(ok) >= 2:
         for name, values in (("noise_first_output_spread", first), ("noise_decode_spread", rates)):
             spread = stats.relative_spread(values)

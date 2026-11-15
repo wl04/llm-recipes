@@ -18,6 +18,8 @@ FIT_ROUNDS = 8
 
 # Verified field names; other servers need their own settings supplied with --request-extra.
 THINKING_OFF: dict[str, dict[str, Any]] = {"strata": {"reasoning_effort": "none"}}
+# Verified enabling control for the reasoning case; other servers keep template defaults.
+THINKING_ON: dict[str, dict[str, Any]] = {"strata": {"reasoning_effort": "high"}}
 TOKEN_LIMIT_FIELD = {"strata": "max_completion_tokens"}
 # Servers with a tokenizer route that counts a prompt without running it.
 TOKEN_COUNT_ROUTE = {"strata": "/v1/messages/count_tokens", "tabbyapi": "/v1/token/encode"}
@@ -25,6 +27,12 @@ TOKEN_COUNT_ROUTE = {"strata": "/v1/messages/count_tokens", "tabbyapi": "/v1/tok
 REVIEW_TASK = (
     "Summarize what each file above is responsible for, then list three potential bugs or "
     "design problems, citing the file names."
+)
+REASONING_OUTPUT = 1536
+REASONING_TASK = (
+    "A snail starts at the bottom of a 30 m wall. Each day it climbs 3 m up and each night it "
+    "slips 2 m back down. How many days does it take to reach the top? Think carefully about "
+    "the last day, then answer with the number of days and one sentence of justification."
 )
 SUSTAINED_TASKS = (
     (
@@ -256,15 +264,25 @@ def thinking_request(kind: str, extra: dict[str, Any]) -> dict[str, Any]:
     These are request fields, not confirmation of server-side behavior. Template kwargs
     are retained intact because their interpretation belongs to the server's template.
     """
-    fields = {**THINKING_OFF.get(kind, {}), **extra}
-    keys = (
-        "reasoning_effort",
-        "enable_thinking",
-        "thinking",
-        "chat_template_kwargs",
-        "reasoning_budget_tokens",
-    )
-    return {key: fields[key] for key in keys if key in fields}
+    return _thinking_fields({**THINKING_OFF.get(kind, {}), **extra})
+
+
+def reasoning_request(kind: str, extra: dict[str, Any]) -> dict[str, Any]:
+    """Record the thinking controls used by the reasoning case, after user overrides."""
+    return _thinking_fields({**THINKING_ON.get(kind, {}), **extra})
+
+
+_THINKING_KEYS = (
+    "reasoning_effort",
+    "enable_thinking",
+    "thinking",
+    "chat_template_kwargs",
+    "reasoning_budget_tokens",
+)
+
+
+def _thinking_fields(fields: dict[str, Any]) -> dict[str, Any]:
+    return {key: fields[key] for key in _THINKING_KEYS if key in fields}
 
 
 def request_payload(
@@ -276,8 +294,13 @@ def request_payload(
     max_tokens: int,
     extra: dict[str, Any],
     stream: bool,
+    case_extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build a chat-completions body; ``extra`` overrides any default field."""
+    """Build a chat-completions body.
+
+    ``case_extra`` applies per-workload defaults (for example thinking on) above runtime
+    defaults; ``extra`` still overrides any field.
+    """
     payload: dict[str, Any] = {
         "model": model,
         "messages": messages,
@@ -288,6 +311,7 @@ def request_payload(
     if stream:
         payload["stream"] = True
         payload["stream_options"] = {"include_usage": True}
+    payload.update(case_extra or {})
     payload.update(extra)
     return payload
 

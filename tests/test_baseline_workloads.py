@@ -262,3 +262,45 @@ def test_conversation_turns_carry_tool_call_ids_matching_the_requests() -> None:
             for tool_call in message.get("tool_calls", []):
                 assert following["role"] == "tool"
                 assert following["tool_call_id"] == tool_call["id"]
+
+
+def test_request_payload_case_extra_enables_thinking_above_runtime_defaults() -> None:
+    payload = workloads.request_payload(
+        "strata",
+        "m",
+        [{"role": "user", "content": "hi"}],
+        workloads.PERFORMANCE,
+        max_tokens=100,
+        extra={},
+        stream=True,
+        case_extra={"reasoning_effort": "high"},
+    )
+
+    assert payload["reasoning_effort"] == "high"
+
+
+def test_request_payload_user_extra_wins_over_case_extra() -> None:
+    payload = workloads.request_payload(
+        "strata",
+        "m",
+        [{"role": "user", "content": "hi"}],
+        workloads.PERFORMANCE,
+        max_tokens=100,
+        extra={"reasoning_effort": "minimal"},
+        stream=True,
+        case_extra={"reasoning_effort": "high"},
+    )
+
+    assert payload["reasoning_effort"] == "minimal"
+
+
+def test_reasoning_request_records_the_enabling_control_per_kind() -> None:
+    assert workloads.reasoning_request("strata", {}) == {"reasoning_effort": "high"}
+    assert workloads.reasoning_request("lmstudio", {}) == {}
+    assert workloads.reasoning_request("strata", {"enable_thinking": False}) == {
+        "reasoning_effort": "high",
+        "enable_thinking": False,
+    }
+    assert workloads.reasoning_request("strata", {"reasoning_effort": "minimal"}) == {
+        "reasoning_effort": "minimal"
+    }

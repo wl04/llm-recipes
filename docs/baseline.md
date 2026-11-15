@@ -55,8 +55,9 @@ The suite runs at concurrency one, in this order:
 4. Three coding tasks: an LRU cache, a tokenizer, and an event store, each with tests requested.
 5. Approximately 32K, 64K, and 120K-token code-review prompts. The largest case runs twice; the others run once. Cases that cannot fit input plus output are skipped.
 6. Conversation reuse: one fixed multi-turn coding conversation (task, file read, failing test run, applied patch) is sent cold with its full history, then its three growing prefixes are replayed in order.
+7. One reasoning request with a multi-step arithmetic task. Strata requests thinking explicitly with `reasoning_effort: high`; other servers keep template defaults.
 
-Output caps are 1,024 tokens for context cases, 2,048 for sustained coding tasks, and 256 for conversation turns. Sustained replies shorter than 512 tokens are marked insufficient samples. Generated code is not executed.
+Output caps are 1,024 tokens for context cases, 2,048 for sustained coding tasks, 1,536 for the reasoning request, and 256 for conversation turns. Sustained replies shorter than 512 tokens are marked insufficient samples. Generated code is not executed.
 
 Long prompts use the running Python interpreter's standard-library source (PSF-licensed). Strata uses `/v1/messages/count_tokens`; TabbyAPI uses `/v1/token/encode` with chat messages and template variables. TabbyAPI's count excludes the assistant generation prefix, so final usage can differ slightly. Other servers use a calibrated characters-per-token estimate. Results show actual reported token counts. Comparable runs should use the same Python version.
 
@@ -64,7 +65,9 @@ Long prompts use the running Python interpreter's standard-library source (PSF-l
 
 Performance requests use temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, and presence penalty 0. Functional checks use temperature 0. Strata requests explicitly disable thinking with `reasoning_effort: none`; other servers need an appropriate control through `--request-extra`.
 
-`policy` records sampling defaults, overrides in `request_extra`, and explicit thinking controls after overrides in `thinking_request`. An empty thinking mapping means unspecified. These describe requests, not verified server behavior. The context value is likewise the configured limit, not an independently queried server value.
+`policy` records sampling defaults, overrides in `request_extra`, explicit thinking controls after overrides in `thinking_request`, and the reasoning request's controls in `reasoning_request`. An empty thinking mapping means unspecified. These describe requests, not verified server behavior. The context value is likewise the configured limit, not an independently queried server value.
+
+The reasoning case records reasoning and visible text separately: `first_visible_output_s` times the first content delta rather than the first output event, and `reasoning_chars` and `visible_chars` count stream text client-side. A reply of reasoning with no visible text is flagged as a failed run.
 
 ### Vision check
 

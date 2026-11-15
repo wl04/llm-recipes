@@ -61,6 +61,29 @@ def test_read_stream_counts_reasoning_delta_as_first_output() -> None:
     assert (result.first_output_s, result.reasoning, result.text) == (1.0, "thinking", "answer")
 
 
+def test_read_stream_separates_first_visible_output_from_first_reasoning() -> None:
+    lines = [
+        event(role="assistant"),
+        event(reasoning_content="Thinking"),
+        event(content="Answer"),
+        "data: [DONE]",
+    ]
+
+    result = api.read_stream(lines, clock_of(1.0, 5.0).__next__, started=0.0)
+
+    assert result.first_output_s == 1.0
+    assert result.first_content_s == 5.0
+
+
+def test_read_stream_has_no_first_content_when_reply_is_all_reasoning() -> None:
+    lines = [event(reasoning_content="Thinking"), "data: [DONE]"]
+
+    result = api.read_stream(lines, clock_of(1.0).__next__, started=0.0)
+
+    assert result.first_output_s == 1.0
+    assert result.first_content_s is None
+
+
 def test_read_stream_assembles_tool_call_fragments() -> None:
     first = {
         "index": 0,

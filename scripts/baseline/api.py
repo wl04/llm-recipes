@@ -40,6 +40,7 @@ class StreamResult:
     usage: Usage | None = None
     first_output_s: float | None = None
     last_output_s: float | None = None
+    first_content_s: float | None = None
 
 
 class StreamInterrupted(ApiError):
@@ -105,7 +106,7 @@ def read_stream(
     calls: dict[int, dict[str, Any]] = {}
     finish_reason: str | None = None
     usage: Usage | None = None
-    first = last = None
+    first = last = first_content = None
 
     def snapshot() -> StreamResult:
         return StreamResult(
@@ -116,6 +117,7 @@ def read_stream(
             usage,
             first,
             last,
+            first_content,
         )
 
     try:
@@ -137,6 +139,7 @@ def read_stream(
             if item.get("error"):
                 raise ApiError(f"Streaming error: {item['error']}")
             produced = False
+            produced_content = False
             for choice in item.get("choices", []):
                 delta = choice.get("delta") or {}
                 content = delta.get("content") or ""
@@ -146,10 +149,13 @@ def read_stream(
                 reasoning += thought
                 _merge_tool_calls(calls, fragments)
                 produced = produced or bool(content or thought or fragments)
+                produced_content = produced_content or bool(content)
                 finish_reason = choice.get("finish_reason") or finish_reason
             if produced:
                 last = (now if now is not None else clock()) - started
                 first = last if first is None else first
+                if produced_content and first_content is None:
+                    first_content = last
             usage = parse_usage(item.get("usage")) or usage
     except OSError as error:
         raise StreamInterrupted(f"Stream broke: {error}", snapshot()) from error

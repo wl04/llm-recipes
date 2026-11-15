@@ -135,6 +135,7 @@ class Runner:
                 "functional": _describe(workloads.FUNCTIONAL),
                 "request_extra": config.request_extra,
                 "thinking_request": workloads.thinking_request(config.kind, config.request_extra),
+                "reasoning_request": workloads.reasoning_request(config.kind, config.request_extra),
             },
             "target": config.target,
             "phases": {},
@@ -359,6 +360,7 @@ class Runner:
         self._sustained()
         self._contexts()
         self._conversation()
+        self._reasoning()
 
     def _payload(
         self,
@@ -367,8 +369,9 @@ class Runner:
         max_tokens: int,
         *,
         stream: bool,
+        payload_extra: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        return workloads.request_payload(
+        payload = workloads.request_payload(
             self._config.kind,
             self._model,
             messages,
@@ -376,7 +379,9 @@ class Runner:
             max_tokens=max_tokens,
             extra=self._config.request_extra,
             stream=stream,
+            case_extra=payload_extra,
         )
+        return payload
 
     def _post(self, payload: dict[str, Any]) -> dict[str, Any]:
         return api.post_json(
@@ -494,10 +499,17 @@ class Runner:
         run: int,
         messages: list[dict[str, Any]],
         max_tokens: int,
+        payload_extra: dict[str, Any] | None = None,
         **extra: Any,
     ) -> api.StreamResult | None:
         self._check_stop()
-        payload = self._payload(messages, workloads.PERFORMANCE, max_tokens, stream=True)
+        payload = self._payload(
+            messages,
+            workloads.PERFORMANCE,
+            max_tokens,
+            stream=True,
+            payload_extra=payload_extra,
+        )
         record: dict[str, Any] = {"phase": phase, "case": case, "run": run, **extra}
         record["max_tokens"] = max_tokens
         record["started_s"] = self._clock()
@@ -506,7 +518,7 @@ class Runner:
         try:
             result = self._stream_call(payload)
             if not (result.text or result.tool_calls):
-                error = "empty response"
+                error = "reasoning without visible output" if result.reasoning else "empty response"
         except api.StreamInterrupted as failure:
             result, error = failure.partial, str(failure)
         except api.ApiError as failure:
@@ -521,8 +533,11 @@ class Runner:
         if result is not None:
             record["usage"] = dataclasses.asdict(result.usage) if result.usage else None
             record["first_output_s"] = result.first_output_s
+            record["first_content_s"] = result.first_content_s
             record["last_output_s"] = result.last_output_s
             record["finish_reason"] = result.finish_reason
+            record["visible_chars"] = len(result.text)
+            record["reasoning_chars"] = len(result.reasoning)
         self._writer.append_request(record)
         if error:
             self._problems.append(f"{case} run {run}: {error}")
@@ -693,6 +708,23 @@ class Runner:
                 max_tokens=workloads.CONVERSATION_OUTPUT,
                 conversation_messages=len(prefix),
             )
+
+    def _reasoning(self) -> None:
+        """One reasoning request: verified enabling controls where known, else template defaults.
+
+        The visible reply and the reasoning text are recorded separately, so reports can show
+        time to first visible output and how much of the reply was reasoning.
+        """
+        self._progress("reasoning-medium")
+        self._stream_request(
+            phase="case",
+            case="reasoning-medium",
+            run=1,
+            messages=[{"role": "user", "content": workloads.REASONING_TASK}],
+            max_tokens=workloads.REASONING_OUTPUT,
+            payload_extra=dict(workloads.THINKING_ON.get(self._config.kind, {})),
+            workload="reasoning",
+        )
 
     def _contexts(self) -> None:
         suite = self._config.suite

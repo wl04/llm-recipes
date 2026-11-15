@@ -163,6 +163,7 @@ def test_run_completes_every_workload_in_the_fixed_order(tmp_path: Path) -> None
         "conversation-reuse-1",
         "conversation-reuse-2",
         "conversation-reuse-3",
+        "reasoning-medium",
     ]
     assert [e["status"] for e in document["functional"]] == ["pass", "pass", "pass"]
     assert [e["id"] for e in document["functional"]] == ["text", "tools", "vision"]
@@ -273,11 +274,12 @@ def test_run_replays_conversation_prefixes_after_the_cold_full_prompt(
     conversation = [p for p in server.requests if p.get("stream") and len(p["messages"]) > 1]
     full = conversation[0]["messages"]
     assert [p["messages"] for p in conversation[1:]] == [full[:3], full[:5], full]
-    assert [c["id"] for c in results_of(raw)["cases"]][-4:] == [
+    assert [c["id"] for c in results_of(raw)["cases"]][-5:] == [
         "conversation-fresh",
         "conversation-reuse-1",
         "conversation-reuse-2",
         "conversation-reuse-3",
+        "reasoning-medium",
     ]
 
 
@@ -641,3 +643,40 @@ def test_run_sizes_prompts_using_tabbyapi_chat_tokenizer(tmp_path: Path) -> None
     assert all("text" in body and "template_vars" in body for body in server.count_requests)
     probes = [r for r in raw.requests if r.get("case") == "context-8k"]
     assert all(abs(r["counted_input_tokens"] - 200) <= 2 for r in probes)
+
+
+def test_run_enables_thinking_only_for_the_reasoning_request(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        _, raw, _ = execute(tmp_path, server)
+
+    def carries_snail(payload: dict[str, Any]) -> bool:
+        return "snail" in str(payload["messages"][0]["content"])
+
+    on = [p for p in server.requests if carries_snail(p)]
+    off = [p for p in server.requests if not carries_snail(p)]
+    assert len(on) == 1
+    assert on[0]["reasoning_effort"] == "high"
+    assert on[0]["max_completion_tokens"] == 1536
+    assert all(p.get("reasoning_effort") == "none" for p in off)
+    assert raw.meta["policy"]["reasoning_request"] == {"reasoning_effort": "high"}
+
+
+def test_run_reports_the_reasoning_case_with_visible_and_reasoning_text(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        server.reasoning_tokens = 3
+        _, raw, _ = execute(tmp_path, server)
+
+    metrics = case_of(results_of(raw), "reasoning-medium")["metrics"]
+    other = case_of(results_of(raw), "context-8k")["metrics"]
+    assert metrics["reasoning_chars"]["value"] == 15
+    assert metrics["first_visible_output_s"]["value"] > metrics["first_output_s"]["value"]
+    assert "reasoning_chars" not in other
+
+
+def test_run_flags_reasoning_that_never_reaches_visible_output(tmp_path: Path) -> None:
+    with FakeServer(output_tokens=0) as server:
+        server.reasoning_tokens = 4
+        code, raw, _ = execute(tmp_path, server)
+
+    assert code != ExitCode.OK
+    assert any("reasoning without visible output" in p for p in raw.meta["problems"])

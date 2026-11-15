@@ -17,6 +17,8 @@ CASE_COLUMNS = (
     ("first_output_s", "First output (s)", True),
     ("engine_prefill_tok_s", "Prefill (tok/s)", True),
     ("client_decode_tok_s", "Decode (tok/s)", True),
+    ("first_visible_output_s", "First visible (s)", False),
+    ("reasoning_chars", "Reasoning chars", False),
     ("draft_acceptance", "Draft acceptance", False),
 )
 NOISE_LABELS = (
