@@ -30,6 +30,8 @@ files = [
     "scripts/launcher.py",
     "scripts/tui.py",
     "scripts/doctor.py",
+    "scripts/paths.py",
+    "scripts/install.py",
     "scripts/baseline",
     "scripts/run_baseline.py",
     "runtimes/exllamav3-tabbyapi/scripts/gpu.py",

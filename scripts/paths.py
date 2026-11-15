@@ -9,6 +9,7 @@ are overridable through the environment for tests and unusual machines.
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -41,6 +42,22 @@ def runtime_prefix() -> Path:
 def recipe_data_dir(models_root: Path, recipe_name: str) -> Path:
     """External data folder of one recipe under a models root."""
     return models_root / RECIPES_SUBPATH / recipe_name
+
+
+def version_stamp(root: Path) -> dict[str, object] | None:
+    """``VERSION`` stamp of an installed snapshot: revision without a git checkout.
+
+    Returns the installer's ``{repo_commit, installed_at, version}`` document as
+    ``{commit, dirty, source}``, or ``None`` when the stamp is absent or unreadable.
+    """
+    try:
+        stamp = json.loads((root / "VERSION").read_text())
+    except (OSError, ValueError):
+        return None
+    commit = stamp.get("repo_commit")
+    if not isinstance(commit, str) or not commit.strip():
+        return None
+    return {"commit": commit.strip(), "dirty": False, "source": "install"}
 
 
 def logs_dir(models_root: Path, instance: str) -> Path:

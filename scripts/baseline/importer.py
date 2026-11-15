@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import generate_configurations as generator
+import paths
 import yaml
 
 from baseline import schema, workloads
@@ -550,6 +551,9 @@ def git_revision(root: Path) -> dict[str, Any]:
         ["git", "-C", str(root), "rev-parse", "HEAD"], check=False, capture_output=True, text=True
     )
     if commit.returncode:
+        stamp = paths.version_stamp(root)
+        if stamp is not None:
+            return {"commit": stamp["commit"], "dirty": False}
         return {"commit": None, "dirty": False}
     dirty = (
         subprocess.run(

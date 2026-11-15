@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import paths
+
 from baseline import schema, sources
 
 Run = Callable[[list[str]], "subprocess.CompletedProcess[str]"]
@@ -145,10 +147,14 @@ def resolve_container(
 
 
 def repository_revision(root: Path, run: Run = run_command) -> dict[str, Any] | None:
-    """The repository commit and whether the working tree has changes; ``None`` if unavailable."""
+    """The repository commit and whether the working tree has changes; ``None`` if unavailable.
+
+    Outside a git checkout (an installed snapshot), falls back to the installer's
+    ``VERSION`` stamp so runs still record the exact serving code.
+    """
     commit = run(["git", "-C", str(root), "rev-parse", "HEAD"])
     if commit.returncode:
-        return None
+        return paths.version_stamp(root)
     status = run(["git", "-C", str(root), "status", "--porcelain"])
     return {"commit": commit.stdout.strip(), "dirty": bool(status.stdout.strip())}
 
