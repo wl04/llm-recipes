@@ -38,13 +38,13 @@
 | Agent / harness | LM Studio Bionic |
 | Harness version | 1.2.0 (build 2) |
 | Inference engine | llama.cpp |
-| Engine version | 2.67.0 to 2.73.0 |
-| Engine version notes | LM Studio-specific llama.cpp backends; the exact build Bionic 1.2.0 selected for the Vulkan server was not recorded during the run, and installed Vulkan backends range from 2.67.0 to 2.73.0 |
+| Engine version | 2.73.0 |
+| Engine version notes | LM Studio-specific llama.cpp build selected for the Vulkan server, reported by the operator; upstream llama.cpp version unknown |
 | Compute backend | Vulkan |
 | Backend API version | 1.4.354 |
 | GPU driver | Mesa RADV |
 | GPU driver version | 26.2.4-1ubuntu1 |
-| Software configuration basis | Model, context length, suite v2 request policy, corpus hash, and runner commit f78d3db recorded by the baseline run; application and host rows transcribed from the 002-2026-11-02-coding record and the 2026-11-15 capture notes |
+| Software configuration basis | Model, context length, suite v2 request policy, corpus hash, and runner commit f78d3db recorded by the baseline run; llama.cpp Vulkan backend build confirmed by the operator after the run; application and host rows transcribed from the 002-2026-11-02-coding record and the 2026-11-15 capture notes |
 
 
 ## Model
