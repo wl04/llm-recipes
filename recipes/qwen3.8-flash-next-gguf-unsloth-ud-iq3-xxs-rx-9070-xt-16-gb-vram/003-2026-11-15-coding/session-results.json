@@ -18,27 +18,27 @@
     "unclosed_requests": false
   },
   "totals": {
-    "requests": 1926,
+    "requests": 1943,
     "cancelled": 0,
     "unclosed_requests": null,
-    "prompt_tokens": 137750552,
-    "reused_prompt_tokens": 133646462,
-    "read_prompt_tokens": 4104090,
-    "generated_tokens": 1195540,
-    "prefill_seconds": 2110.7,
-    "decode_seconds": 13669.3,
-    "prefill_tok_s": 1944.4,
+    "prompt_tokens": 138731884,
+    "reused_prompt_tokens": 134529422,
+    "read_prompt_tokens": 4202462,
+    "generated_tokens": 1212302,
+    "prefill_seconds": 2148.7,
+    "decode_seconds": 13848.5,
+    "prefill_tok_s": 1955.9,
     "decode_tok_s": 87.5,
-    "decode_tok_s_median": 86.0,
-    "drafts_accepted": 722779,
-    "drafts_proposed": 983273,
+    "decode_tok_s_median": 86.1,
+    "drafts_accepted": 733560,
+    "drafts_proposed": 997103,
     "draft_acceptance": 0.7,
     "context_buckets": [
       {
         "label": "under 2,048 tokens",
-        "requests": 33,
-        "prompt_tokens": 12967,
-        "generated_tokens": 17016
+        "requests": 34,
+        "prompt_tokens": 13943,
+        "generated_tokens": 17615
       },
       {
         "label": "2,048-8,191 tokens",
@@ -54,9 +54,9 @@
       },
       {
         "label": "32,768-131,071 tokens",
-        "requests": 1826,
-        "prompt_tokens": 136572710,
-        "generated_tokens": 1134730
+        "requests": 1842,
+        "prompt_tokens": 137553066,
+        "generated_tokens": 1150893
       }
     ]
   }
