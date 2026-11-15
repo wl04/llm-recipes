@@ -1,0 +1,123 @@
+id: Qwen3.8-27B / GGUF / RX 9070 XT / 16 GB VRAM
+hardware:
+  gpu: AMD Radeon RX 9070 XT
+  cpu: AMD Ryzen 7 9800X3D
+  memory:
+    architecture: discrete
+    dedicated_vram_gib: 16
+    system_ram_gib: 64
+    unified_memory_gib: null
+os:
+  name: Ubuntu
+  version: '26.10'
+  kernel: 7.3.0-10-generic
+  kernel_driver: amdgpu
+software:
+  harness: LM Studio Bionic
+  harness_version: '1.2.0 (build 2)'
+  engine: llama.cpp
+  engine_version: '2.67.0 to 2.73.0'
+  engine_version_note: >-
+    LM Studio-specific llama.cpp backends; the exact build Bionic 1.2.0 selected for the
+    Vulkan server was not recorded during the run, and installed Vulkan backends range
+    from 2.67.0 to 2.73.0
+  backend: Vulkan
+  backend_api_version: 1.4.354
+  gpu_driver: Mesa RADV
+  gpu_driver_version: 26.2.4-1ubuntu1 # From the supplied system information
+  configuration_basis: >-
+    Model, context length, suite v2 request policy, corpus hash, and runner commit
+    f78d3db recorded by the baseline run; application and host rows transcribed from the
+    001-2026-11-02-coding record and the 2026-11-15 capture notes
+model:
+  name: Qwen3.8-27B
+  format: GGUF
+  quantization: IQ3_XXS
+  repository: https://huggingface.co/ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF
+  artifacts:
+  - Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf
+  - mmproj-Qwen3.8-27B-BF16.gguf
+settings:
+  Served model id: qwen3.8-27b-gsq-rco
+  Automatic hardware optimization: 'Off'
+  Context length: '131072'
+  GPU offload: 65 (maximum in the UI)
+  CPU thread pool: '6'
+  Evaluation batch size: '2048'
+  Physical batch size: '512'
+  Concurrent predictions: '1'
+  Flash Attention: 'On'
+  K / V cache quantization: Q8_0 / Q8_0
+  KV cache GPU offload / Unified KV cache: Both on
+  Context checkpoints: '32'
+  Keep model in memory / mmap: Both on
+  Speculative decoding: MTP
+  Max / min draft tokens / draft probability: 3 / 0 / 0
+  Application UI settings: Carried over from the 001-2026-11-02-coding record; only the context length was reconfirmed by the baseline run
+  Workload suite: '2'
+  Request policy: 'Performance: temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, presence penalty 0. Functional checks: temperature 0. Concurrency 1. Output caps: 1,024 for context cases, 2,048 for sustained generation, 1,536 for reasoning, 512 for vision, 256 for text and conversation.'
+  Thinking control: 'Per request, verified by live probe 2026-11-15: reasoning_effort none for performance and functional requests, reasoning_effort high for the reasoning case. chat_template_kwargs, enable_thinking, and reasoning are accepted but inert on this build; reasoning_effort off answers HTTP 400.'
+  Forced tool call: 'tool_choice required (string form; the object form is rejected with HTTP 400)'
+  Request endpoint: /v1/chat/completions; streamed performance requests
+  Token counting: Unavailable — LM Studio exposes no usable tokenize route (tests/fixtures/lmstudio/token_count.unavailable.txt)
+  Cache reuse: 'Server reports no cached-token counts; the identical warm replay reached first output in 0.47 s versus 2.11 s cold'
+  Vision: 'true — functional check passed (identity 2/2, detail 7/7) with the mmproj adapter loaded'
+
+# Display labels keyed by dotted YAML path.
+labels:
+  hardware: Hardware
+  hardware.gpu: GPU
+  hardware.cpu: CPU
+  hardware.memory.architecture: Memory architecture
+  hardware.memory.dedicated_vram_gib: Dedicated VRAM (GB)
+  hardware.memory.system_ram_gib: System RAM (GB)
+  hardware.memory.unified_memory_gib: Unified memory (GB)
+  os: Operating system
+  os.name: Operating system
+  os.version: OS version
+  os.kernel: Kernel version
+  os.kernel_driver: Kernel driver
+  software: Software
+  software.harness: Agent / harness
+  software.harness_version: Harness version
+  software.engine: Inference engine
+  software.engine_version: Engine version
+  software.engine_version_note: Engine version notes
+  software.backend: Compute backend
+  software.backend_api_version: Backend API version
+  software.gpu_driver: GPU driver
+  software.gpu_driver_version: GPU driver version
+  software.configuration_basis: Software configuration basis
+  model: Model
+  model.name: Model name
+  model.format: Model format
+  model.quantization: Weight quantization
+  model.repository: Model repository
+  model.artifacts: Model files
+  settings: Inference settings
+  settings.Served model id: Served model id
+  settings.Automatic hardware optimization: Automatic hardware optimization
+  settings.Context length: Context length
+  settings.GPU offload: GPU offload
+  settings.CPU thread pool: CPU thread pool
+  settings.Evaluation batch size: Evaluation batch size
+  settings.Physical batch size: Physical batch size
+  settings.Concurrent predictions: Concurrent predictions
+  settings.Flash Attention: Flash Attention
+  settings.K / V cache quantization: K / V cache quantization
+  settings.KV cache GPU offload / Unified KV cache: KV cache GPU offload / Unified
+    KV cache
+  settings.Context checkpoints: Context checkpoints
+  settings.Keep model in memory / mmap: Keep model in memory / mmap
+  settings.Speculative decoding: Speculative decoding
+  settings.Max / min draft tokens / draft probability: Max / min draft tokens / draft
+    probability
+  settings.Application UI settings: Application UI settings
+  settings.Workload suite: Workload suite
+  settings.Request policy: Request policy
+  settings.Thinking control: Thinking control
+  settings.Forced tool call: Forced tool call
+  settings.Request endpoint: Request endpoint
+  settings.Token counting: Token counting
+  settings.Cache reuse: Cache reuse
+  settings.Vision: Vision
