@@ -17,7 +17,13 @@ FIT_TOLERANCE = 0.01
 FIT_ROUNDS = 8
 
 # Verified field names; other servers need their own settings supplied with --request-extra.
-THINKING_OFF: dict[str, dict[str, Any]] = {"strata": {"reasoning_effort": "none"}}
+THINKING_OFF: dict[str, dict[str, Any]] = {
+    "strata": {"reasoning_effort": "none"},
+    # LM Studio serves Qwen3-family templates with thinking on by default. The template reads
+    # enable_thinking from chat_template_kwargs, which the endpoint passes through top-level;
+    # top-level reasoning_effort "off" is accepted but ignored (lmstudio-bug-tracker #2413).
+    "lmstudio": {"chat_template_kwargs": {"enable_thinking": False}},
+}
 # Verified enabling control for the reasoning case; other servers keep template defaults.
 THINKING_ON: dict[str, dict[str, Any]] = {"strata": {"reasoning_effort": "high"}}
 TOKEN_LIMIT_FIELD = {"strata": "max_completion_tokens"}

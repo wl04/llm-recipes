@@ -307,9 +307,13 @@ def test_token_counts_are_shown_as_whole_numbers_even_when_a_median_is_fractiona
     assert "117,733.50" not in row
 
 
-def conversation_cases(cached: dict[str, int | None]) -> list[dict[str, Any]]:
+def conversation_cases(
+    cached: dict[str, int | None],
+    first_outputs: dict[str, float] | None = None,
+) -> list[dict[str, Any]]:
     def case(case_id: str, input_tokens: int) -> dict[str, Any]:
         cached_tokens = cached.get(case_id)
+        first_output = (first_outputs or {}).get(case_id, 1.2)
         return {
             "id": case_id,
             "status": "ok",
@@ -317,7 +321,7 @@ def conversation_cases(cached: dict[str, int | None]) -> list[dict[str, Any]]:
             "finish_reason": "length",
             "metrics": {
                 "input_tokens": schema.measured(input_tokens, "tokens", "server usage"),
-                "first_output_s": schema.measured(1.2, "s", "client monotonic clock"),
+                "first_output_s": schema.measured(first_output, "s", "client monotonic clock"),
                 "cached_input_tokens": (
                     schema.measured(cached_tokens, "tokens", "server usage")
                     if cached_tokens is not None
@@ -338,9 +342,12 @@ def cached_cases() -> list[tuple[str, int]]:
     ]
 
 
-def document_with_conversation(cached: dict[str, int | None]) -> dict[str, Any]:
+def document_with_conversation(
+    cached: dict[str, int | None],
+    first_outputs: dict[str, float] | None = None,
+) -> dict[str, Any]:
     document = sample_results()
-    document["cases"].extend(conversation_cases(cached))
+    document["cases"].extend(conversation_cases(cached, first_outputs))
     return document
 
 
@@ -371,3 +378,29 @@ def test_conversation_section_reports_observed_prefix_reuse() -> None:
 
 def test_run_without_conversation_cases_has_no_conversation_section() -> None:
     assert "### Conversation reuse" not in render()
+
+
+def test_conversation_section_infers_reuse_from_identical_prompt_timing_when_counts_missing() -> (
+    None
+):
+    document = document_with_conversation(
+        {case_id: None for case_id, _ in cached_cases()},
+        {"conversation-fresh": 1.9, "conversation-reuse-3": 0.5},
+    )
+
+    text = section(render(document), "### Conversation reuse")
+
+    assert "0.50 s versus 1.90 s cold" in text
+    assert "consistent with KV-cache reuse" in text
+
+
+def test_conversation_section_states_no_reuse_when_identical_replay_is_not_faster() -> None:
+    document = document_with_conversation(
+        {case_id: None for case_id, _ in cached_cases()},
+        {"conversation-fresh": 1.9, "conversation-reuse-3": 1.95},
+    )
+
+    text = section(render(document), "### Conversation reuse")
+
+    assert "Cache reuse: unknown" in text
+    assert "no reuse observed" in text

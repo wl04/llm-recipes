@@ -111,6 +111,17 @@ class FakeServer:
                 if behavior == "fail":
                     self._json(500, {"error": {"message": "injected failure"}})
                     return
+                if behavior == "reject_tool_choice":
+                    self._json(
+                        400,
+                        {
+                            "error": {
+                                "message": "Invalid tool_choice type: 'object'. "
+                                "Supported string values: none, auto, required"
+                            }
+                        },
+                    )
+                    return
                 self._chat(payload, truncate=behavior == "truncate")
 
             def _count(self, payload: dict[str, Any]) -> None:

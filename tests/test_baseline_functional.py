@@ -58,3 +58,9 @@ def test_image_content_rejects_unsupported_format() -> None:
 def test_answer_mentions_temperature_only_when_it_reports_it() -> None:
     assert functional.reports_temperature("It is 17 degrees in Belgrade.")
     assert not functional.reports_temperature("It is sunny.")
+
+
+def test_forced_tool_choice_returns_string_required_for_lmstudio_only() -> None:
+    assert functional.forced_tool_choice("lmstudio") == "required"
+    assert functional.forced_tool_choice("strata") == functional.TOOL_CHOICE
+    assert functional.forced_tool_choice("tabbyapi") == functional.TOOL_CHOICE

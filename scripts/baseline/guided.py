@@ -96,7 +96,7 @@ class _Interview:
             value = self.text("Served model loaded in the app", default)
             if value in served:
                 return value
-            self._log(f"not one of the listed models: {', '.join(served)}")
+            self._log(f"not one of the listed models: {', '.join(served)} (got {value!r})")
         raise GuidedAborted("no valid model id given")
 
     def context(self, given: int | None) -> int:

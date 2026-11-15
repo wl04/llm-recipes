@@ -450,7 +450,9 @@ class Runner:
             FUNCTIONAL_OUTPUT_TOKENS,
             stream=False,
         )
-        first_payload.update(tools=functional.TOOLS, tool_choice=functional.TOOL_CHOICE)
+        first_payload.update(
+            tools=functional.TOOLS, tool_choice=functional.forced_tool_choice(self._config.kind)
+        )
         message = self._post(first_payload)["choices"][0]["message"]
         calls = message.get("tool_calls") or []
         functional.check_tool_call(calls)

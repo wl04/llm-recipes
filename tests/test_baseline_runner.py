@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from baseline import schema, vision
+from baseline import functional, schema, vision
 from baseline.aggregate import build_results
 from baseline.lifecycle import LifecycleError, StartedServer
 from baseline.rawlog import RawRun, RunWriter, read_run
@@ -680,3 +680,33 @@ def test_run_flags_reasoning_that_never_reaches_visible_output(tmp_path: Path) -
 
     assert code != ExitCode.OK
     assert any("reasoning without visible output" in p for p in raw.meta["problems"])
+
+
+def test_run_forces_tools_with_the_string_choice_form_when_server_rejects_objects(
+    tmp_path: Path,
+) -> None:
+    def behave(payload: dict[str, Any]) -> str | None:
+        if isinstance(payload.get("tool_choice"), dict):
+            return "reject_tool_choice"
+        return None
+
+    with FakeServer() as server:
+        server.behave = behave
+        _, raw, _ = execute(tmp_path, server, kind="lmstudio")
+
+    forced = [p for p in server.requests if p.get("tool_choice") == "required"]
+    assert forced
+    tools = next(c for c in results_of(raw)["functional"] if c["id"] == "tools")
+    assert tools["status"] == "pass"
+
+
+def test_run_forces_tools_with_the_named_object_choice_form_for_strata(
+    tmp_path: Path,
+) -> None:
+    with FakeServer() as server:
+        _, raw, _ = execute(tmp_path, server, kind="strata")
+
+    forced = [p for p in server.requests if p.get("tool_choice") == functional.TOOL_CHOICE]
+    assert forced
+    tools = next(c for c in results_of(raw)["functional"] if c["id"] == "tools")
+    assert tools["status"] == "pass"

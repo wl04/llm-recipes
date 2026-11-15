@@ -24,6 +24,18 @@ TOOLS = [
     }
 ]
 TOOL_CHOICE = {"type": "function", "function": {"name": TOOL_NAME}}
+
+
+def forced_tool_choice(kind: str) -> Any:
+    """The forced tool-selection control as the given server kind accepts it.
+
+    LM Studio rejects the OpenAI object form with HTTP 400 and supports only the
+    string values ``none``, ``auto``, and ``required``; with a single tool listed,
+    ``required`` forces a call to that tool.
+    """
+    return "required" if kind == "lmstudio" else TOOL_CHOICE
+
+
 TEMPERATURE_C = 17
 
 

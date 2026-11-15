@@ -233,10 +233,40 @@ def _conversation(cases: list[dict[str, Any]]) -> list[str]:
             "cached on the replay ladder.",
         ]
     else:
-        lines += [
-            "",
-            "Cache reuse: unknown — the server reports no cached-token counts.",
-        ]
+        note = "Cache reuse: unknown — the server reports no cached-token counts."
+        fresh_first = fresh.get("metrics", {}).get("first_output_s")
+        twin = next(
+            (
+                case
+                for case in reuse
+                if _has(case.get("metrics", {}).get("first_output_s"))
+                and _has(case.get("metrics", {}).get("input_tokens"))
+                and _has(fresh_first)
+                and _has(fresh.get("metrics", {}).get("input_tokens"))
+                and case["metrics"]["input_tokens"]["value"]
+                == fresh["metrics"]["input_tokens"]["value"]
+            ),
+            None,
+        )
+        if twin is not None and fresh_first is not None and fresh_first["value"] > 0:
+            cold = fresh_first["value"]
+            warm = twin["metrics"]["first_output_s"]["value"]
+            if warm <= 0.9 * cold:
+                note += (
+                    f" Replaying the identical prompt reached first output in {warm:.2f} s "
+                    f"versus {cold:.2f} s cold — consistent with KV-cache reuse across requests."
+                )
+            elif warm >= 1.1 * cold:
+                note += (
+                    f" Replaying the identical prompt was slower, not faster ({warm:.2f} s "
+                    f"versus {cold:.2f} s cold) — no reuse observed."
+                )
+            else:
+                note += (
+                    " Replaying the identical prompt changed time to first output by less "
+                    "than 10% — no reuse observed."
+                )
+        lines += ["", note]
     return lines
 
 
