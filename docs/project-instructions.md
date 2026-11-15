@@ -37,7 +37,7 @@ Run the same CPU-only checks locally and in CI:
 bash scripts/check.sh
 ```
 
-The script runs Ruff lint and formatting checks, mypy, pytest, generated-document checks, and ShellCheck. The workflow is `.github/workflows/check.yml`. If ShellCheck is unavailable locally, the script skips shell checks with a warning; CI installs it.
+The script runs Ruff lint and formatting checks, mypy, pytest, generated-document checks, and ShellCheck. The workflow is `.github/workflows/check.yml`, which runs the script on the oldest interpreter the project claims to support and on the newest interpreter it is validated against; `requires-python` in `pyproject.toml` states the range. If ShellCheck is unavailable locally, the script skips shell checks with a warning; CI installs it.
 
 `pyproject.toml` defines the exact mypy targets and external-import exceptions. Strict checking covers the generator, launcher modules, the ExLlamaV3 runtime helpers, and tests. The two runtimes carry same-named helper modules that import siblings by name, so `check.sh` checks `runtimes/strata` in its own mypy invocation; run `bash scripts/check.sh` rather than a bare `mypy` to cover both.
 
