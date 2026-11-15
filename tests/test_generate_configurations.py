@@ -1,5 +1,6 @@
 """Regression tests for scripts/generate_configurations.py."""
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -118,7 +119,9 @@ def test_main_validates_all_profiles_before_writing_any_file(
     broken.mkdir(parents=True)
     (broken_recipe / "recipe.md").write_text(RECIPE_PAGE)
     broken_profile = PROFILE.format(caption="Other Model / FMT / Test GPU / 8 GB VRAM")
-    (broken / "profile.yaml").write_text(broken_profile.replace("  hardware.cpu: CPU\n", ""))
+    (broken / "profile.yaml").write_text(
+        broken_profile + "\nsettings:\n  Request policy: temperature 1\n"
+    )
     (broken / "summary.md").write_text("# 001 · 2026-01-02 — Other\n")
     (broken / "configuration.md").write_text(CONFIGURATION)
     good_original = configuration_path(tmp_path).read_text()
@@ -170,22 +173,22 @@ def test_render_omits_empty_values_and_keeps_zero_and_false(
     write_recipe_tree(tmp_path)
     profile = tmp_path / "recipes" / SLUG / "001-2026-01-01-test" / "profile.yaml"
     data = yaml.safe_load(profile.read_text())
-    data["settings"] = {"Batch size": 0, "Streaming": False, "Notes": None, "Extra": []}
-    data["labels"]["settings"] = "Inference settings"
-    data["labels"]["settings.Batch size"] = "Batch size"
-    data["labels"]["settings.Streaming"] = "Streaming"
-    data["labels"]["settings.Notes"] = "Notes"
-    data["labels"]["settings.Extra"] = "Extra"
+    data["settings"] = {
+        "serving": {"max_batch_size": 0, "gpu_offload": None},
+        "thinking": {"enabled": False, "control": ""},
+        "notes": "   ",
+    }
     profile.write_text(yaml.safe_dump(data))
 
     exit_code = run_main(monkeypatch, tmp_path)
 
     assert exit_code == 0
     document = configuration_path(tmp_path).read_text()
-    assert "| Batch size | 0 |" in document
-    assert "| Streaming | False |" in document
+    assert "| Maximum batch size | 0 |" in document
+    assert "| Thinking enabled | False |" in document
     assert "Notes" not in document
-    assert "Extra" not in document
+    assert "GPU offload" not in document
+    assert "Thinking control" not in document
 
 
 def test_update_index_orders_same_day_experiments_by_sequence_and_links_them(
@@ -526,3 +529,173 @@ def test_main_check_is_current_after_one_generation_that_filled_a_placeholder_ti
     assert run_main(monkeypatch, tmp_path, "--check") == 0
     index = (tmp_path / "recipes" / SLUG / "recipe.md").read_text()
     assert "002 · 2026-01-02 — Baseline" in index
+
+
+CANONICAL_SETTINGS: dict[str, object] = {
+    "serving": {
+        "context_length_tokens": 131072,
+        "speculative_decoding": "MTP",
+        "custom_gdn_gate": "fp8",
+    },
+    "sampling": {
+        "presence_penalty": 0.0,
+        "top_k": 20,
+        "temperature": 1.0,
+        "min_p": 0.0,
+    },
+    "thinking": {"control": "reasoning_effort=none", "enabled": False},
+    "requests": {"endpoint": "/v1/chat/completions", "concurrency": 1},
+    "notes": "Functional checks run at temperature 0.",
+}
+
+
+def write_settings_profile(
+    tmp_path: Path,
+    settings: dict[str, object],
+    labels: dict[str, object] | None = None,
+) -> Path:
+    recipe = write_recipe_tree(tmp_path)
+    result = recipe / "001-2026-01-01-test"
+    profile = result / "profile.yaml"
+    data = yaml.safe_load(profile.read_text())
+    data["settings"] = settings
+    if labels is not None:
+        data["labels"] = labels
+    profile.write_text(yaml.safe_dump(data))
+    return result
+
+
+def test_render_uses_registry_labels_and_canonical_order_for_sampling_keys(
+    tmp_path: Path,
+) -> None:
+    result = write_settings_profile(tmp_path, CANONICAL_SETTINGS)
+
+    document = gen.render(result)
+
+    sampling = document[document.index("## Sampling") : document.index("## Thinking")]
+    assert (
+        sampling.index("| Temperature | 1 |")
+        < sampling.index("| Top K | 20 |")
+        < sampling.index("| Min P | 0 |")
+        < sampling.index("| Presence penalty | 0 |")
+    )
+
+
+def test_render_orders_setting_sections_regardless_of_yaml_key_order(
+    tmp_path: Path,
+) -> None:
+    result = write_settings_profile(tmp_path, CANONICAL_SETTINGS)
+
+    document = gen.render(result)
+
+    positions = [
+        document.index(title)
+        for title in (
+            "## Serving",
+            "## Sampling",
+            "## Thinking",
+            "## Requests",
+            "## Experiment notes",
+        )
+    ]
+    assert positions == sorted(positions)
+    assert document.index("Functional checks run at temperature 0.") > positions[-1]
+
+
+def test_render_orders_serving_rows_by_registry_then_alphabetically(
+    tmp_path: Path,
+) -> None:
+    result = write_settings_profile(
+        tmp_path,
+        {
+            "serving": {
+                "custom_gdn_gate": "fp8",
+                "context_length_tokens": 131072,
+                "another_custom_key": "on",
+            }
+        },
+    )
+
+    document = gen.render(result)
+
+    serving = document[document.index("## Serving") : document.index("\n---\n")]
+    assert (
+        serving.index("Context length (tokens)")
+        < serving.index("Another Custom Key")
+        < serving.index("Custom Gdn Gate")
+    )
+
+
+@pytest.mark.parametrize(
+    ("settings", "message"),
+    [
+        (
+            {"sampling": {"top_k": 20, "temp": 1.0}},
+            "unknown key 'temp' in settings.sampling",
+        ),
+        ({"thinking": {"effort": "high"}}, "unknown key 'effort' in settings.thinking"),
+        ({"requests": {"api_key": "x"}}, "unknown key 'api_key' in settings.requests"),
+        ({"Request policy": "temperature 1"}, "not allowed"),
+        ({"serving": {"Top K": 20}}, "must be snake_case"),
+        ({"serving": {"vision": {"enabled": True}}}, "must not nest"),
+        ({"notes": ["a", "b"]}, "notes must be a single string"),
+    ],
+)
+def test_main_rejects_profiles_violating_the_settings_schema(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, settings: dict[str, object], message: str
+) -> None:
+    write_settings_profile(tmp_path, settings)
+
+    with pytest.raises(ValueError, match=message):
+        gen.render(tmp_path / "recipes" / SLUG / "001-2026-01-01-test")
+    assert run_main(monkeypatch, tmp_path) == 2
+
+
+def test_render_derives_title_case_label_for_engine_specific_serving_key(
+    tmp_path: Path,
+) -> None:
+    result = write_settings_profile(tmp_path, {"serving": {"custom_gdn_gate": "fp8"}})
+
+    assert "| Custom Gdn Gate | fp8 |" in gen.render(result)
+
+
+def test_render_label_override_wins_over_registry(tmp_path: Path) -> None:
+    result = write_settings_profile(
+        tmp_path,
+        {"sampling": {"top_k": 20}},
+        labels={"sampling.top_k": "Top-K override"},
+    )
+
+    assert "| Top-K override | 20 |" in gen.render(result)
+
+
+def test_render_adds_workload_suite_row_from_results_json(tmp_path: Path) -> None:
+    result = write_baseline_experiment(tmp_path)
+
+    assert "| Workload suite | 1 |" in gen.render(result)
+
+
+def test_render_warns_when_profile_sampling_duplicates_results_json_policy(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    result = write_settings_profile(
+        tmp_path,
+        {"sampling": {"temperature": 1.0, "top_k": 20, "min_p": 0.0}},
+    )
+    document = {
+        "suite_version": "1",
+        "policy": {"performance": {"temperature": 1.0, "top_k": 20, "min_p": 0.0}},
+    }
+    (result / "results.json").write_text(json.dumps(document))
+    gen.render(result)
+
+    assert "duplicate policy.performance" in capsys.readouterr().err
+
+
+def test_render_omits_setting_sections_without_values(tmp_path: Path) -> None:
+    result = write_settings_profile(tmp_path, {"serving": {"chunk_size": 1024}, "sampling": {}})
+
+    document = gen.render(result)
+
+    assert "## Sampling" not in document
+    assert "## Thinking" not in document

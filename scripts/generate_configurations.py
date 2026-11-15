@@ -23,6 +23,193 @@ RESULTS_START = "<!-- BEGIN GENERATED RESULTS -->"
 RESULTS_END = "<!-- END GENERATED RESULTS -->"
 FOLDER_NAME = re.compile(r"(\d{3})-(\d{4}-\d{2}-\d{2})-(.+)")
 
+SETTINGS_GROUPS = ("serving", "sampling", "thinking", "requests", "notes")
+GROUP_TITLES = {
+    "serving": "Serving",
+    "sampling": "Sampling",
+    "thinking": "Thinking",
+    "requests": "Requests",
+    "notes": "Experiment notes",
+}
+SAMPLING_KEYS = (
+    "temperature",
+    "top_k",
+    "top_p",
+    "min_p",
+    "repetition_penalty",
+    "presence_penalty",
+    "seed",
+)
+THINKING_KEYS = ("enabled", "control", "budget")
+REQUESTS_KEYS = (
+    "endpoint",
+    "streaming",
+    "max_output_tokens",
+    "concurrency",
+    "token_counting",
+    "forced_tool_call",
+)
+SERVING_KEYS = (
+    "served_model_id",
+    "speculative_decoding",
+    "context_length_tokens",
+    "cache_capacity",
+    "target_cache",
+    "draft_cache",
+    "chunk_size",
+    "max_batch_size",
+    "parallel_predictions",
+    "auto_hardware_optimization",
+    "gpu_offload",
+    "cpu_thread_pool",
+    "eval_batch_size",
+    "physical_batch_size",
+    "flash_attention",
+    "kv_cache_quantization",
+    "kv_gpu_offload_unified",
+    "ctx_checkpoints",
+    "memory_map",
+    "draft_token_limits",
+    "context_overflow",
+    "on_demand_tensor_loading",
+    "kv_cache",
+    "gpu_resident_kv_cells",
+    "expert_cache",
+    "prefill",
+    "max_draft_tokens",
+    "min_draft_probability",
+    "draft_vocabulary",
+    "vision",
+    "vision_offload",
+    "vision_min_image_tokens",
+    "vision_max_image_tokens",
+    "expert_pool",
+    "conversation_cache",
+    "hyper_connection_projections",
+    "route_tail_skip",
+    "tensor_parallel",
+    "gpu_selection",
+    "recurrent_state",
+    "sysmem_recurrent_cache_mib",
+)
+SNAKE_CASE = re.compile(r"[a-z][a-z0-9_]*\Z")
+
+# Display labels for every canonical dotted profile path. Profiles may override
+# a path with their own optional ``labels`` mapping; engine-specific serving
+# keys not listed here fall back to a derived Title Case label.
+LABELS: dict[str, str] = {
+    "hardware": "Hardware",
+    "hardware.gpu": "GPU",
+    "hardware.cpu": "CPU",
+    "hardware.memory": "Memory",
+    "hardware.memory.architecture": "Memory architecture",
+    "hardware.memory.dedicated_vram_gib": "Dedicated VRAM (GB)",
+    "hardware.memory.system_ram_gib": "System RAM (GB)",
+    "hardware.memory.unified_memory_gib": "Unified memory (GB)",
+    "hardware.memory.speed_mt_s": "RAM speed (MT/s)",
+    "os": "Operating system",
+    "os.name": "Operating system",
+    "os.version": "OS version",
+    "os.kernel": "Kernel version",
+    "os.kernel_driver": "Kernel driver",
+    "software": "Software",
+    "software.harness": "Agent / harness",
+    "software.harness_version": "Harness version",
+    "software.server": "API server",
+    "software.api_server": "API server",
+    "software.server_version": "API server version / revision",
+    "software.engine": "Inference engine",
+    "software.engine_version": "Engine version",
+    "software.engine_version_note": "Engine version notes",
+    "software.revision": "Engine source revision",
+    "software.backend": "Compute backend",
+    "software.backend_api_version": "Backend API version",
+    "software.gpu_driver": "GPU driver",
+    "software.gpu_driver_version": "GPU driver version",
+    "software.pytorch": "PyTorch",
+    "software.python": "Python",
+    "software.host_python": "Host Python",
+    "software.docker": "Docker",
+    "software.base_image_tag": "Base image tag at preparation",
+    "software.rocm_image_release": "Base image tag at preparation",
+    "software.base_image": "Pinned base image",
+    "software.running_image_id": "Running image ID",
+    "software.vision_engine": "Vision engine",
+    "software.vision_version": "Vision engine release",
+    "software.vision_revision": "Vision revision",
+    "model": "Model",
+    "model.name": "Model name",
+    "model.format": "Model format",
+    "model.quantization": "Weight quantization",
+    "model.repository": "Model repository",
+    "model.revision": "Model revision",
+    "model.artifacts": "Model files",
+    "model.draft_repository": "Draft repository",
+    "model.draft_revision": "Draft revision",
+    "model.draft_quantization": "Draft quantization",
+    "model.draft_size": "Converted draft weight size",
+    "model.vision_projector": "Vision projector",
+    "model.preparation": "Model preparation",
+    "serving.served_model_id": "Served model id",
+    "serving.speculative_decoding": "Speculative decoding",
+    "serving.context_length_tokens": "Context length (tokens)",
+    "serving.cache_capacity": "Cache capacity",
+    "serving.target_cache": "Target cache",
+    "serving.draft_cache": "Draft cache",
+    "serving.chunk_size": "Chunk size",
+    "serving.max_batch_size": "Maximum batch size",
+    "serving.parallel_predictions": "Concurrent predictions",
+    "serving.auto_hardware_optimization": "Automatic hardware optimization",
+    "serving.gpu_offload": "GPU offload",
+    "serving.cpu_thread_pool": "CPU thread pool",
+    "serving.eval_batch_size": "Evaluation batch size",
+    "serving.physical_batch_size": "Physical batch size",
+    "serving.flash_attention": "Flash Attention",
+    "serving.kv_cache_quantization": "K / V cache quantization",
+    "serving.kv_gpu_offload_unified": "KV cache GPU offload / Unified KV cache",
+    "serving.ctx_checkpoints": "Context checkpoints",
+    "serving.memory_map": "Keep model in memory / mmap",
+    "serving.draft_token_limits": "Max / min draft tokens / draft probability",
+    "serving.context_overflow": "Context overflow",
+    "serving.on_demand_tensor_loading": "On-demand tensor loading",
+    "serving.kv_cache": "KV cache",
+    "serving.gpu_resident_kv_cells": "GPU resident KV cells",
+    "serving.expert_cache": "Expert cache",
+    "serving.prefill": "Prefill",
+    "serving.max_draft_tokens": "Maximum draft tokens",
+    "serving.min_draft_probability": "Minimum draft probability",
+    "serving.draft_vocabulary": "Draft vocabulary",
+    "serving.vision": "Vision",
+    "serving.vision_offload": "Vision weight offload to system RAM",
+    "serving.vision_min_image_tokens": "Minimum image tokens",
+    "serving.vision_max_image_tokens": "Maximum image tokens",
+    "serving.expert_pool": "Expert pool",
+    "serving.conversation_cache": "Conversation cache",
+    "serving.hyper_connection_projections": "Hyper connection projections",
+    "serving.route_tail_skip": "Route tail skip",
+    "serving.tensor_parallel": "Tensor parallel",
+    "serving.gpu_selection": "GPU selection",
+    "serving.recurrent_state": "Recurrent state",
+    "serving.sysmem_recurrent_cache_mib": "System recurrent cache budget (MB)",
+    "sampling.temperature": "Temperature",
+    "sampling.top_k": "Top K",
+    "sampling.top_p": "Top P",
+    "sampling.min_p": "Min P",
+    "sampling.repetition_penalty": "Repetition penalty",
+    "sampling.presence_penalty": "Presence penalty",
+    "sampling.seed": "Seed",
+    "thinking.enabled": "Thinking enabled",
+    "thinking.control": "Thinking control",
+    "thinking.budget": "Reasoning budget",
+    "requests.workload_suite": "Workload suite",
+    "requests.endpoint": "Request endpoint",
+    "requests.streaming": "Streaming",
+    "requests.max_output_tokens": "Maximum output tokens",
+    "requests.concurrency": "Concurrency",
+    "requests.token_counting": "Token counting",
+    "requests.forced_tool_call": "Forced tool call",
+}
+
 
 def cell(value: object) -> str:
     if value is None:
@@ -96,6 +283,192 @@ def profile_identity(data: Mapping[str, object]) -> tuple[str, str]:
     return caption, slug
 
 
+def display_label(path: str, overrides: Mapping[str, object]) -> str:
+    override = overrides.get(path)
+    if isinstance(override, str) and override.strip():
+        return override
+    known = LABELS.get(path)
+    if known is not None:
+        return known
+    leaf = path.rsplit(".", 1)[-1]
+    return " ".join(word.capitalize() for word in leaf.split("_"))
+
+
+def label_map(
+    data: Mapping[str, object], overrides: Mapping[str, object], prefix: str = ""
+) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for key, value in data.items():
+        path = f"{prefix}.{key}" if prefix else str(key)
+        if isinstance(value, dict):
+            mapping.update(label_map(value, overrides, path))
+        else:
+            mapping[path] = display_label(path, overrides)
+    return mapping
+
+
+def validate_settings(settings: object, profile: Path) -> None:
+    if settings is None:
+        return
+    if not isinstance(settings, dict):
+        raise ValueError(f"{profile}: settings must be a mapping of {', '.join(SETTINGS_GROUPS)}")
+    for key in settings:
+        if key not in SETTINGS_GROUPS:
+            raise ValueError(
+                f"{profile}: settings group {key!r} is not allowed;"
+                f" expected only {', '.join(SETTINGS_GROUPS)}"
+            )
+    for group, allowed in (
+        ("serving", None),
+        ("sampling", SAMPLING_KEYS),
+        ("thinking", THINKING_KEYS),
+        ("requests", REQUESTS_KEYS),
+    ):
+        value = settings.get(group)
+        if value is None:
+            continue
+        if not isinstance(value, dict):
+            raise ValueError(f"{profile}: settings.{group} must be a mapping")
+        for key in value:
+            if isinstance(value[key], dict):
+                raise ValueError(f"{profile}: settings.{group}.{key} must not nest")
+            if allowed is None:
+                if not SNAKE_CASE.match(str(key)):
+                    raise ValueError(f"{profile}: settings.serving.{key} must be snake_case")
+            elif key not in allowed:
+                raise ValueError(
+                    f"{profile}: unknown key {key!r} in settings.{group};"
+                    f" expected only {', '.join(allowed)}"
+                )
+    notes = settings.get("notes")
+    if notes is not None and not isinstance(notes, str):
+        raise ValueError(f"{profile}: settings.notes must be a single string")
+
+
+def suite_version(result: Path) -> str | None:
+    path = result / "results.json"
+    if not path.is_file():
+        return None
+    try:
+        document = json.loads(path.read_text())
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{path}: not valid JSON") from error
+    value = document.get("suite_version") if isinstance(document, dict) else None
+    return str(value) if value is not None else None
+
+
+def _as_number(value: object) -> float | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def warn_duplicate_sampling(result: Path, sampling: object) -> None:
+    if not isinstance(sampling, dict):
+        return
+    path = result / "results.json"
+    if not path.is_file():
+        return
+    try:
+        document = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return
+    policy = document.get("policy") if isinstance(document, dict) else None
+    performance = policy.get("performance") if isinstance(policy, dict) else None
+    if not isinstance(performance, dict):
+        return
+    duplicated = [
+        key
+        for key in SAMPLING_KEYS
+        if key in sampling
+        and _as_number(sampling[key]) is not None
+        and _as_number(sampling[key]) == _as_number(performance.get(key))
+    ]
+    if len(duplicated) >= 3:
+        try:
+            location = str(result.relative_to(ROOT))
+        except ValueError:
+            location = str(result)
+        print(
+            f"Warning: {location}: sampling keys "
+            f"{', '.join(duplicated)} duplicate policy.performance from results.json;"
+            " prefer run_baseline.py import",
+            file=sys.stderr,
+        )
+
+
+def ordered_present(
+    values: Mapping[str, object], keys: tuple[str, ...], append_unknown: bool = False
+) -> dict[str, object]:
+    present = {key: values[key] for key in keys if key in values and not empty(values[key])}
+    if append_unknown:
+        present.update(
+            {
+                key: values[key]
+                for key in sorted(values)
+                if key not in keys and not empty(values[key])
+            }
+        )
+    return present
+
+
+def canonical_number(value: object) -> object:
+    """Render 1.0 as 1 so the same value never drifts between int and float notation."""
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
+
+
+def group_table(
+    title: str,
+    prefix: str,
+    values: Mapping[str, object],
+    overrides: Mapping[str, object],
+) -> list[str]:
+    if not values:
+        return []
+    normalized = {key: canonical_number(value) for key, value in values.items()}
+    labels = {str(key): display_label(f"{prefix}.{key}", overrides) for key in normalized}
+    body = list(rows(normalized, labels))
+    if not body:
+        return []
+    return ["", f"## {cell(title)}", "", "| Setting | Value |", "|---|---|", *body, ""]
+
+
+def render_settings(
+    settings: Mapping[str, object], suite: str | None, overrides: Mapping[str, object]
+) -> list[str]:
+    lines: list[str] = []
+    serving = settings.get("serving")
+    if isinstance(serving, dict):
+        lines += group_table(
+            GROUP_TITLES["serving"],
+            "serving",
+            ordered_present(serving, SERVING_KEYS, append_unknown=True),
+            overrides,
+        )
+    for group, keys in (("sampling", SAMPLING_KEYS), ("thinking", THINKING_KEYS)):
+        values = settings.get(group)
+        if isinstance(values, dict):
+            lines += group_table(
+                GROUP_TITLES[group], group, ordered_present(values, keys), overrides
+            )
+    request_values: dict[str, object] = {}
+    if suite is not None:
+        request_values["workload_suite"] = suite
+    requests = settings.get("requests")
+    if isinstance(requests, dict):
+        request_values.update(ordered_present(requests, REQUESTS_KEYS))
+    lines += group_table(GROUP_TITLES["requests"], "requests", request_values, overrides)
+    notes = settings.get("notes")
+    if isinstance(notes, str) and notes.strip():
+        lines += ["", f"## {GROUP_TITLES['notes']}", "", notes.strip(), ""]
+    return lines
+
+
 def render(result: Path) -> str:
     profile = result / "profile.yaml"
     data = yaml.safe_load(profile.read_text())
@@ -104,23 +477,31 @@ def render(result: Path) -> str:
     caption, slug = profile_identity(data)
     if result.parent.name != slug:
         raise ValueError(f"{profile}: recipe folder must be {slug}")
+    settings = data.get("settings")
+    validate_settings(settings, profile)
+    if isinstance(settings, dict):
+        warn_duplicate_sampling(result, settings.get("sampling"))
+    overrides = data.get("labels")
+    if not isinstance(overrides, dict):
+        overrides = {}
+    suite = suite_version(result)
     lines = [f"# {cell(caption)}", ""]
-    labels = data.get("labels")
-    if not isinstance(labels, dict):
-        raise ValueError(f"{profile}: expected a labels mapping")
     for key, value in data.items():
         if key in {"labels", "id", "title"} or empty(value):
             continue
+        if key == "settings":
+            continue
         if isinstance(value, dict):
-            title = labels.get(key)
-            if not isinstance(title, str) or not title.strip():
-                raise ValueError(f"Missing display label for {key}")
+            title = display_label(str(key), overrides)
             lines += ["", f"## {cell(title)}", ""]
-            section_rows = list(rows(value, labels, key))
+            section_rows = list(rows(value, label_map(value, overrides, str(key)), str(key)))
         else:
-            section_rows = list(rows({key: value}, labels))
+            section_rows = list(rows({key: value}, label_map({key: value}, overrides)))
         if section_rows:
             lines += ["", "| Setting | Value |", "|---|---|", *section_rows, ""]
+    settings_map = settings if isinstance(settings, dict) else {}
+    if settings_map or suite is not None:
+        lines += render_settings(settings_map, suite, overrides)
     links = ["[Recipe](../recipe.md)", "[Results](summary.md)"]
     if (result.parent / "setup.md").is_file():
         links.append("[Build and run](../setup.md)")
