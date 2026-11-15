@@ -1,134 +1,35 @@
 # Baseline runner
 
-The runner measures functional checks, coding workloads, context scaling, and resource use. Each run produces a standalone report. Its implementation is in `scripts/baseline/`.
+The runner measures functional checks, coding workloads, context scaling, and resource use against a running server, and turns runs and engine logs into repository experiments. Implementation: [`scripts/baseline/`](../scripts/baseline/).
 
-## Running
+## Run a baseline
 
-For a container recipe, stop other launcher instances and close GPU-heavy applications. Reboot beforehand if practical, then run from the repository root:
-
-```bash
-python3 scripts/run_baseline.py run <recipe>
-```
-
-The runner starts the recipe as instance `baseline` and stops it afterwards. It checks host diagnostics and refuses to start while another launcher instance is running or the selected GPU holds more than 2 GiB. Recipe defaults can be overridden with `--models`, `--context`, `--draft`, `--vision`, and `--port`.
-
-Output defaults to `<models>/baselines/<recipe>/<date-time>/`, where `<models>` defaults to `~/llm-recipes`. Use `--output` for another new directory outside the repository. Server logs go into `server-logs/` within the run directory.
-
-Ctrl+C or SIGTERM preserves partial records and stops the server started by the runner. `--keep-running` leaves it running. The runner asks for your sudo password once at start; later Docker commands use noninteractive sudo, so credentials expiring mid-run can make a later operation fail, including cleanup — re-run the command to refresh them.
-
-### Desktop apps
-
-Start the app, load the model using the experiment's configuration guide, and start its API server. Then run the guided interview:
+For a container recipe, close GPU-heavy applications and stop other launcher instances; reboot beforehand if practical. Run from the repository root:
 
 ```bash
 python3 scripts/run_baseline.py run <recipe>
 ```
 
-It confirms the server URL, the served model (read live from `/v1/models`), the context length configured in the app, and the app's process id for CPU/RAM and process VRAM measurements — detecting a running LM Studio and offering it as the default. Press Enter to accept a default; a wrong model id or a non-positive context is re-asked. Nothing is recorded until you approve the summary. `--yes` accepts every determinable default and stops instead of guessing when models are ambiguous (pass `--model`); it never asks.
+The runner starts the recipe as instance `baseline`, stops it afterwards, and asks for your sudo password once at start (later Docker commands use noninteractive sudo, so expiring credentials can fail a late operation, including cleanup — re-run to refresh). It refuses to start while another instance runs or the selected GPU holds more than 2 GiB. Recipe defaults can be overridden with `--models`, `--context`, `--draft`, `--vision`, and `--port`.
 
-Fully explicit options skip the interview: `--base-url http://127.0.0.1:<port>/v1 --model <served-model-id> --context <tokens> --pid <server-pid>`. The runner attaches without starting or stopping the app. `--pid` selects its cgroup; a shared scope produces a warning. Without it, only system/device telemetry is available. A guided run must match the app's real model and context; changing either in the app mid-run invalidates the run.
+Output defaults to `~/llm-recipes/baselines/<recipe>/<date-time>/` (`--output` for another new directory outside the repository); server logs go to `server-logs/` inside the run directory. Ctrl+C preserves partial records and stops the server; `--keep-running` leaves it running.
 
-Other options include `--gpu-pci` (default: the AMD GPU with most VRAM), `--no-gpu`, `--server-kind` (desktop default: `lmstudio`), `--image`, and `--request-extra` (JSON fields merged into request bodies).
+**Desktop apps:** start the app, load the model per its configuration guide, start its API server, then run the same command. A guided interview confirms the server URL, the served model (read live from `/v1/models`), the configured context, and the app's process id for CPU/RAM and process VRAM measurements — nothing is recorded until you approve the summary. `--yes` accepts determinable defaults and stops instead of guessing when models are ambiguous (pass `--model`). Fully explicit, no interview: `--base-url http://127.0.0.1:<port>/v1 --model <served-model-id> --context <tokens> --pid <server-pid>`. The runner then attaches without touching the app. Changing model or context in the app mid-run invalidates the run.
 
-## Phases and workloads
+Other options: `--gpu-pci` (default: the AMD GPU with most VRAM), `--no-gpu`, `--server-kind` (desktop default: `lmstudio`), `--image`, `--request-extra` (JSON merged into request bodies).
 
-Container runs sample these phases separately in `results.json`; the Markdown summarizes boot state and workload measurements rather than rendering every phase.
-
-| Phase | Default behavior |
-|---|---|
-| Idle | Observe the machine for 30 s; warn above 10% system CPU use. |
-| Load | Start the server and wait for a served model, up to 30 minutes. |
-| Settle | Wait for system CPU below 15% and server CPU below 0.25 cores for 10 s, up to 120 s. |
-| Loaded idle | Observe the loaded server for 10 s. |
-| Suite | Run the checks and workloads below. |
-| Unload | Stop the server and record stopping time. |
-| After unload | Observe for 10 s and record RAM/VRAM changes relative to idle. These changes alone do not establish a leak. |
-
-Desktop runs record settle, loaded idle, and the suite.
-
-The suite runs at concurrency one, in this order:
-
-1. Brief streaming-text, forced-tool-call, and vision checks.
-2. Adaptive warmup, up to four requests.
-3. Five distinct approximately 8K-token code-review prompts.
-4. Three coding tasks: an LRU cache, a tokenizer, and an event store, each with tests requested.
-5. Approximately 32K, 64K, and 120K-token code-review prompts. The largest case runs twice; the others run once. Cases that cannot fit input plus output are skipped.
-6. Conversation reuse: one fixed multi-turn coding conversation (task, file read, failing test run, applied patch) is sent cold with its full history, then its three growing prefixes are replayed in order.
-7. One reasoning request with a multi-step arithmetic task. Strata and LM Studio request thinking explicitly with `reasoning_effort: high` (LM Studio thinks by default, so `high` matches the template default while the rest of the suite runs with `none`); other servers keep template and app-level defaults.
-
-Output caps are 1,024 tokens for context cases, 2,048 for sustained coding tasks, 1,536 for the reasoning request, and 256 for conversation turns. Sustained replies shorter than 512 tokens are marked insufficient samples. Generated code is not executed.
-
-Long prompts use the running Python interpreter's standard-library source (PSF-licensed). Strata uses `/v1/messages/count_tokens`; TabbyAPI uses `/v1/token/encode` with chat messages and template variables. TabbyAPI's count excludes the assistant generation prefix, so final usage can differ slightly. Other servers use a calibrated characters-per-token estimate. Results show actual reported token counts. Comparable runs should use the same Python version.
-
-### Request policy
-
-Performance requests use temperature 1, top-k 20, top-p 0.95, min-p 0, repetition penalty 1, and presence penalty 0. Functional checks use temperature 0. Strata and LM Studio requests explicitly disable thinking with `reasoning_effort: none` — on LM Studio (Bionic 1.2.0, live probe 2026-11-15) the Qwen template thinks by default, `none` disables it per request, `off` is rejected with HTTP 400, and `chat_template_kwargs`, `enable_thinking`, and `reasoning` are accepted but inert; `scripts/probe_lmstudio_thinking.sh` re-checks all candidates after app updates. Other servers need an appropriate control through `--request-extra`.
-
-`policy` records sampling defaults, overrides in `request_extra`, explicit thinking controls after overrides in `thinking_request`, and the reasoning request's controls in `reasoning_request`. An empty thinking mapping means unspecified. These describe requests, not verified server behavior. The context value is likewise the configured limit, not an independently queried server value.
-
-The reasoning case records reasoning and visible text separately: `first_visible_output_s` times the first content delta rather than the first output event, and `reasoning_chars` and `visible_chars` count stream text client-side. A reply of reasoning with no visible text is flagged as a failed run. In the summary, the first-output and first-visible seconds share one pair column (`first output / visible`), and the character counts stay in `results.json` without a column.
-
-### Vision check
-
-The default image is [`assets/checks/amdgpu-top.png`](../assets/checks/amdgpu-top.png), with fields defined in its [expectations file](../assets/checks/amdgpu-top.expected.json). The check requests JSON and scores fields as match, mismatch, or missing. Matching all identity fields passes; detail scores are informational. The answer, image hash, and expectations version are retained.
-
-`--image` supplies a custom image for manual review. Record the encoder's image-token settings in the profile; the runner does not detect them. Screenshot memory figures describe the captured image, not the measured server.
-
-## Measurements
-
-Resources are sampled every 1 s and summarized over active request intervals, excluding prompt preparation. Polling can miss brief peaks. The interval was raised from 0.5 s after twelve runs showed a median of 44 samples per case; at 1 s even the shortest cases keep roughly 15 samples, and an observer on/off comparison was judged not worth the GPU time.
-
-| Scope | Sources and measurements |
-|---|---|
-| Server cgroup | CPU consumption in average cores; charged RAM, anonymous/file-cache breakdown, and swap readings. |
-| System | `/proc` CPU, RAM, available memory, and swap activity. |
-| GPU device | AMD sysfs VRAM/GTT, GPU utilization, power, and temperature. |
-| Server GPU allocations | DRM fdinfo for cgroup members, deduplicated by DRM client on the selected PCI device. |
-
-System, cgroup, and device memory are distinct scopes and must not be added together. The Markdown RAM column shows **system-used RAM**; server RAM and process VRAM are also retained in `results.json`. Sample counts and maximum gaps accompany the resource summaries.
-
-Client first-output latency and decode rate are separate from engine timings. Decode is estimated as `(completion_tokens - 1) / (last output - first output)` using reported token counts, not chunk counts. Repeated 8K and largest-context cases report medians and relative spread (range divided by median); other cases are single observations. Mixed finish reasons show per-reason counts. The cached input token count comes from `usage.prompt_tokens_details.cached_tokens`; servers that omit it are reported as unavailable, and the conversation section then states that cache reuse is unknown rather than assuming it. Because the final replay and the cold full-prompt request carry an identical prompt, the section also compares their first-output times when cached counts are missing: a clearly faster replay is reported as consistent with KV-cache reuse, and a not-faster replay as no reuse observed.
-
-Engine timings and draft acceptance come from Strata's `engine.log` or TabbyAPI's timestamped `.log` files in `server-logs/`, matched to requests in order. A mismatch stops matching. TabbyAPI durations/rates are rounded in the log; its aggregate decode rate is derived from reported token counts and rates. LM Studio engine metrics remain unavailable.
-
-Calibration from the thirteen recorded workstation runs: warmup converges within the 10% tolerance on Strata (2–3 requests of at most 4); with TabbyAPI's draft model the 64-token warmup output does not converge (the two latest decode rates vary by 21–25% because draft acceptance fluctuates), so such runs report "did not converge" and continue. The quiet-system thresholds are met immediately: settle finishes in 0–4 s. Full-suite duration, including load, is 5–6 min per Strata recipe and about 11 min for TabbyAPI; time-to-ready is 8–36 s. Repeated-case noise floors are comparable across recipes (first-token spread median 0.7–2.8%, decode 4.2–5.8%). The 512-token minimum sustained output bounded once: LM Studio's `sustained-lru-cache` stopped after 138 tokens, below the 512-token floor. LM Studio thresholds are validated by a clean workstation run (2026-11-15, suite v2, recorded as recipe baseline `001-2026-11-15-baseline`): settle finished immediately, warmup converged in four requests, all functional checks including vision passed (identity 2/2, detail 7/7), conversation reuse showed 2.11 s cold versus 0.47 s warm on the identical prompt, and the reasoning case produced 1,880 reasoning characters with an 11.2 s first visible answer. LM Studio adds one threshold-relevant finding: repeated 8k-case first output spread reached 95.7% across five repeats (decode stayed within 12.1%), so first-token noise at mid-range contexts is far larger on this stack than elsewhere. The two earlier LM Studio attempts were invalidated by thinking-on-by-default (fixed via the probed per-request `reasoning_effort: none` control) and by a rejected object `tool_choice`; they remain as machine-local evidence only.
-
-## Saved results
-
-The external run directory contains `meta.json`, `requests.jsonl`, `samples.jsonl`, server logs, `results.json`, and a draft `summary.md`. Rebuild the report without inference with:
-
-```bash
-python3 scripts/run_baseline.py render <run-dir>
-```
-
-Rendering preserves authored text outside generated markers. [`schema.py`](../scripts/baseline/schema.py) validates the result structure; the documentation generator renders and checks its Markdown.
-
-| Key | Content |
-|---|---|
-| `schema_version`, `suite_version` | Result format and workload-suite versions. |
-| `recipe`, `run` | Recipe identity, run ID, and completion status. |
-| `server` | API kind, served model ID, configured context. |
-| `policy` | Request sampling and thinking controls. |
-| `boot`, `phases` | Boot readings, warnings, and phase measurements. |
-| `functional`, `warmup` | Check outcomes and warmup convergence/duration. |
-| `cases`, `resources` | Per-case performance and resource measurements. |
-
-Measurements carry a value, unit, and source. Unavailable measurements use `null` with a reason, not zero. Additional metrics vary with the case and available observations.
-
-To add a baseline to the repository, run:
+## Import a baseline run
 
 ```bash
 python3 scripts/run_baseline.py import <run-dir>
 python3 scripts/run_baseline.py import <run-dir> --suffix <lowercase-hyphen-slug>  # optional folder-name extension
 ```
 
-Run import from the development checkout: the experiment lands in the repository that contains the script, so running it from an installed snapshot would add the experiment to the snapshot instead of the repository.
+Run import from the development checkout: the experiment lands in the repository that contains the script, so running it from an installed snapshot would add the experiment to the snapshot instead.
 
-The command creates the numbered experiment folder under the recipe, copies `results.json`, writes a complete `profile.yaml` from the run's `meta.json`, `facts.json`, recipe configuration, and runtime locks, and regenerates the configuration and recipe index. A baseline experiment then needs no manual `profile.yaml` editing. The profile reuses the identity of the recipe's existing experiments when they have one, so the recipe id never splits over display wording; folder-derived parts serve only the first experiment. See the [authoring guide](authoring.md) for folder naming.
+The command creates the numbered experiment folder under the recipe, copies `results.json`, writes a complete `profile.yaml` from the run's `meta.json`, `facts.json`, recipe configuration, and runtime locks, and regenerates the configuration and recipe index — no manual `profile.yaml` editing. The profile reuses the identity of the recipe's existing experiments when they have one; folder-derived parts serve only the first experiment. See the [authoring guide](authoring.md) for folder naming.
 
-The Unsloth GGUF baseline was re-recorded with suite v2 on 2026-11-15 and carries conversation-reuse and reasoning rows, like the LM Studio run of the 27B GGUF recipe. The TabbyAPI/exl3 and ISTA GGUF baselines were recorded with suite v1 and therefore carry no conversation-reuse or reasoning rows; re-running one with the current suite would fill that gap — optional, roughly 6–11 minutes of GPU time.
-
-## Session report
+## Report a coding session
 
 The session command aggregates one instance's coding activity from the engine's own logs — no client list is needed:
 
@@ -138,9 +39,7 @@ python3 scripts/run_baseline.py session --logs <dir>        # any directory of *
 python3 scripts/run_baseline.py session <instance> --experiment recipes/<recipe>/<NNN-...>
 ```
 
-It reads every `*.log` file in the instance's persistent log directory (the one `launch.py` prints at start) plus `facts.json` when present; a directory without `*.log` files at the top level is searched recursively, which covers LM Studio's dated files rotated into month directories. The output document `session-results.json` is validated by `schema.py`; with `--experiment` the command writes it into the experiment folder, replaces the generated session block in `summary.md`, and seeds `profile.yaml` from `facts.json` and the sampler parameters the engine echoed to its log — an existing profile is never overwritten. An LM Studio log has no `facts.json`, so its profile is seeded from the recipe name and the sampler echo alone. Without `--experiment` the document prints to stdout.
-
-What each engine can provide:
+It reads every `*.log` file in the instance's persistent log directory (the one `launch.py` prints at start) plus `facts.json` when present; a directory without top-level `*.log` files is searched recursively, which covers LM Studio's dated files rotated into month directories. Without `--experiment` the document prints to stdout. With `--experiment` it writes `session-results.json` into the experiment folder, replaces the generated session block in `summary.md`, and seeds `profile.yaml` from `facts.json` and the sampler parameters the engine echoed to its log — an existing profile is never overwritten. LM Studio logs have no `facts.json`, so its profile seeds from the recipe name and the sampler echo alone.
 
 | Engine | Timestamps | Cancellation | Unclosed requests |
 |---|---|---|---|
@@ -148,7 +47,53 @@ What each engine can provide:
 | Strata `engine.log` / `server.log` | none | `cancel=True` in `server.log` | unavailable |
 | LM Studio (llama.cpp) server logs | per block | not logged distinctly | unavailable |
 
-`--since`/`--until` (ISO timestamps) filter the entries and only work on timestamped logs; the command fails instead of silently ignoring them. Metrics a log cannot provide appear as `unavailable`, matching the baseline convention.
+`--since`/`--until` (ISO timestamps) filter entries on timestamped logs only; the command fails instead of silently ignoring them. Metrics a log cannot provide appear as `unavailable`, matching the baseline convention.
+
+## Suite versions
+
+| Suite | Workloads | Recorded baselines |
+|---|---|---|
+| v1 | checks, warmup, 8K/32K/64K/120K context, sustained coding | TabbyAPI/exl3, ISTA GGUF |
+| v2 | v1 plus conversation-reuse and reasoning | Unsloth GGUF, 27B GGUF (LM Studio) |
+
+Re-running a v1 recipe with the current suite closes the gap — roughly 6–11 minutes of GPU time.
+
+## What a run measures
+
+Container phases, sampled separately in `results.json`: idle 30 s (warn above 10% system CPU) → load (served model up to 30 min) → settle (CPU quiet for 10 s, up to 120 s) → loaded idle 10 s → suite → unload → after-unload 10 s (RAM/VRAM deltas; these alone do not establish a leak). Desktop runs record settle, loaded idle, and the suite.
+
+The suite runs at concurrency one: functional checks (streaming text, forced tool call, vision) → adaptive warmup (up to 4 requests) → five distinct approximately 8K-token code reviews → three sustained coding tasks (LRU cache, tokenizer, event store; tests requested, code not executed) → approximately 32K/64K/120K-token code reviews (largest runs twice; cases that cannot fit input plus output are skipped) → one fixed multi-turn coding conversation sent cold, then its three growing prefixes replayed → one reasoning request with a multi-step arithmetic task. Output caps: 1,024 tokens (context cases), 2,048 (sustained), 1,536 (reasoning), 256 (conversation turns); sustained replies under 512 tokens are marked insufficient samples.
+
+Long prompts come from the running Python interpreter's standard-library source (PSF-licensed) — comparable runs should use the same Python version. Token pre-counts use each server's endpoint (`/v1/messages/count_tokens` on Strata, `/v1/token/encode` on TabbyAPI, which excludes the assistant prefix) or a calibrated characters-per-token estimate; results show actual reported token counts.
+
+Request policy: performance at temperature 1, top-k 20, top-p 0.95, min-p 0, penalties 0; functional checks at temperature 0. Strata and LM Studio receive explicit `reasoning_effort: none` on all but the reasoning request (`high`) — on LM Studio the Qwen template thinks by default; re-verify the control with [`scripts/probe_lmstudio_thinking.sh`](../scripts/probe_lmstudio_thinking.sh) after app updates. Other servers keep template defaults; use `--request-extra` for an appropriate control. `policy` records these request settings as sent — not verified server behavior — and the configured context, not a queried one. The reasoning case records reasoning and visible text separately (`first_visible_output_s`, character counts); reasoning with no visible text fails the run.
+
+Vision: the default image is [`assets/checks/amdgpu-top.png`](../assets/checks/amdgpu-top.png) with [expectations](../assets/checks/amdgpu-top.expected.json); the JSON-scored answer, image hash, and expectations version are retained. `--image` supplies a custom image for manual review; record encoder image-token settings in the profile — the runner does not detect them.
+
+## Reading results
+
+The run directory holds `meta.json`, `requests.jsonl`, `samples.jsonl`, server logs, `results.json`, and a draft `summary.md`. Rebuild the report without inference (authored text outside markers is preserved):
+
+```bash
+python3 scripts/run_baseline.py render <run-dir>
+```
+
+[`schema.py`](../scripts/baseline/schema.py) validates the result structure. Every measurement carries value, unit, and source; unavailable ones are `null` with a reason, never zero.
+
+| Key | Content |
+|---|---|
+| `schema_version`, `suite_version` | Result format and workload-suite versions. |
+| `recipe`, `run` | Recipe identity, run ID, and completion status. |
+| `server`, `policy` | API kind, served model, configured context; sampling and thinking controls. |
+| `boot`, `phases` | Boot readings, warnings, and phase measurements. |
+| `functional`, `warmup` | Check outcomes and warmup convergence/duration. |
+| `cases`, `resources` | Per-case performance and resource measurements. |
+
+Resources are sampled every 1 s over active request intervals, excluding prompt preparation; polling can miss brief peaks. Server cgroup (CPU cores, charged RAM, swap), system (`/proc`), GPU device (sysfs VRAM/GTT, utilization, power, temperature), and DRM fdinfo server allocations are distinct scopes and must not be added together. The Markdown RAM column shows system-used RAM.
+
+Client first-output latency and decode rate are separate from engine timings; decode is `(completion_tokens - 1) / (last output - first output)` from reported token counts. Repeated cases report medians and relative spread. Cached input tokens come from `usage.prompt_tokens_details.cached_tokens`; when a server omits it, the conversation section compares the identical cold and warm first-output times instead of assuming reuse. Engine timings and draft acceptance come from `server-logs/` matched to requests in order; a mismatch stops matching. LM Studio engine metrics remain unavailable.
+
+What to expect on the current workstation: full suite including load — 5–6 min (Strata), ~11 min (TabbyAPI); TabbyAPI with a draft model legitimately reports warmup "did not converge" because draft acceptance fluctuates; LM Studio first-token spread at mid-range contexts can reach ~96% while decode stays within ~12%, so judge LM Studio first-output noise per case, not by the usual floors.
 
 ## Exit codes
 
