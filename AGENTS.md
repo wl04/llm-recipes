@@ -119,4 +119,3 @@ This pattern also applies to scenario names expressed as strings. Add any mandat
 ## Repository instructions
 
 Read and follow [project instructions](docs/project-instructions.md). Project-specific instructions take precedence over these general guidelines.
-```[cite: 1]
