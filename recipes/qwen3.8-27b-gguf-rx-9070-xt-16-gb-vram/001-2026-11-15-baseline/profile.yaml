@@ -48,13 +48,6 @@ settings:
     speculative_decoding: MTP
     draft_token_limits: 3 / 0 / 0
     vision: true — vision adapter mmproj-Qwen3.8-27B-BF16.gguf loaded
-  sampling:
-    temperature: 1.0
-    top_k: 20
-    top_p: 0.95
-    min_p: 0.0
-    repetition_penalty: 1.0
-    presence_penalty: 0.0
   thinking:
     control: 'Per request: reasoning_effort none for performance and functional requests,
       reasoning_effort high for the reasoning case'

@@ -565,6 +565,32 @@ def write_settings_profile(
     return result
 
 
+def test_render_sampling_falls_back_to_results_policy(tmp_path: Path) -> None:
+    result = write_settings_profile(tmp_path, {"thinking": {"enabled": False}})
+    (result / "results.json").write_text(
+        json.dumps({"policy": {"performance": {"temperature": 1.0, "top_k": 20, "min_p": 0.0}}})
+    )
+
+    document = gen.render(result)
+
+    sampling = document[document.index("## Sampling") :]
+    assert "| Temperature | 1 |" in sampling
+    assert "| Top K | 20 |" in sampling
+    assert "| Min P | 0 |" in sampling
+
+
+def test_render_profile_sampling_wins_over_results_policy(tmp_path: Path) -> None:
+    result = write_settings_profile(tmp_path, {"sampling": {"temperature": 0.7}})
+    (result / "results.json").write_text(
+        json.dumps({"policy": {"performance": {"temperature": 1.0}}})
+    )
+
+    document = gen.render(result)
+
+    assert "| Temperature | 0.7 |" in document
+    assert "| Temperature | 1 |" not in document
+
+
 def test_render_sampling_mode_single_row(tmp_path: Path) -> None:
     result = write_settings_profile(tmp_path, {"sampling": {"mode": "conservative"}})
 

@@ -56,13 +56,6 @@ settings:
     recurrent_state: FP16
     sysmem_recurrent_cache_mib: 4096
     vision_offload: false
-  sampling:
-    temperature: 1.0
-    top_k: 20
-    top_p: 0.95
-    min_p: 0.0
-    repetition_penalty: 1.0
-    presence_penalty: 0.0
   thinking:
     enabled: false
     control: chat_template_kwargs.enable_thinking=false

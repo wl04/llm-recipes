@@ -441,7 +441,10 @@ def group_table(
 
 
 def render_settings(
-    settings: Mapping[str, object], suite: str | None, overrides: Mapping[str, object]
+    settings: Mapping[str, object],
+    suite: str | None,
+    overrides: Mapping[str, object],
+    sampling_fallback: Mapping[str, object] | None = None,
 ) -> list[str]:
     lines: list[str] = []
     serving = settings.get("serving")
@@ -454,6 +457,8 @@ def render_settings(
         )
     for group, keys in (("sampling", SAMPLING_KEYS), ("thinking", THINKING_KEYS)):
         values = settings.get(group)
+        if group == "sampling" and (not isinstance(values, dict) or not values):
+            values = dict(sampling_fallback) if sampling_fallback else None
         if isinstance(values, dict):
             lines += group_table(
                 GROUP_TITLES[group], group, ordered_present(values, keys), overrides
@@ -469,6 +474,27 @@ def render_settings(
     if isinstance(notes, str) and notes.strip():
         lines += ["", f"## {GROUP_TITLES['notes']}", "", notes.strip(), ""]
     return lines
+
+
+def results_policy_sampling(result: Path) -> dict[str, object] | None:
+    """``policy.performance`` from a colocated ``results.json``, filtered to sampling keys.
+
+    Baseline experiments keep sampling in ``results.json`` alone; the profile repeats it
+    only when it differs from what the run measured.
+    """
+    path = result / "results.json"
+    if not path.is_file():
+        return None
+    try:
+        document = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return None
+    policy = document.get("policy") if isinstance(document, dict) else None
+    performance = policy.get("performance") if isinstance(policy, dict) else None
+    if not isinstance(performance, dict):
+        return None
+    sampled = {key: value for key, value in performance.items() if key in SAMPLING_KEYS}
+    return sampled or None
 
 
 def render(result: Path) -> str:
@@ -503,7 +529,8 @@ def render(result: Path) -> str:
             lines += ["", "| Setting | Value |", "|---|---|", *section_rows, ""]
     settings_map = settings if isinstance(settings, dict) else {}
     if settings_map or suite is not None:
-        lines += render_settings(settings_map, suite, overrides)
+        fallback = results_policy_sampling(result)
+        lines += render_settings(settings_map, suite, overrides, fallback)
     links = ["[Recipe](../recipe.md)", "[Results](summary.md)"]
     if (result.parent / "setup.md").is_file():
         links.append("[Build and run](../setup.md)")
