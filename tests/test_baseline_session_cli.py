@@ -273,7 +273,13 @@ def test_session_create_builds_the_experiment_from_templates(
     experiment = root / "recipes" / runfixtures.RECIPE / "001-2026-11-15-coding-session"
     assert (experiment / "session-results.json").is_file()
     assert (experiment / "profile.yaml").is_file()
-    assert report.SESSION_START in (experiment / "summary.md").read_text()
+    summary = (experiment / "summary.md").read_text()
+    assert summary.startswith("# 001 · 2026-11-15 — Coding session\n")
+    assert "Workload / variant" not in summary
+    assert "## Statistics" not in summary
+    assert "## Workload" in summary
+    assert report.SESSION_START in summary
+    assert summary.index(report.SESSION_START) < summary.index("[Recipe](../recipe.md)")
     configuration = (experiment / "configuration.md").read_text()
     assert gen.START in configuration and "Qwen3.8-27B" in configuration
     assert "coding-session" in capsys.readouterr().out

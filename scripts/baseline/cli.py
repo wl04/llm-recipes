@@ -157,8 +157,9 @@ def create_session_folder(
 
     The folder is the recipe's next free ``NNN-date-description``; the date comes
     from the instance's ``facts.json`` when readable, else from ``now``. ``summary.md``
-    and ``configuration.md`` are copied from the template; ``profile.yaml`` is
-    deliberately left uncreated so that the session command seeds it from the run.
+    is the session scaffold with its title line already set, and ``configuration.md``
+    is the generic template; ``profile.yaml`` is deliberately left uncreated so that
+    the session command seeds it from the run.
 
     Raises:
         ValueError: the description is not a lowercase-hyphen slug, or the recipe
@@ -183,10 +184,15 @@ def create_session_folder(
     number = max(numbers) + 1 if numbers else 1
     while (experiment := recipe_dir / f"{number:03d}-{date}-{description}").exists():
         number += 1
-    template = root / "templates/recipe/NNN-YYYY-MM-DD-description"
+    template = root / "templates/recipe"
     experiment.mkdir()
-    shutil.copyfile(template / "summary.md", experiment / "summary.md")
-    shutil.copyfile(template / "configuration.md", experiment / "configuration.md")
+    summary_lines = (template / "session-summary.md").read_text().splitlines()
+    summary_lines[0] = generator.expected_title(experiment, {})
+    (experiment / "summary.md").write_text("\n".join(summary_lines) + "\n")
+    shutil.copyfile(
+        template / "NNN-YYYY-MM-DD-description/configuration.md",
+        experiment / "configuration.md",
+    )
     return experiment
 
 
