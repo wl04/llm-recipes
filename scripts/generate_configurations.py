@@ -21,6 +21,7 @@ INDEX_START = "<!-- BEGIN GENERATED EXPERIMENTS -->"
 INDEX_END = "<!-- END GENERATED EXPERIMENTS -->"
 RESULTS_START = "<!-- BEGIN GENERATED RESULTS -->"
 RESULTS_END = "<!-- END GENERATED RESULTS -->"
+FOLDER_NAME = re.compile(r"(\d{3})-(\d{4}-\d{2}-\d{2})-(.+)")
 
 
 def cell(value: object) -> str:
@@ -108,7 +109,7 @@ def render(result: Path) -> str:
     if not isinstance(labels, dict):
         raise ValueError(f"{profile}: expected a labels mapping")
     for key, value in data.items():
-        if key in {"labels", "id"} or empty(value):
+        if key in {"labels", "id", "title"} or empty(value):
             continue
         if isinstance(value, dict):
             title = labels.get(key)
@@ -154,21 +155,22 @@ def update(result: Path) -> tuple[Path, str, str]:
     return path, original, before + START + "\n\n" + render(result) + "\n" + END + after
 
 
-PLACEHOLDER_TITLE = "# NNN · YYYY-MM-DD"
-FOLDER_NAME = re.compile(r"(\d{3})-(\d{4}-\d{2}-\d{2})-(.+)")
-
-
-def title_for(folder: str) -> str | None:
-    """The report title for a ``NNN-YYYY-MM-DD-description`` folder, or ``None`` if it differs."""
-    match = FOLDER_NAME.fullmatch(folder)
+def expected_title(result: Path, data: Mapping[str, object]) -> str:
+    """Generated title: folder number and date, plus the profile ``title`` or the description."""
+    match = FOLDER_NAME.fullmatch(result.name)
     if match is None:
-        return None
+        raise ValueError(f"{result}: expected a NNN-YYYY-MM-DD-description folder name")
     number, date, description = match.groups()
-    return f"# {number} · {date} — {description.replace('-', ' ').capitalize()}"
+    custom = data.get("title")
+    if isinstance(custom, str) and custom.strip():
+        label = " ".join(custom.split())
+    else:
+        label = description.replace("-", " ").capitalize()
+    return f"# {number} · {date} — {label}"
 
 
-def update_results(result: Path) -> tuple[Path, str, str]:
-    """Render the experiment's ``results.json`` into the marked block of its ``summary.md``."""
+def _render_results_block(result: Path, text: str) -> str:
+    """Replace the marked block with the rendering of the experiment's ``results.json``."""
     data_path = result / "results.json"
     try:
         document = json.loads(data_path.read_text())
@@ -179,16 +181,36 @@ def update_results(result: Path) -> tuple[Path, str, str]:
     except ValueError as error:
         raise ValueError(f"{data_path}: {error}") from error
     path = result / "summary.md"
-    original = path.read_text()
-    if original.count(RESULTS_START) != 1 or original.count(RESULTS_END) != 1:
+    if text.count(RESULTS_START) != 1 or text.count(RESULTS_END) != 1:
         raise ValueError(f"{path}: expected exactly one pair of results markers")
-    before, rest = original.split(RESULTS_START)
-    _, after = rest.split(RESULTS_END)
-    title = title_for(result.name)
-    if title is not None and before.startswith(PLACEHOLDER_TITLE):
-        _, _, remainder = before.partition("\n")
-        before = title + "\n" + remainder
-    return path, original, before + RESULTS_START + "\n\n" + block + "\n" + RESULTS_END + after
+    before, middle = text.split(RESULTS_START)
+    _, after = middle.split(RESULTS_END)
+    return before + RESULTS_START + "\n\n" + block + "\n" + RESULTS_END + after
+
+
+def update_results_block(result: Path) -> tuple[Path, str, str]:
+    """Refresh the results block of a run directory, which has no profile or generated title."""
+    path = result / "summary.md"
+    original = path.read_text()
+    return path, original, _render_results_block(result, original)
+
+
+def update_summary(result: Path) -> tuple[Path, str, str]:
+    """Generate the summary title and render ``results.json`` into the marked block if present."""
+    profile = result / "profile.yaml"
+    data = yaml.safe_load(profile.read_text())
+    if not isinstance(data, dict):
+        raise ValueError(f"{profile}: expected a YAML mapping")
+    path = result / "summary.md"
+    original = path.read_text()
+    first, separator, rest = original.partition("\n")
+    if not first.startswith("# "):
+        raise ValueError(f"{path}: the first line must be the report title")
+    title = expected_title(result, data)
+    text = original if first == title else title + separator + rest
+    if (result / "results.json").is_file():
+        text = _render_results_block(result, text)
+    return path, original, text
 
 
 def update_index(
@@ -234,9 +256,7 @@ def main() -> int:
     try:
         profiles = sorted((ROOT / "recipes").glob("*/*/profile.yaml"))
         changes = [update(p.parent) for p in profiles]
-        changes += [
-            update_results(p.parent) for p in profiles if (p.parent / "results.json").is_file()
-        ]
+        changes += [update_summary(p.parent) for p in profiles]
         summaries = {path: new for path, _, new in changes if path.name == "summary.md"}
         changes += [
             update_index(recipe, summaries)

@@ -1,4 +1,5 @@
 id: Qwen3.8-Flash-Next / GGUF ISTA IQ3_XXS / RX 9070 XT / 16 GB VRAM
+title: Long coding session in Pi
 hardware:
   gpu: AMD Radeon RX 9070 XT (gfx1201)
   cpu: AMD Ryzen 7 9800X3D

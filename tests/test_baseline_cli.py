@@ -115,7 +115,7 @@ def test_managed_run_summary_is_current_for_the_generator(
     with FakeServer() as server:
         run_managed(tmp_path, server, monkeypatch)
 
-    _, before, after = generator.update_results(tmp_path / "run")
+    _, before, after = generator.update_results_block(tmp_path / "run")
 
     assert before == after
 

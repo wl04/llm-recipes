@@ -103,7 +103,7 @@ def render_run(directory: Path, root: Path = ROOT) -> Path:
     summary = directory / "summary.md"
     if not summary.exists():
         summary.write_text((root / "templates/recipe/baseline-summary.md").read_text())
-    path, _, rendered = generator.update_results(directory)
+    path, _, rendered = generator.update_results_block(directory)
     generator.write_atomic(path, rendered)
     return directory / "results.json"
 

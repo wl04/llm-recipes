@@ -39,7 +39,7 @@ def write_recipe_tree(root: Path, recipe_name: str = SLUG) -> Path:
     result.mkdir(parents=True)
     (recipe / "recipe.md").write_text(RECIPE_PAGE)
     (result / "profile.yaml").write_text(PROFILE.format(caption=CAPTION))
-    (result / "summary.md").write_text("# 001 · 2026-01-01 — Test Run\n\nObservations.\n")
+    (result / "summary.md").write_text("# 001 · 2026-01-01 — Test\n\nObservations.\n")
     (result / "configuration.md").write_text(CONFIGURATION)
     return recipe
 
@@ -119,7 +119,7 @@ def test_main_validates_all_profiles_before_writing_any_file(
     (broken_recipe / "recipe.md").write_text(RECIPE_PAGE)
     broken_profile = PROFILE.format(caption="Other Model / FMT / Test GPU / 8 GB VRAM")
     (broken / "profile.yaml").write_text(broken_profile.replace("  hardware.cpu: CPU\n", ""))
-    (broken / "summary.md").write_text("# 001 · 2026-01-02 — Other Run\n")
+    (broken / "summary.md").write_text("# 001 · 2026-01-02 — Other\n")
     (broken / "configuration.md").write_text(CONFIGURATION)
     good_original = configuration_path(tmp_path).read_text()
 
@@ -195,14 +195,14 @@ def test_update_index_orders_same_day_experiments_by_sequence_and_links_them(
     second = recipe / "002-2026-01-01-second"
     second.mkdir()
     (second / "profile.yaml").write_text(PROFILE.format(caption=CAPTION))
-    (second / "summary.md").write_text("# 002 · 2026-01-01 — Second Run\n")
+    (second / "summary.md").write_text("# 002 · 2026-01-01 — Second\n")
     (second / "configuration.md").write_text(CONFIGURATION)
 
     exit_code = run_main(monkeypatch, tmp_path)
 
     assert exit_code == 0
     index = (recipe / "recipe.md").read_text()
-    assert index.index("002 · 2026-01-01 — Second Run") < index.index("001 · 2026-01-01 — Test Run")
+    assert index.index("002 · 2026-01-01 — Second") < index.index("001 · 2026-01-01 — Test")
     assert "[Configuration](001-2026-01-01-test/configuration.md)" in index
     assert "[Results](002-2026-01-01-second/summary.md)" in index
 
@@ -422,18 +422,18 @@ def test_render_omits_results_data_link_without_results(tmp_path: Path) -> None:
     assert "results.json" not in gen.render(recipe / "001-2026-01-01-test")
 
 
-def test_update_results_fills_the_placeholder_title_from_the_folder_name(tmp_path: Path) -> None:
+def test_update_summary_fills_the_placeholder_title_from_the_folder_name(tmp_path: Path) -> None:
     summary = BASELINE_SUMMARY.replace(
         "# 002 · 2026-01-02 — Baseline", "# NNN · YYYY-MM-DD — Baseline"
     )
     result = write_baseline_experiment(tmp_path, summary)
 
-    _, _, rendered = gen.update_results(result)
+    _, _, rendered = gen.update_summary(result)
 
     assert rendered.startswith("# 002 · 2026-01-02 — Baseline\n")
 
 
-def test_update_results_describes_a_variant_from_the_rest_of_the_folder_name(
+def test_update_summary_describes_a_variant_from_the_rest_of_the_folder_name(
     tmp_path: Path,
 ) -> None:
     summary = BASELINE_SUMMARY.replace(
@@ -443,18 +443,74 @@ def test_update_results_describes_a_variant_from_the_rest_of_the_folder_name(
     renamed = result.parent / "003-2026-01-03-baseline-draft-off"
     result.rename(renamed)
 
-    _, _, rendered = gen.update_results(renamed)
+    _, _, rendered = gen.update_summary(renamed)
 
     assert rendered.startswith("# 003 · 2026-01-03 — Baseline draft off\n")
 
 
-def test_update_results_keeps_a_title_that_was_edited_by_hand(tmp_path: Path) -> None:
+def test_update_summary_replaces_a_title_edited_by_hand(tmp_path: Path) -> None:
     summary = BASELINE_SUMMARY.replace("— Baseline", "— My custom title")
     result = write_baseline_experiment(tmp_path, summary)
 
-    _, _, rendered = gen.update_results(result)
+    _, _, rendered = gen.update_summary(result)
 
-    assert rendered.startswith("# 002 · 2026-01-02 — My custom title\n")
+    assert rendered.startswith("# 002 · 2026-01-02 — Baseline\n")
+    assert "My custom title" not in rendered
+    assert "Authored intro." in rendered
+
+
+def test_update_summary_uses_the_profile_title_for_custom_wording(tmp_path: Path) -> None:
+    summary = BASELINE_SUMMARY.replace(
+        "# 002 · 2026-01-02 — Baseline", "# NNN · YYYY-MM-DD — Baseline"
+    )
+    result = write_baseline_experiment(tmp_path, summary)
+    profile = result / "profile.yaml"
+    profile.write_text(profile.read_text() + "title: Long coding session in Pi\n")
+
+    _, _, rendered = gen.update_summary(result)
+
+    assert rendered.startswith("# 002 · 2026-01-02 — Long coding session in Pi\n")
+
+
+def test_render_does_not_show_the_profile_title_as_a_setting(tmp_path: Path) -> None:
+    result = write_baseline_experiment(tmp_path)
+    profile = result / "profile.yaml"
+    profile.write_text(profile.read_text() + "title: Long coding session in Pi\n")
+
+    configuration = gen.render(result)
+
+    assert "Long coding session in Pi" not in configuration
+
+
+def test_update_summary_fails_when_the_first_line_is_not_a_title(tmp_path: Path) -> None:
+    summary = BASELINE_SUMMARY.replace("# 002 · 2026-01-02 — Baseline", "Intro without a title")
+    result = write_baseline_experiment(tmp_path, summary)
+
+    with pytest.raises(ValueError, match="report title"):
+        gen.update_summary(result)
+
+
+def test_main_replaces_a_stale_summary_title_for_a_hand_written_experiment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    recipe = write_recipe_tree(tmp_path)
+    summary = recipe / "001-2026-01-01-test" / "summary.md"
+    summary.write_text("# 001 · 2025-12-31 — Stale wording\n\nObservations.\n")
+
+    assert run_main(monkeypatch, tmp_path) == 0
+
+    assert summary.read_text().startswith("# 001 · 2026-01-01 — Test\n")
+
+
+def test_main_check_mode_fails_on_a_stale_summary_title(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_baseline_experiment(tmp_path)
+    run_main(monkeypatch, tmp_path)
+    summary = tmp_path / "recipes" / SLUG / "002-2026-01-02-baseline" / "summary.md"
+    summary.write_text(summary.read_text().replace("— Baseline", "— Renamed"))
+
+    assert run_main(monkeypatch, tmp_path, "--check") == 1
 
 
 def test_main_check_is_current_after_one_generation_that_filled_a_placeholder_title(

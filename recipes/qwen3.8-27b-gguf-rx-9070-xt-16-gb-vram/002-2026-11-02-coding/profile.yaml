@@ -1,4 +1,5 @@
 id: Qwen3.8-27B / GGUF / RX 9070 XT / 16 GB VRAM
+title: Coding workload
 hardware:
   gpu: AMD Radeon RX 9070 XT
   cpu: AMD Ryzen 7 9800X3D

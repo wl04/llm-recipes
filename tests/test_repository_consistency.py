@@ -92,9 +92,9 @@ def test_baseline_summary_template_renders_results_and_is_index_compatible(tmp_p
     (result / "summary.md").write_text(template.replace("NNN · YYYY-MM-DD", "002 · 2026-11-13"))
     (result / "results.json").write_text(schema.dump_results(sample_results()))
 
-    path, _, rendered = gen.update_results(result)
+    path, _, rendered = gen.update_summary(result)
     path.write_text(rendered)
 
-    assert gen.update_results(result)[1] == gen.update_results(result)[2]
+    assert gen.update_summary(result)[1] == gen.update_summary(result)[2]
     assert "## Baseline results" in rendered
     assert gen.update_index(recipe)[2].count("002 · 2026-11-13 — Baseline") == 1
