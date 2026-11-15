@@ -55,7 +55,7 @@ The suite runs at concurrency one, in this order:
 4. Three coding tasks: an LRU cache, a tokenizer, and an event store, each with tests requested.
 5. Approximately 32K, 64K, and 120K-token code-review prompts. The largest case runs twice; the others run once. Cases that cannot fit input plus output are skipped.
 6. Conversation reuse: one fixed multi-turn coding conversation (task, file read, failing test run, applied patch) is sent cold with its full history, then its three growing prefixes are replayed in order.
-7. One reasoning request with a multi-step arithmetic task. Strata requests thinking explicitly with `reasoning_effort: high`; other servers keep template defaults, which for the Qwen-family GGUFs on LM Studio means thinking on.
+7. One reasoning request with a multi-step arithmetic task. Strata requests thinking explicitly with `reasoning_effort: high`; other servers keep template and app-level defaults. On LM Studio the default is thinking on, and disabling it in the app's model settings (needed for the other cases) also leaves this case without reasoning output.
 
 Output caps are 1,024 tokens for context cases, 2,048 for sustained coding tasks, 1,536 for the reasoning request, and 256 for conversation turns. Sustained replies shorter than 512 tokens are marked insufficient samples. Generated code is not executed.
 
