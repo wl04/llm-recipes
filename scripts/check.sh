@@ -22,7 +22,7 @@ tool pytest
 tool python scripts/generate_configurations.py --check
 
 if command -v shellcheck >/dev/null; then
-    shellcheck runtimes/exllamav3-tabbyapi/scripts/prepare-models.sh scripts/record_fixtures.sh
+    find scripts runtimes -name '*.sh' -not -path '*/.venv/*' -exec shellcheck {} +
 else
     echo "shellcheck not installed; skipping shell checks" >&2
 fi
