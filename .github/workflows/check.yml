@@ -1,5 +1,6 @@
-name: CPU checks
+name: Static and unit checks
 
+# Runs on a GPU-less runner: no Docker, no model-weight downloads.
 on:
   push:
     branches: [main]

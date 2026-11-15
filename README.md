@@ -9,7 +9,7 @@
 
 Configurations and results from running language models on my own hardware. Each experiment records the model, inference settings, hardware and software, performance, memory usage, and practical observations.
 
-[![CPU checks](https://github.com/wl04/llm-recipes/actions/workflows/check.yml/badge.svg)](https://github.com/wl04/llm-recipes/actions/workflows/check.yml)
+[![Static and unit checks](https://github.com/wl04/llm-recipes/actions/workflows/check.yml/badge.svg)](https://github.com/wl04/llm-recipes/actions/workflows/check.yml)
 [![Python: 3.12+](https://img.shields.io/badge/python-3.12+-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 

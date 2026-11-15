@@ -1,4 +1,4 @@
-"""CPU checks for the Strata launch adapter and source verification."""
+"""CPU-only checks for the Strata launch adapter and source verification."""
 
 import hashlib
 import importlib.util
