@@ -17,6 +17,8 @@
 # LM Studio: open the app, load the recipe's model, start the developer server.
 #
 # The served model id comes from /v1/models; override with MODEL=<id>.
+# LOG=<file-or-directory> additionally snapshots the engine's own log (with its
+# timestamps) into completions.timestamped.log for the session-report parser tests.
 # If the server requires an API key, export API_KEY=<token> first.
 # Captures overwrite files in tests/fixtures/<server>/. Before committing,
 # review `git diff` and remove anything personal; keep files small.
@@ -233,6 +235,21 @@ esac
     echo
     echo "Add here: engine and server version, image digest or app build."
 } > "$out/capture.txt"
+
+# Optional engine-log snapshot: LOG=<file-or-directory> keeps the lines verbatim,
+# timestamps included, as tests/fixtures/<kind>/completions.timestamped.log.
+if [[ -n "${LOG:-}" ]]; then
+    if [[ -d $LOG ]]; then
+        log_file=$(find "$LOG" -maxdepth 1 -type f -name '*.log' | sort | head -1)
+        [[ -n $log_file ]] || die "no .log files under $LOG"
+    elif [[ -f $LOG ]]; then
+        log_file=$LOG
+    else
+        die "LOG=$LOG is neither a file nor a directory"
+    fi
+    cp -- "$log_file" "$out/completions.timestamped.log"
+    echo "engine log snapshot: $log_file ($(wc -l <"$log_file") lines)"
+fi
 
 echo
 printf 'captured into %s/:\n' "$out"

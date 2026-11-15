@@ -7,6 +7,7 @@ enough that a container baseline needs no manual edits after import.
 """
 
 import json
+import platform
 import re
 import shlex
 import shutil
@@ -540,6 +541,87 @@ def build_profile(
         "software": software_block(meta, facts, runtime, lock, system),
         "model": model_block(recipe_dir, format_part),
         "settings": settings_block(meta, results, facts, recipe_dir, adapter),
+    }
+
+
+def git_revision(root: Path) -> dict[str, Any]:
+    """Current checkout revision of the harness, mirroring the baseline meta shape."""
+    commit = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "HEAD"], check=False, capture_output=True, text=True
+    )
+    if commit.returncode:
+        return {"commit": None, "dirty": False}
+    dirty = (
+        subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain"],
+            check=False,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        != ""
+    )
+    return {"commit": commit.stdout.strip(), "dirty": dirty}
+
+
+def session_profile(
+    facts: Mapping[str, Any],
+    recipe_dir: Path,
+    root: Path,
+    sampling: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Compose a schema-v2 ``profile.yaml`` document from an instance ``facts.json``.
+
+    ``facts`` is the launcher's instance document; ``sampling`` comes from the engine
+    log. Fields no source records stay ``null``.
+    """
+    system_value = facts.get("host")
+    system = system_value if isinstance(system_value, Mapping) else None
+    meta: dict[str, Any] = {
+        "host": {
+            "revision": git_revision(root),
+            "python": platform.python_version(),
+            "kernel": _dig(system, "kernel"),
+        }
+    }
+    runtime_name = facts.get("runtime")
+    runtime_dir = recipe_dir.parents[1] / "runtimes" / str(runtime_name) if runtime_name else None
+    runtime = (
+        read_json(runtime_dir / "runtime.json")
+        if runtime_dir is not None and (runtime_dir / "runtime.json").is_file()
+        else {}
+    )
+    adapter_value = facts.get("adapter")
+    adapter = adapter_value if isinstance(adapter_value, str) else runtime.get("adapter")
+    lock_path = runtime_dir / "container" / "versions.lock.json" if runtime_dir else None
+    lock = read_json(lock_path) if lock_path is not None and lock_path.is_file() else {}
+    model, format_part, hardware, memory = experiment_identity(recipe_dir.name)
+    options = _obj(facts.get("options"))
+    serving: dict[str, Any] = {}
+    if isinstance(adapter, str):
+        for row, value in _native_serving(recipe_dir).items():
+            serving[row] = value
+    if isinstance(options.get("context"), int):
+        serving["context_length_tokens"] = options["context"]
+    if isinstance(options.get("draft"), str):
+        serving["speculative_decoding"] = options["draft"] == "on"
+    if isinstance(options.get("vision"), str):
+        serving["vision"] = VISION_VALUES.get(options["vision"], options["vision"])
+    image = _obj(facts.get("image"))
+    if image.get("image_digests"):
+        serving["image_digest"] = image["image_digests"][0]
+    return {
+        "id": f"{model} / {format_part} / {hardware} / {memory}",
+        "hardware": hardware_block(system),
+        "os": os_block(system, meta),
+        "software": software_block(meta, facts, runtime, lock, system),
+        "model": model_block(recipe_dir, format_part),
+        "settings": {
+            "serving": serving,
+            "sampling": dict(sampling) if sampling else None,
+            "thinking": None,
+            "requests": {"endpoint": "/v1/chat/completions"},
+            "notes": None,
+        },
     }
 
 

@@ -5,6 +5,7 @@ Sizes are shown in GB, as elsewhere in the repository; the result document store
 """
 
 import html
+from pathlib import Path
 from typing import Any
 
 from baseline import schema
@@ -365,3 +366,129 @@ def render_results_block(document: dict[str, Any]) -> str:
     lines += _unavailable(document)
     lines += ["", DEFINITIONS]
     return "\n".join(lines) + "\n"
+
+
+SESSION_START = "<!-- BEGIN GENERATED SESSION -->"
+SESSION_END = "<!-- END GENERATED SESSION -->"
+UNAVAILABLE = "unavailable"
+
+
+def _value(document: dict[str, Any], key: str, nested: str | None = None) -> Any:
+    section: Any = document if nested is None else document.get(nested)
+    return section.get(key) if isinstance(section, dict) else None
+
+
+def _metric(value: object, digits: int = 1) -> str:
+    if value is None:
+        return MISSING
+    if isinstance(value, int):
+        return f"{value:,}"
+    return f"{value:,.{digits}f}"
+
+
+def _span(document: dict[str, Any]) -> str:
+    first, last = _value(document, "first_request"), _value(document, "last_request")
+    if not first or not last:
+        return UNAVAILABLE
+    return f"{first} → {last}"
+
+
+def render_session(document: dict[str, Any]) -> str:
+    """Render a validated session-results document as the summary's activity section."""
+    availability = document["availability"]
+    totals = document["totals"]
+    window = document["window"]
+    rows = [
+        ["Requests completed", _metric(totals["requests"])],
+        ["Cancelled", _metric(totals["cancelled"])],
+        [
+            "Started without result",
+            _metric(totals["unclosed_requests"])
+            if availability["unclosed_requests"]
+            else UNAVAILABLE,
+        ],
+        ["Wall-clock span", _span(document)],
+        ["Prompt tokens", _metric(totals["prompt_tokens"])],
+        ["Reused prompt tokens", _metric(totals["reused_prompt_tokens"])],
+        ["Fresh prefill tokens", _metric(totals["read_prompt_tokens"])],
+        ["Generated tokens", _metric(totals["generated_tokens"])],
+        ["Aggregate prefill (tok/s)", _metric(totals["prefill_tok_s"])],
+        ["Aggregate decode (tok/s)", _metric(totals["decode_tok_s"])],
+        ["Median decode (tok/s)", _metric(totals["decode_tok_s_median"])],
+    ]
+    if availability["draft_acceptance"]:
+        acceptance = totals["draft_acceptance"]
+        shown = MISSING if acceptance is None else f"{acceptance:.1%}"
+        rows.append(
+            [
+                "Draft acceptance",
+                f"{shown} ({totals['drafts_accepted']:,} / {totals['drafts_proposed']:,})",
+            ]
+        )
+    else:
+        rows.append(["Draft acceptance", UNAVAILABLE])
+    lines = [
+        "### Session activity",
+        "",
+        "Engine: `{}` · logs: {}".format(
+            document["engine"], ", ".join(_cell(str(name)) for name in document["log_files"])
+        ),
+    ]
+    if window["since"] or window["until"]:
+        lines.append(f"Window: {window['since'] or 'start'} → {window['until'] or 'end'}")
+    if not availability["timestamps"]:
+        lines.append(
+            "Timestamps: " + UNAVAILABLE + " — this engine logs no per-line times; "
+            "wall-clock span and window filtering are not applicable."
+        )
+    lines += ["", *_table(["Metric", "Value"], rows), ""]
+    buckets = totals["context_buckets"]
+    if buckets:
+        lines += [
+            "### Request size distribution",
+            "",
+            *_table(
+                ["Prompt context", "Requests", "Prompt tokens", "Generated tokens"],
+                [
+                    [
+                        _cell(str(bucket["label"])),
+                        _metric(bucket["requests"]),
+                        _metric(bucket["prompt_tokens"]),
+                        _metric(bucket["generated_tokens"]),
+                    ]
+                    for bucket in buckets
+                ],
+            ),
+        ]
+    return "\n".join(lines) + "\n"
+
+
+def write_session_block(summary_path: Path, block: str) -> None:
+    """Replace the generated session block in a summary, appending it when absent.
+
+    Raises:
+        ValueError: any marker present requires exactly one balanced pair.
+    """
+    text = summary_path.read_text()
+    starts, ends = text.count(SESSION_START), text.count(SESSION_END)
+    if starts == 0 and ends == 0:
+        summary_path.write_text(
+            text.rstrip()
+            + "\n\n"
+            + SESSION_START
+            + "\n\n"
+            + block.rstrip()
+            + "\n"
+            + SESSION_END
+            + "\n"
+        )
+        return
+    if starts != 1 or ends != 1:
+        raise ValueError(f"{summary_path} must contain exactly one generated session block")
+    if text.index(SESSION_START) > text.index(SESSION_END):
+        raise ValueError(f"{summary_path} has session markers in the wrong order")
+    before, middle = text.split(SESSION_START)
+    _old, after = middle.split(SESSION_END)
+    summary_path.write_text(
+        before + SESSION_START + "\n\n" + block.rstrip() + "\n" + SESSION_END + after
+    )

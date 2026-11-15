@@ -150,3 +150,82 @@ def validate_results(document: object) -> None:
         if item.get("case") not in case_ids:
             raise ValueError(f"{name}.case must name an existing case")
         _validate_metrics(item.get("metrics", {}), f"{name}.metrics")
+
+
+SESSION_SCHEMA_VERSION = 1
+SESSION_KIND = "session"
+SESSION_ENGINES = ("strata", "tabbyapi")
+SESSION_COUNT_KEYS = (
+    "requests",
+    "cancelled",
+    "unclosed_requests",
+    "prompt_tokens",
+    "reused_prompt_tokens",
+    "read_prompt_tokens",
+    "generated_tokens",
+    "drafts_accepted",
+    "drafts_proposed",
+)
+SESSION_RATE_KEYS = (
+    "prefill_seconds",
+    "decode_seconds",
+    "prefill_tok_s",
+    "decode_tok_s",
+    "decode_tok_s_median",
+    "draft_acceptance",
+)
+
+
+def _count(value: object, name: str) -> None:
+    if value is not None and (type(value) is not int or value < 0):
+        raise ValueError(f"{name} must be a non-negative integer or null")
+
+
+def _nonnegative_number(value: object, name: str) -> None:
+    if value is None:
+        return
+    if not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+        raise ValueError(f"{name} must be a finite non-negative number or null")
+
+
+def validate_session(document: object) -> None:
+    """Validate a session-results.json document produced by the session report.
+
+    Raises:
+        ValueError: names the first offending field.
+    """
+    data = _mapping(document, "session results")
+    for key in ("schema_version", "kind", "engine", "window", "availability", "totals"):
+        if key not in data:
+            raise ValueError(f"session results is missing {key}")
+    version = data["schema_version"]
+    if type(version) is not int or version != SESSION_SCHEMA_VERSION:
+        raise ValueError(f"schema_version must be {SESSION_SCHEMA_VERSION}")
+    if data["kind"] != SESSION_KIND:
+        raise ValueError(f"kind must be {SESSION_KIND!r}")
+    _choice(data.get("engine"), SESSION_ENGINES, "engine")
+    for key in ("first_request", "last_request"):
+        value = data.get(key)
+        if value is not None:
+            _text(value, key)
+    window = _mapping(data["window"], "window")
+    for key in ("since", "until"):
+        value = window.get(key)
+        if value is not None:
+            _text(value, f"window.{key}")
+    availability = _mapping(data["availability"], "availability")
+    for key, value in availability.items():
+        if type(value) is not bool:
+            raise ValueError(f"availability.{key} must be true or false")
+    totals = _mapping(data["totals"], "totals")
+    for key in SESSION_COUNT_KEYS:
+        _count(totals.get(key), f"totals.{key}")
+    for key in SESSION_RATE_KEYS:
+        _nonnegative_number(totals.get(key), f"totals.{key}")
+    buckets = _sequence(totals.get("context_buckets"), "totals.context_buckets")
+    for index, entry in enumerate(buckets):
+        name = f"context_buckets[{index}]"
+        item = _mapping(entry, name)
+        _text(item.get("label"), f"{name}.label")
+        for key in ("requests", "prompt_tokens", "generated_tokens"):
+            _count(item.get(key), f"{name}.{key}")

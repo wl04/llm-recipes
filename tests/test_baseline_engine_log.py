@@ -1,9 +1,13 @@
 """Engine timings read from the server's own log and matched to the requests."""
 
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import pytest
 from baseline import engine_log
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 LOG = """\
 strata serve: prompt chunk auto: 8192 tokens, a 192-slot ring
@@ -117,9 +121,7 @@ def test_summarize_reports_no_draft_acceptance_without_draft_counts() -> None:
 
 
 def test_parse_tabbyapi_reads_captured_completions() -> None:
-    from pathlib import Path
-
-    text = (Path(__file__).parent / "fixtures/tabbyapi/completions.log").read_text()
+    text = (FIXTURES / "tabbyapi/completions.log").read_text()
     records = engine_log.parse_tabbyapi(text)
     assert len(records) == 20
     assert records[8].prompt_tokens == 9372
@@ -128,3 +130,66 @@ def test_parse_tabbyapi_reads_captured_completions() -> None:
     assert records[2].reused_tokens == 256
     assert records[-1].prefill_ms == 114900
     assert engine_log.summarize(records[-2:]).draft_acceptance == pytest.approx(1374 / 4718)
+
+
+def test_parse_tabbyapi_extracts_sequence_and_timestamp_from_timestamped_lines() -> None:
+    text = (FIXTURES / "tabbyapi/completions.timestamped.log").read_text()
+
+    records = engine_log.parse_tabbyapi(text)
+
+    completions = [record for record in records if not record.cancelled]
+    assert len(completions) == 20
+    assert completions[0].sequence == 3
+    assert completions[0].timestamp == datetime(2026, 11, 15, 0, 12, 36, 530000)
+    assert all(record.timestamp is not None for record in completions)
+
+
+def test_parse_tabbyapi_marks_cancelled_requests() -> None:
+    text = (FIXTURES / "tabbyapi/completions.timestamped.log").read_text()
+
+    cancelled = [r for r in engine_log.parse_tabbyapi(text) if r.cancelled]
+
+    assert [record.sequence for record in cancelled] == [23]
+    assert cancelled[0].timestamp == datetime(2026, 11, 15, 0, 42, 36, 530000)
+
+
+def test_parse_tabbyapi_finds_unclosed_request_ids() -> None:
+    text = (FIXTURES / "tabbyapi/completions.timestamped.log").read_text()
+
+    assert engine_log.tabby_unclosed_requests(text) == []
+
+
+def test_parse_tabbyapi_unclosed_reports_started_requests_without_summary() -> None:
+    text = (
+        "2026-11-15 10:00:00.100 | INFO | #7 chat/completions (stream): 512 prompt tokens\n"
+        "2026-11-15 10:00:09.900 | INFO | #8 chat/completions (stream): 512 prompt tokens\n"
+        "2026-11-15 10:00:20.000 | INFO | #8 chat/completions (stream): 40 tokens generated at "
+        "90.0 T/s · prompt 512 tokens, none cached, 512 new in 1.0 s · first token 1.0 s, "
+        "total 2.0 s\n"
+    )
+
+    assert engine_log.tabby_unclosed_requests(text) == [7]
+
+
+def test_parse_strata_flags_cancelled_generations() -> None:
+    text = (
+        "[strata] done: 122 tokens in 2 s (98.3 tok/s) (stop, cancel=False), expert cache hit\n"
+        "[strata] done: 5 tokens in 1 s (5.0 tok/s) (user_cancel, cancel=True), expert cache\n"
+    )
+
+    entries = engine_log.parse_strata(text)
+
+    assert len(entries) == 1
+    assert entries[0].cancelled
+
+
+def test_parse_strata_records_timestamps_when_lines_carry_them() -> None:
+    line = (
+        "2026-11-15 08:00:00 strata serve: prompt 100 tokens = 20 reused + 80 read in 40 ms "
+        "(2000.0 tok/s), 10 generated in 200 ms (50.0 tok/s)"
+    )
+
+    entries = engine_log.parse_strata(line)
+
+    assert entries[0].timestamp == datetime(2026, 11, 15, 8, 0)
+    assert entries[0].read_tokens == 80

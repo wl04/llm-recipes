@@ -115,9 +115,36 @@ Rendering preserves authored text outside generated markers. [`schema.py`](../sc
 
 Measurements carry a value, unit, and source. Unavailable measurements use `null` with a reason, not zero. Additional metrics vary with the case and available observations.
 
-To add a baseline to the repository, follow the [authoring guide](authoring.md): copy `results.json` and `summary.md` into a numbered experiment folder, fill in `profile.yaml`, and run the generator. The profile holds hardware, software/model identities, and inference settings. Record the runner commit in `software.harness_version` and the suite in `settings.Workload suite`. Raw diagnostic files stay external.
+To add a baseline to the repository, run:
+
+```bash
+python3 scripts/run_baseline.py import <run-dir>
+```
+
+The command creates the numbered experiment folder under the recipe, copies `results.json`, writes a complete `profile.yaml` from the run's `meta.json`, `facts.json`, recipe configuration, and runtime locks, and regenerates the configuration and recipe index. A baseline experiment then needs no manual `profile.yaml` editing. See the [authoring guide](authoring.md) for folder naming.
 
 The Strata and TabbyAPI recipe baselines were recorded with suite v1 and therefore carry no conversation-reuse or reasoning rows; only the GGUF/LM Studio baseline runs suite v2. Re-running one Strata or TabbyAPI recipe with the current suite would fill that gap — optional, roughly 6–11 minutes of GPU time.
+
+## Session report
+
+The session command aggregates one instance's coding activity from the engine's own logs — no client list is needed:
+
+```bash
+python3 scripts/run_baseline.py session <instance>          # launcher log directory
+python3 scripts/run_baseline.py session --logs <dir>        # any directory of *.log files
+python3 scripts/run_baseline.py session <instance> --experiment recipes/<recipe>/<NNN-...>
+```
+
+It reads every `*.log` file in the instance's persistent log directory (the one `launch.py` prints at start) plus `facts.json` when present. The output document `session-results.json` is validated by `schema.py`; with `--experiment` the command writes it into the experiment folder, replaces the generated session block in `summary.md`, and seeds `profile.yaml` from `facts.json` and the sampler parameters the engine echoed to its log — an existing profile is never overwritten. Without `--experiment` the document prints to stdout.
+
+What each engine can provide:
+
+| Engine | Timestamps | Cancellation | Unclosed requests |
+|---|---|---|---|
+| TabbyAPI file logs | per line | `client disconnected` line | started `#N` ids without a summary |
+| Strata `engine.log` / `server.log` | none | `cancel=True` in `server.log` | unavailable |
+
+`--since`/`--until` (ISO timestamps) filter the entries and only work on timestamped logs; the command fails instead of silently ignoring them. Metrics a log cannot provide appear as `unavailable`, matching the baseline convention.
 
 ## Exit codes
 

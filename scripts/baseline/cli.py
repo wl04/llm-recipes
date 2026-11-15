@@ -6,6 +6,7 @@ be running; without ``--base-url``/``--context`` the run is set up by the guided
 
 import argparse
 import json
+import os
 import platform
 import signal
 import sys
@@ -35,7 +36,9 @@ from baseline import (
     importer,
     lifecycle,
     monitor,
+    report,
     schema,
+    session,
     sources,
     vision,
     workloads,
@@ -101,6 +104,20 @@ def _parser() -> argparse.ArgumentParser:
         "--suffix",
         help="Append a lowercase-hyphen slug to the experiment folder name",
     )
+    session_command = commands.add_parser(
+        "session",
+        help="Aggregate a coding session from an instance's server logs",
+    )
+    target = session_command.add_mutually_exclusive_group()
+    target.add_argument("instance", nargs="?", help="Instance name (launcher log directory)")
+    target.add_argument("--logs", type=Path, help="Directory of engine .log files to read")
+    session_command.add_argument("--since", help="ISO timestamp lower bound (timestamped logs)")
+    session_command.add_argument("--until", help="ISO timestamp upper bound (timestamped logs)")
+    session_command.add_argument(
+        "--experiment",
+        type=Path,
+        help="Experiment folder to update: session-results.json, summary block, profile.yaml",
+    )
     return parser
 
 
@@ -124,6 +141,74 @@ def render_run(directory: Path, root: Path = ROOT) -> Path:
     path, _, rendered = generator.update_results_block(directory)
     generator.write_atomic(path, rendered)
     return directory / "results.json"
+
+
+def default_state_home() -> Path:
+    """Per-user state directory, same rule ``launch.py`` uses for instance logs."""
+    return Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+
+
+def session_run(
+    log_dir: Path,
+    root: Path,
+    *,
+    since: str | None = None,
+    until: str | None = None,
+    experiment: Path | None = None,
+) -> dict[str, Any]:
+    """Build and optionally persist a session report; return the results document.
+
+    With ``--experiment``: writes ``session-results.json``, replaces the generated
+    session block in ``summary.md``, and seeds ``profile.yaml`` from the instance
+    ``facts.json`` plus the log's sampler echo when the experiment has none.
+
+    Raises:
+        ValueError: logs are unreadable, filters are unusable, or the experiment path
+            is not a repository experiment folder.
+    """
+    facts_path = log_dir / "facts.json"
+    facts = importer.read_json(facts_path) if facts_path.is_file() else {}
+    engine_hint = facts.get("adapter") if isinstance(facts.get("adapter"), str) else None
+    engine, entries, unclosed, names, sampling = session.read_engine_logs(log_dir, engine_hint)
+    window = {"since": since, "until": until}
+    bounds = {
+        key: datetime.fromisoformat(value) if value else None for key, value in window.items()
+    }
+    kept = session.filter_window(entries, bounds["since"], bounds["until"])
+    document = session.session_stats(
+        kept,
+        engine=engine,
+        since=bounds["since"],
+        until=bounds["until"],
+        unclosed=unclosed,
+        log_files=names,
+    )
+    schema.validate_session(document)
+    if experiment is None:
+        return document
+    recipe_dir = experiment.parent
+    summary = experiment / "summary.md"
+    if not summary.is_file():
+        raise ValueError(f"{experiment} has no summary.md to update")
+    generator.write_atomic(
+        experiment / "session-results.json", json.dumps(document, indent=2) + "\n"
+    )
+    report.write_session_block(summary, report.render_session(document))
+    profile = experiment / "profile.yaml"
+    if not profile.exists():
+        if not facts:
+            raise ValueError(f"{log_dir} has no facts.json; cannot seed {profile}")
+        profile.write_text(
+            yaml.safe_dump(
+                importer.session_profile(facts, recipe_dir, root, sampling),
+                sort_keys=False,
+                allow_unicode=True,
+            )
+        )
+        if (experiment / "configuration.md").is_file():
+            path, _, rendered = generator.update(experiment)
+            generator.write_atomic(path, rendered)
+    return document
 
 
 def default_output(models: Path, recipe: str, now: datetime | None = None) -> Path:
@@ -430,5 +515,34 @@ def main(
             print(f"Cannot import {args.run_dir}: {error}", file=sys.stderr)
             return ExitCode.USAGE
         print(f"Imported experiment {folder}")
+        return ExitCode.OK
+    if args.command == "session":
+        if args.logs is None and args.instance is None:
+            print("session requires an instance name or --logs DIR", file=sys.stderr)
+            return ExitCode.USAGE
+        log_dir = (
+            args.logs.expanduser().resolve()
+            if args.logs is not None
+            else default_state_home() / "llm-recipes" / args.instance
+        )
+        try:
+            document = session_run(
+                log_dir,
+                root,
+                since=args.since,
+                until=args.until,
+                experiment=args.experiment,
+            )
+        except (OSError, ValueError, yaml.YAMLError) as error:
+            print(f"Cannot report session in {log_dir}: {error}", file=sys.stderr)
+            return ExitCode.USAGE
+        if args.experiment is None:
+            print(json.dumps(document, indent=2))
+        else:
+            totals = document["totals"]
+            print(
+                f"Session in {args.experiment}: {totals['requests']} completions, "
+                f"{totals['generated_tokens']:,} tokens generated"
+            )
         return ExitCode.OK
     return _run_command(args, suite or SuiteConfig(), root, recipes or root / "recipes")
