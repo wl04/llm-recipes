@@ -1,5 +1,5 @@
 No token-count route answered with a usable response.
 Attempts:
-  /v1/token/encode -> 200
-  /v1/messages/count_tokens -> 200
-  /api/v0/tokenize -> 200
+  /v1/token/encode -> 200; body: {"error":"Unexpected endpoint or method. (POST /v1/token/encode)"}
+  /v1/messages/count_tokens -> 200; body: {"error":"Unexpected endpoint or method. (POST /v1/messages/count_tokens)"}
+  /api/v0/tokenize -> 200; body: {"error":"Unexpected endpoint or method. (POST /api/v0/tokenize)"}
