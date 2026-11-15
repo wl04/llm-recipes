@@ -54,7 +54,13 @@ This pattern also applies to scenario names expressed as strings. Add any mandat
 - Use the project's formatter and linter; otherwise follow language conventions and record formatting choices in configuration. Avoid mixing broad formatting changes with behavior changes unless necessary.
 - English names should convey meaning, consistent domain terminology, and units; avoid vague names such as `data`, `tmp`, and double negatives.
 - Reduce nesting with early exits; extract domain constants. Split methods by responsibility and level of detail, not by line-count limits.
-- API documentation describes the contract: purpose, constraints, results, errors, and side effects. Comments explain non-obvious reasons and constraints. Do not restate code or discussion/change history; retain the current rationale. Remove outdated comments and commented-out code.
+
+### Documentation and comments
+
+- **Proportionality and zero-fluff:** Prefer self-explanatory code (clear names and strong types) over comments. Keep documentation proportional to complexity: a simple method needs at most a one-line summary, and obvious internal code needs no comments at all.
+- **Do not repeat the signature:** Never restate the identifier name, parameter types, or return types in prose. Omit parameter/return sections when names and types already make them clear; document only non-obvious constraints, invariants, units, errors, or side effects.
+- **No history or decision logs:** Never write change history, rejected alternatives, prompt context, or migration notes in code comments, docstrings, or documentation files (`docs/`, `README.md`), unless explicitly editing a changelog or ADR. Write as if the current design has always existed.
+- **Timeless phrasing:** Avoid temporal or comparative language (`"Previously..."`, `"Changed from..."`, `"Replaced X with Y..."`, `"Now uses..."`, `"Refactored to..."`, `"Added to support..."`). Remove outdated comments and commented-out code immediately; rely on version control for history.
 
 ### Tests
 
@@ -71,7 +77,7 @@ This pattern also applies to scenario names expressed as strings. Add any mandat
 - Represent simple state reads as properties (`Balance`); use methods for read operations (`GetBalanceAsync()`). Use `Is*`, `Has*`, and `Can*` for logical checks where natural.
 - Name asynchronous methods with the `Async` suffix; use `Task` (or a justified `ValueTask`) for completion without data, not `async void`, except for event handlers. Pass `CancellationToken` to long-running operations that support cancellation.
 - Respect nullable contracts; do not suppress warnings with `!` without justification. Release resources owned by the current code through `using` / `await using`.
-- Write API documentation as XML comments using `///`.
+- Document non-trivial public APIs with concise `///` XML comments; omit redundant `<param>` or `<returns>` tags when the signature is self-explanatory.
 - Default checks: `dotnet build`, `dotnet test`, and configured analyzers.
 
 ### Rust
@@ -82,7 +88,7 @@ This pattern also applies to scenario names expressed as strings. Add any mandat
 - Represent expected errors through `Result` (`Result<(), E>` for commands without data), and missing values through `Option`; propagate errors with `?` where appropriate. Do not use `unwrap()` / `expect()` in production code without a justified invariant; they are acceptable in tests.
 - Choose ownership and borrowing according to the contract; do not add `clone()` merely to bypass an ownership error without assessing the need and copying cost.
 - Prefer safe Rust. For necessary `unsafe` code, document the API's safety requirements and explain why the particular block satisfies them.
-- Document code with rustdoc (`///`, `//!`); add `Errors`, `Panics`, `Safety`, and testable examples as needed.
+- Document public APIs concisely with rustdoc (`///`, `//!`); add `Errors`, `Panics`, `Safety`, and testable examples only when applicable.
 - Default checks: `cargo fmt --check`, `cargo clippy`, and `cargo test`, including applicable doctests.
 
 ### Python
@@ -93,21 +99,24 @@ This pattern also applies to scenario names expressed as strings. Add any mandat
 - Use meaningful exceptions for expected errors; catch specific types and preserve the cause with `raise ... from ...` when translating errors. Do not suppress exceptions without justification.
 - Manage resources through `with` / `async with`; avoid mutable default argument values. Use `None` for absent values with explicit semantics.
 - In `asyncio`, do not block the event loop; ensure created tasks finish and cancellation is handled correctly. Use `TaskGroup` for related tasks when supported by the Python version.
-- Document public APIs with PEP 257 docstrings describing the contract rather than the implementation. Default checks: the project's configured test runner (pytest or stdlib `unittest`), formatter, linter, and type checker.
+- Document public APIs with concise PEP 257 docstrings (preferring single-line summaries for simple functions) describing the contract rather than the implementation. Default checks: the project's configured test runner (pytest or stdlib `unittest`), formatter, linter, and type checker.
 
 ## Project-specific rules
 
 - Determine tool versions, check commands, and architectural constraints from local instructions, configuration, and CI. Account for target platforms and enabled capabilities.
 - The language commands above are guidance when project configuration is absent; do not run checks for unrelated languages. Record missing information in the relevant project's instructions, not in the general rules.
 
-## Workflow
+## Workflow and guardrails
 
 1. Study the affected code, tests, and project rules; identify applicable language guidance and checks.
-2. When changing behavior, follow TDD: a test that fails for the expected reason → implementation → refactoring.
-3. Run checks relevant to the change and mandatory project checks; review the final diff for errors and unrelated edits.
-4. Report changes, checks performed, and limitations; do not claim successful testing without running it.
-5. When commits are needed, keep them small and cohesive, following commit-message and branch conventions.
+2. **Stop on ambiguity:** If requirements conflict, domain rules are unclear, or a task requires breaking an unmentioned public contract or adding/upgrading an external dependency, ask for clarification before implementing.
+3. **Protect artifacts and environment:** Never hardcode secrets or credentials (use mock values in tests). Do not manually edit generated files, migration snapshots, or lockfiles. Do not run destructive git or environment commands (`reset --hard`, `push --force`, `clean -f`, dropping databases) without explicit permission.
+4. When changing behavior, follow TDD: a test that fails for the expected reason → implementation → refactoring.
+5. Run checks relevant to the change and mandatory project checks; review the final diff for errors and unrelated edits. Report pre-existing unrelated failures rather than fixing them in the same change, unless they block compilation of the affected module.
+6. Report changes, checks performed, and limitations; do not claim successful testing without running it.
+7. When commits are needed, keep them small and cohesive, following commit-message and branch conventions.
 
 ## Repository instructions
 
 Read and follow [project instructions](docs/project-instructions.md). Project-specific instructions take precedence over these general guidelines.
+```[cite: 1]
