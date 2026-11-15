@@ -118,7 +118,8 @@ if [[ $kind == strata ]]; then
     limit_field=max_completion_tokens
     thinking=',"reasoning_effort":"none"'
 elif [[ $kind == lmstudio ]]; then
-    # Live probe 2026-11-15: "none" disables thinking; "off" answers HTTP 400.
+    # "none" disables thinking; "off" answers HTTP 400. See probe_lmstudio_thinking.sh
+    # for every control this server accepts.
     limit_field=max_tokens
     thinking=',"reasoning_effort":"none"'
 else

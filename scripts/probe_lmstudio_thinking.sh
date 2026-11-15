@@ -5,12 +5,12 @@
 #   base_url defaults to http://127.0.0.1:1234; the model defaults to the single
 #   served model, or set MODEL=.
 #
-# LM Studio Bionic 1.2.0 measured 2026-11-15: reasoning_effort "none" disables thinking,
-# "off" answers HTTP 400, and chat_template_kwargs, enable_thinking, and reasoning are all
-# accepted but inert. This script re-checks every candidate after an LM Studio update: it
-# streams the same short prompt once per candidate field and prints which variants produced
-# visible output without any reasoning content. Exits 0 if at least one control worked.
-# Measured thinking is on by default; a working "none" makes "high" worth checking too.
+# LM Studio Bionic 1.2.0 behavior: reasoning_effort "none" disables thinking, "off" answers
+# HTTP 400, and chat_template_kwargs, enable_thinking, and reasoning are all accepted but
+# inert. This script re-checks every candidate after an LM Studio update: it streams the same
+# short prompt once per candidate field and prints which variants produced visible output
+# without any reasoning content. Exits 0 if at least one control worked.
+# Thinking is on by default; a working "none" makes "high" worth checking too.
 # The vision request applies the first working control: with a vision adapter (mmproj) loaded
 # the model should answer "red"; an empty answer with a control applied means vision is
 # genuinely unsupported over this endpoint.
