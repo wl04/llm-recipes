@@ -565,7 +565,7 @@ def write_settings_profile(
     return result
 
 
-def test_render_sampling_mode_as_single_row(tmp_path: Path) -> None:
+def test_render_sampling_mode_single_row(tmp_path: Path) -> None:
     result = write_settings_profile(
         tmp_path, {"sampling": {"mode": "conservative"}}
     )
@@ -578,7 +578,30 @@ def test_render_sampling_mode_as_single_row(tmp_path: Path) -> None:
     assert "## Thinking" not in document
 
 
-def test_render_uses_registry_labels_and_canonical_order_for_sampling_keys(
+def test_render_renders_notes_section_last(tmp_path: Path) -> None:
+    result = write_settings_profile(
+        tmp_path,
+        {**CANONICAL_SETTINGS, "notes": "Manual sampling preset; verify on rerun."},
+    )
+
+    document = gen.render(result)
+
+    assert document.index("## Experiment notes") == max(
+        document.index(title)
+        for title in (
+            "## Serving",
+            "## Sampling",
+            "## Thinking",
+            "## Requests",
+            "## Experiment notes",
+        )
+    )
+    assert "Manual sampling preset; verify on rerun." in document[
+        document.index("## Experiment notes") :
+    ]
+
+
+def test_render_uses_registry_labels_for_canonical_sampling_keys(
     tmp_path: Path,
 ) -> None:
     result = write_settings_profile(tmp_path, CANONICAL_SETTINGS)
@@ -594,7 +617,7 @@ def test_render_uses_registry_labels_and_canonical_order_for_sampling_keys(
     )
 
 
-def test_render_orders_setting_sections_regardless_of_yaml_key_order(
+def test_render_orders_sections_independently_of_yaml_key_order(
     tmp_path: Path,
 ) -> None:
     result = write_settings_profile(tmp_path, CANONICAL_SETTINGS)
@@ -639,13 +662,18 @@ def test_render_orders_serving_rows_by_registry_then_alphabetically(
     )
 
 
+def test_render_rejects_unknown_key_in_sampling_section(tmp_path: Path) -> None:
+    profile = write_settings_profile(
+        tmp_path, {"sampling": {"top_k": 20, "temp": 1.0}}
+    )
+
+    with pytest.raises(ValueError, match=r"unknown key 'temp' in settings\.sampling"):
+        gen.render(profile)
+
+
 @pytest.mark.parametrize(
     ("settings", "message"),
     [
-        (
-            {"sampling": {"top_k": 20, "temp": 1.0}},
-            "unknown key 'temp' in settings.sampling",
-        ),
         ({"thinking": {"effort": "high"}}, "unknown key 'effort' in settings.thinking"),
         ({"requests": {"api_key": "x"}}, "unknown key 'api_key' in settings.requests"),
         ({"Request policy": "temperature 1"}, "not allowed"),
