@@ -1,5 +1,8 @@
 """Contract checks for the host launcher; no Docker or GPU required."""
 
+import contextlib
+import io
+import json
 import subprocess
 import sys
 import tempfile
@@ -114,6 +117,87 @@ class LauncherTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual(result.returncode, 2)
+
+    def test_instances_command_emits_machine_readable_fields(self) -> None:
+        command = launcher.instances_command()
+
+        format_argument = command[command.index("--format") + 1]
+
+        self.assertNotIn("table ", format_argument)
+        self.assertIn('{{.Label "io.llm-recipes.instance"}}', format_argument)
+
+    def test_parse_instances_reads_tab_separated_records(self) -> None:
+        output = (
+            "alpha\texl3\tUp 2 minutes\t0.0.0.0:5000->5000/tcp\n"
+            "beta\tstrata\tUp 9 seconds\t\n"
+            "\n"
+        )
+
+        records = launcher.parse_instances(output)
+
+        self.assertEqual(
+            records[0],
+            {
+                "instance": "alpha",
+                "recipe": "exl3",
+                "status": "Up 2 minutes",
+                "ports": "0.0.0.0:5000->5000/tcp",
+            },
+        )
+        self.assertEqual(records[1]["ports"], "")
+
+    def test_parse_instances_rejects_malformed_line(self) -> None:
+        with self.assertRaises(ValueError):
+            launcher.parse_instances("alpha\texl3\n")
+
+    def test_list_json_emits_recipe_records(self) -> None:
+        buffer = io.StringIO()
+        with (
+            patch.object(sys, "argv", ["launch.py", "list", "--json"]),
+            patch("launch.discover_recipes", return_value={RECIPE.name: RECIPE}),
+            contextlib.redirect_stdout(buffer),
+        ):
+            code = launch.main()
+
+        data = json.loads(buffer.getvalue())
+        self.assertEqual(code, 0)
+        self.assertEqual(data[0]["name"], RECIPE.name)
+        self.assertEqual(data[0]["port"], RECIPE.port)
+
+    def test_ps_json_parses_instance_listing(self) -> None:
+        completed = subprocess.CompletedProcess(
+            launcher.instances_command(),
+            0,
+            "alpha\texl3\tUp 2 minutes\t0.0.0.0:5000->5000/tcp\n",
+            "",
+        )
+        buffer = io.StringIO()
+        with (
+            patch.object(sys, "argv", ["launch.py", "ps", "--json"]),
+            patch("launch.capture", return_value=completed),
+            contextlib.redirect_stdout(buffer),
+        ):
+            code = launch.main()
+
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(buffer.getvalue())[0]["instance"], "alpha")
+
+    def test_status_json_reports_missing_instances_as_not_found(self) -> None:
+        completed = subprocess.CompletedProcess(
+            launcher.lifecycle_command("status", "gone"), 1, "", "Error: No such object"
+        )
+        buffer = io.StringIO()
+        with (
+            patch.object(sys, "argv", ["launch.py", "status", "gone", "--json"]),
+            patch("launch.capture", return_value=completed),
+            contextlib.redirect_stdout(buffer),
+        ):
+            code = launch.main()
+
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            json.loads(buffer.getvalue()), {"instance": "gone", "status": "not-found"}
+        )
 
 
 if __name__ == "__main__":

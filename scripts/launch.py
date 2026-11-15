@@ -2,15 +2,20 @@
 """Launch prepared recipes and manage their named instances."""
 
 import argparse
+import json
 import os
 import shlex
+import subprocess
+import sys
 from pathlib import Path
 
 from doctor import diagnose
 from launcher import (
     discover_recipes,
     gpu_groups,
+    instances_command,
     lifecycle_command,
+    parse_instances,
     prepare_start,
     resolve_launch_options,
     run_command,
@@ -21,13 +26,21 @@ from launcher import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def capture(command: list[str]) -> subprocess.CompletedProcess[str]:
+    """Run a command quietly; JSON callers surface stderr themselves."""
+    return subprocess.run(command, check=False, capture_output=True, text=True)
+
+
 def parser() -> argparse.ArgumentParser:
     """Define the CLI without requiring recipe files or Docker access."""
     cli = argparse.ArgumentParser(description=__doc__)
     commands = cli.add_subparsers(dest="action", required=True)
-    commands.add_parser("list", help="list available recipes")
-    commands.add_parser("ps", help="list running launcher instances")
+    list_command = commands.add_parser("list", help="list available recipes")
+    list_command.add_argument("--json", action="store_true", help="machine-readable output")
+    ps_command = commands.add_parser("ps", help="list running launcher instances")
+    ps_command.add_argument("--json", action="store_true", help="machine-readable output")
     doctor = commands.add_parser("doctor", help="read-only host and recipe diagnostics")
+    doctor.add_argument("--json", action="store_true", help="machine-readable output")
     doctor.add_argument("recipe", help="recipe directory name; see list")
     doctor.add_argument("--models", type=Path, default=Path.home() / "Models/llm-recipes")
     start = commands.add_parser("start")
@@ -48,6 +61,8 @@ def parser() -> argparse.ArgumentParser:
     for action in ("status", "logs", "stop"):
         sub = commands.add_parser(action)
         sub.add_argument("instance")
+        if action == "status":
+            sub.add_argument("--json", action="store_true", help="machine-readable output")
         if action == "logs":
             sub.add_argument("--follow", action="store_true")
     return cli
@@ -59,7 +74,19 @@ def main() -> int:
     args = cli.parse_args()
     try:
         if args.action == "ps":
+            if args.json:
+                listing = capture(instances_command())
+                if listing.returncode:
+                    sys.stderr.write(listing.stderr)
+                    return listing.returncode
+                print(json.dumps(parse_instances(listing.stdout), indent=2))
+                return 0
             return run_command(running_command())
+        if args.action == "status" and args.json:
+            inspection = capture(lifecycle_command("status", args.instance))
+            status = inspection.stdout.strip() or "not-found"
+            print(json.dumps({"instance": args.instance, "status": status}, indent=2))
+            return 0
         if args.action not in ("start", "list", "doctor"):
             return run_command(
                 lifecycle_command(
@@ -70,6 +97,25 @@ def main() -> int:
             )
         recipes = discover_recipes(ROOT / "recipes")
         if args.action == "list":
+            if args.json:
+                print(
+                    json.dumps(
+                        [
+                            {
+                                "name": recipe.name,
+                                "runtime": recipe.runtime,
+                                "adapter": recipe.adapter,
+                                "engine": recipe.engine,
+                                "image": recipe.image,
+                                "port": recipe.port,
+                                "context": recipe.context,
+                            }
+                            for recipe in recipes.values()
+                        ],
+                        indent=2,
+                    )
+                )
+                return 0
             print("RECIPE  |  API SERVER  |  ENGINE  |  PORT")
             for recipe in recipes.values():
                 print(f"{recipe.name}  |  {recipe.adapter}  |  {recipe.engine}  |  {recipe.port}")
@@ -79,6 +125,17 @@ def main() -> int:
         recipe = recipes[args.recipe]
         if args.action == "doctor":
             findings = diagnose(recipe, args.models.expanduser().resolve())
+            if args.json:
+                print(
+                    json.dumps(
+                        [
+                            {"status": item.status, "name": item.name, "detail": item.detail}
+                            for item in findings
+                        ],
+                        indent=2,
+                    )
+                )
+                return int(any(item.status == "FAIL" for item in findings))
             for item in findings:
                 print(f"{item.status}: {item.name}: {item.detail}")
             print(

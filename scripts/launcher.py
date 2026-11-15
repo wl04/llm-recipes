@@ -274,6 +274,36 @@ def running_command() -> list[str]:
     ]
 
 
+INSTANCE_FIELDS = ("instance", "recipe", "status", "ports")
+
+
+def instances_command() -> list[str]:
+    """Build a tab-separated listing of managed instances for machine consumers."""
+    return [
+        "sudo",
+        "docker",
+        "ps",
+        "--filter",
+        "label=io.llm-recipes.managed=true",
+        "--format",
+        '{{.Label "io.llm-recipes.instance"}}\t{{.Label "io.llm-recipes.recipe"}}'
+        "\t{{.Status}}\t{{.Ports}}",
+    ]
+
+
+def parse_instances(output: str) -> list[dict[str, str]]:
+    """Parse ``instances_command`` output into one record per non-empty line."""
+    records: list[dict[str, str]] = []
+    for line in output.splitlines():
+        if not line.strip():
+            continue
+        values = line.rstrip("\n").split("\t", len(INSTANCE_FIELDS) - 1)
+        if len(values) != len(INSTANCE_FIELDS):
+            raise ValueError(f"unexpected instance listing line: {line!r}")
+        records.append(dict(zip(INSTANCE_FIELDS, values, strict=True)))
+    return records
+
+
 def run_command(command: list[str]) -> int:
     """Run a foreground command with inherited streams and return its exit status.
 
