@@ -10,6 +10,8 @@ from typing import Any
 from baseline import schema
 
 MISSING = "—"
+VISIBLE_OUTPUT = "first_visible_output_s"
+PAIR_TITLE = "First output / visible (s)"
 CASE_COLUMNS = (
     ("input_tokens", "Input tokens", True),
     ("output_tokens", "Output tokens", True),
@@ -17,8 +19,6 @@ CASE_COLUMNS = (
     ("first_output_s", "First output (s)", True),
     ("engine_prefill_tok_s", "Prefill (tok/s)", True),
     ("client_decode_tok_s", "Decode (tok/s)", True),
-    ("first_visible_output_s", "First visible (s)", False),
-    ("reasoning_chars", "Reasoning chars", False),
     ("draft_acceptance", "Draft acceptance", False),
 )
 NOISE_LABELS = (
@@ -164,11 +164,23 @@ def _warmup(warmup: dict[str, Any]) -> list[str]:
 
 
 def _case_columns(cases: list[dict[str, Any]]) -> list[tuple[str, str]]:
-    return [
+    columns = [
         (key, title)
         for key, title, always in CASE_COLUMNS
         if always or any(key in case.get("metrics", {}) for case in cases)
     ]
+    if any(VISIBLE_OUTPUT in case.get("metrics", {}) for case in cases):
+        columns = [
+            (key, PAIR_TITLE if key == "first_output_s" else title) for key, title in columns
+        ]
+    return columns
+
+
+def _case_value(case: dict[str, Any], key: str) -> str:
+    metrics = case.get("metrics", {})
+    if key == "first_output_s" and VISIBLE_OUTPUT in metrics:
+        return f"{_number(metrics.get('first_output_s'))} / {_number(metrics.get(VISIBLE_OUTPUT))}"
+    return _number(metrics.get(key))
 
 
 def _cases(cases: list[dict[str, Any]]) -> list[str]:
@@ -179,7 +191,7 @@ def _cases(cases: list[dict[str, Any]]) -> list[str]:
             _cell(case["id"]),
             _cell(case["status"]),
             str(case["runs"]),
-            *(_number(case.get("metrics", {}).get(key)) for key, _ in columns),
+            *(_case_value(case, key) for key, _ in columns),
             _cell(case.get("finish_reason") or MISSING),
         ]
         for case in cases
@@ -300,7 +312,10 @@ def _resources(entries: list[dict[str, Any]], boot_metrics: dict[str, Any]) -> l
 
 
 def _unavailable(document: dict[str, Any]) -> list[str]:
-    shown_case_keys = {key for key, _ in _case_columns(document["cases"])}
+    cases = document["cases"]
+    shown_case_keys = {key for key, _ in _case_columns(cases)}
+    if any(VISIBLE_OUTPUT in case.get("metrics", {}) for case in cases):
+        shown_case_keys.add(VISIBLE_OUTPUT)
     shown_case_keys |= {key for key, _ in NOISE_LABELS}
     grouped: dict[tuple[str, str], list[str]] = {}
     sources = [(case["id"], case.get("metrics", {}), shown_case_keys) for case in document["cases"]]

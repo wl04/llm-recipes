@@ -67,7 +67,7 @@ Performance requests use temperature 1, top-k 20, top-p 0.95, min-p 0, repetitio
 
 `policy` records sampling defaults, overrides in `request_extra`, explicit thinking controls after overrides in `thinking_request`, and the reasoning request's controls in `reasoning_request`. An empty thinking mapping means unspecified. These describe requests, not verified server behavior. The context value is likewise the configured limit, not an independently queried server value.
 
-The reasoning case records reasoning and visible text separately: `first_visible_output_s` times the first content delta rather than the first output event, and `reasoning_chars` and `visible_chars` count stream text client-side. A reply of reasoning with no visible text is flagged as a failed run.
+The reasoning case records reasoning and visible text separately: `first_visible_output_s` times the first content delta rather than the first output event, and `reasoning_chars` and `visible_chars` count stream text client-side. A reply of reasoning with no visible text is flagged as a failed run. In the summary, the first-output and first-visible seconds share one pair column (`first output / visible`), and the character counts stay in `results.json` without a column.
 
 ### Vision check
 

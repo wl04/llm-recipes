@@ -30,20 +30,20 @@ Warmup: 4 requests, converged, 4.77 s.
 
 ### Cases
 
-| Case | Status | Runs | Input tokens | Output tokens | Cached input | First output (s) | Prefill (tok/s) | Decode (tok/s) | First visible (s) | Reasoning chars | Draft acceptance | Finish |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| context-8k | ok | 5 | 7,926 | 1,024 | — | 7.05 | — | 63.98 | — | — | — | length (3), stop (2) |
-| sustained-lru-cache | insufficient_sample | 1 | 63 | 138 | — | 0.262 | — | 77.53 | — | — | — | stop |
-| sustained-tokenizer | ok | 1 | 60 | 2,048 | — | 0.194 | — | 82.66 | — | — | — | length |
-| sustained-event-store | ok | 1 | 55 | 2,048 | — | 0.207 | — | 85.10 | — | — | — | length |
-| context-32k | ok | 1 | 25,619 | 1,024 | — | 24.65 | — | 56.35 | — | — | — | length |
-| context-64k | ok | 1 | 67,238 | 1,024 | — | 80.35 | — | 46.93 | — | — | — | length |
-| context-120k | ok | 2 | 118,963 | 1,024 | — | 183.33 | — | 40.58 | — | — | — | length |
-| conversation-fresh | ok | 1 | 1,146 | 71 | — | 2.11 | — | 90.03 | — | — | — | stop |
-| conversation-reuse-1 | ok | 1 | 425 | 36 | — | 0.528 | — | 95.28 | — | — | — | stop |
-| conversation-reuse-2 | ok | 1 | 778 | 256 | — | 0.448 | — | 78.74 | — | — | — | length |
-| conversation-reuse-3 | ok | 1 | 1,146 | 97 | — | 0.469 | — | 49.28 | — | — | — | stop |
-| reasoning-medium | ok | 1 | 117 | 709 | — | 0.361 | — | 61.88 | 11.23 | 1,880 | — | stop |
+| Case | Status | Runs | Input tokens | Output tokens | Cached input | First output / visible (s) | Prefill (tok/s) | Decode (tok/s) | Draft acceptance | Finish |
+|---|---|---|---|---|---|---|---|---|---|---|
+| context-8k | ok | 5 | 7,926 | 1,024 | — | 7.05 | — | 63.98 | — | length (3), stop (2) |
+| sustained-lru-cache | insufficient_sample | 1 | 63 | 138 | — | 0.262 | — | 77.53 | — | stop |
+| sustained-tokenizer | ok | 1 | 60 | 2,048 | — | 0.194 | — | 82.66 | — | length |
+| sustained-event-store | ok | 1 | 55 | 2,048 | — | 0.207 | — | 85.10 | — | length |
+| context-32k | ok | 1 | 25,619 | 1,024 | — | 24.65 | — | 56.35 | — | length |
+| context-64k | ok | 1 | 67,238 | 1,024 | — | 80.35 | — | 46.93 | — | length |
+| context-120k | ok | 2 | 118,963 | 1,024 | — | 183.33 | — | 40.58 | — | length |
+| conversation-fresh | ok | 1 | 1,146 | 71 | — | 2.11 | — | 90.03 | — | stop |
+| conversation-reuse-1 | ok | 1 | 425 | 36 | — | 0.528 | — | 95.28 | — | stop |
+| conversation-reuse-2 | ok | 1 | 778 | 256 | — | 0.448 | — | 78.74 | — | length |
+| conversation-reuse-3 | ok | 1 | 1,146 | 97 | — | 0.469 | — | 49.28 | — | stop |
+| reasoning-medium | ok | 1 | 117 | 709 | — | 0.361 / 11.23 | — | 61.88 | — | stop |
 
 - Noise floor, context-8k (5 runs): first output 95.7%, decode rate 12.1% (range over median).
 - Noise floor, context-120k (2 runs): first output 0.8%, decode rate 2.7% (range over median).

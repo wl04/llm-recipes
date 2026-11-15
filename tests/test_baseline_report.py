@@ -111,6 +111,41 @@ def test_cases_table_has_the_agreed_columns_and_no_note_column() -> None:
     ]
 
 
+def _with_reasoning_case(document: dict[str, Any]) -> dict[str, Any]:
+    reasoning = copy.deepcopy(document["cases"][0])
+    reasoning["id"] = "reasoning-medium"
+    reasoning["metrics"]["first_visible_output_s"] = schema.measured(
+        11.232724, "s", "client monotonic clock"
+    )
+    reasoning["metrics"]["reasoning_chars"] = schema.measured(1880, "chars", "client stream text")
+    document["cases"].append(reasoning)
+    return document
+
+
+def test_cases_table_pairs_first_output_with_visible_time() -> None:
+    cases = section(render(_with_reasoning_case(sample_results())), "### Cases")
+    header = [cell.strip() for cell in cases.strip().splitlines()[0].strip("|").split("|")]
+    assert "First output / visible (s)" in header
+    assert "First visible (s)" not in header
+    assert "Reasoning chars" not in header
+    text = render(_with_reasoning_case(sample_results()))
+    assert "2.50" in row_of(text, "context-8k")
+    assert "2.50 / 11.23" in row_of(text, "reasoning-medium")
+
+
+def test_cases_table_marks_a_missing_visible_time_as_unavailable() -> None:
+    document = _with_reasoning_case(sample_results())
+    reasoning = next(case for case in document["cases"] if case["id"] == "reasoning-medium")
+    reasoning["metrics"]["first_visible_output_s"] = schema.unavailable("reasoning-only reply")
+
+    text = render(document)
+
+    assert "2.50 / —" in row_of(text, "reasoning-medium")
+    assert "first_visible_output_s: reasoning-only reply (reasoning-medium)" in section(
+        text, "### Unavailable measurements"
+    )
+
+
 def test_cases_table_formats_values_and_marks_unavailable() -> None:
     row = row_of(section(render(), "### Cases"), "context-8k")
 
