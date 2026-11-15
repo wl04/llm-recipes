@@ -101,6 +101,18 @@ This pattern also applies to scenario names expressed as strings. Add any mandat
 - In `asyncio`, do not block the event loop; ensure created tasks finish and cancellation is handled correctly. Use `TaskGroup` for related tasks when supported by the Python version.
 - Document public APIs with concise PEP 257 docstrings (preferring single-line summaries for simple functions) describing the contract rather than the implementation. Default checks: the project's configured test runner (pytest or stdlib `unittest`), formatter, linter, and type checker.
 
+### Shell (Bash / POSIX sh)
+
+- Explicitly declare the target shell via the shebang (`#!/usr/bin/env bash` or `#!/bin/sh`); do not use Bashisms (`[[ ]]`, arrays, `local`) in POSIX `sh` scripts.
+- Start scripts with `set -euo pipefail` (or `set -eu` in POSIX `sh`). Handle expected non-zero exits explicitly with `if` or `||` rather than disabling `-e` globally.
+- Functions and local variables use `snake_case`; environment variables and exported constants use `UPPER_SNAKE_CASE`. Declare function-scoped variables with `local` in Bash.
+- Double-quote all variable and command expansions (`"$var"`, `"$(cmd)"`) unless word splitting or globbing is deliberately required. Use `[[ ... ]]` for conditionals in Bash and `(( ... ))` for arithmetic.
+- Represent command outcomes through exit codes (`0` for success, non-zero for failure) and write error/diagnostic messages to `stderr` (`>&2`); reserve `stdout` for query data and pipeline output.
+- Make scripts idempotent where possible and safe to run from any working directory (resolve paths relative to the script or validate required state upfront). Clean up temporary files and background jobs using `trap ... EXIT`.
+- Avoid fragile patterns: iterate with globs (`for f in *.txt`) or `find ... -print0 | while IFS= read -r -d ''` instead of parsing `ls`; pass arguments via arrays in Bash rather than building command strings with `eval`.
+- Keep comments minimal; provide a brief header comment or `--help` usage block only for entry-point scripts with non-obvious flags or environment requirements.
+- Default checks: `shellcheck`, `shfmt -d` (if configured), and `bats` or integration tests where present.
+
 ## Project-specific rules
 
 - Determine tool versions, check commands, and architectural constraints from local instructions, configuration, and CI. Account for target platforms and enabled capabilities.
@@ -119,3 +131,4 @@ This pattern also applies to scenario names expressed as strings. Add any mandat
 ## Repository instructions
 
 Read and follow [project instructions](docs/project-instructions.md). Project-specific instructions take precedence over these general guidelines.
+
