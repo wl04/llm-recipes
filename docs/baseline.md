@@ -121,7 +121,7 @@ To add a baseline to the repository, run:
 python3 scripts/run_baseline.py import <run-dir>
 ```
 
-The command creates the numbered experiment folder under the recipe, copies `results.json`, writes a complete `profile.yaml` from the run's `meta.json`, `facts.json`, recipe configuration, and runtime locks, and regenerates the configuration and recipe index. A baseline experiment then needs no manual `profile.yaml` editing. See the [authoring guide](authoring.md) for folder naming.
+The command creates the numbered experiment folder under the recipe, copies `results.json`, writes a complete `profile.yaml` from the run's `meta.json`, `facts.json`, recipe configuration, and runtime locks, and regenerates the configuration and recipe index. A baseline experiment then needs no manual `profile.yaml` editing. The profile reuses the identity of the recipe's existing experiments when they have one, so the recipe id never splits over display wording; folder-derived parts serve only the first experiment. See the [authoring guide](authoring.md) for folder naming.
 
 The Strata and TabbyAPI recipe baselines were recorded with suite v1 and therefore carry no conversation-reuse or reasoning rows; only the GGUF/LM Studio baseline runs suite v2. Re-running one Strata or TabbyAPI recipe with the current suite would fill that gap — optional, roughly 6–11 minutes of GPU time.
 

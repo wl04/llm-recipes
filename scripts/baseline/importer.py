@@ -143,6 +143,25 @@ def _display_token(token: str) -> str:
     return token[:1].upper() + token[1:]
 
 
+def recipe_identity(recipe_dir: Path) -> str:
+    """Profile id shared by all experiments of one recipe.
+
+    Reuses the id of the recipe's earliest existing experiment so the identity
+    never splits over wording drift; folder-derived parts serve only the first
+    experiment of a recipe.
+    """
+    for profile in sorted(recipe_dir.glob("*/profile.yaml")):
+        try:
+            existing = yaml.safe_load(profile.read_text(encoding="utf-8"))
+        except (OSError, yaml.YAMLError):
+            continue
+        identifier = existing.get("id") if isinstance(existing, dict) else None
+        if isinstance(identifier, str) and identifier.strip():
+            return identifier.strip()
+    model, format_part, hardware, memory = experiment_identity(recipe_dir.name)
+    return f"{model} / {format_part} / {hardware} / {memory}"
+
+
 def experiment_identity(recipe_name: str) -> tuple[str, str, str, str]:
     """Split ``<model>-<format>-<hardware>-<memory>`` into the four profile id parts.
 
@@ -534,9 +553,9 @@ def build_profile(
     adapter = _first(_dig(facts, "adapter"), runtime.get("adapter"))
     lock_path = runtime_dir / "container" / "versions.lock.json" if runtime_dir else None
     lock = read_json(lock_path) if lock_path is not None and lock_path.is_file() else {}
-    model, format_part, hardware, memory = experiment_identity(recipe_dir.name)
+    _, format_part, _, _ = experiment_identity(recipe_dir.name)
     return {
-        "id": f"{model} / {format_part} / {hardware} / {memory}",
+        "id": recipe_identity(recipe_dir),
         "hardware": hardware_block(system),
         "os": os_block(system, meta),
         "software": software_block(meta, facts, runtime, lock, system),
@@ -598,7 +617,7 @@ def session_profile(
     adapter = adapter_value if isinstance(adapter_value, str) else runtime.get("adapter")
     lock_path = runtime_dir / "container" / "versions.lock.json" if runtime_dir else None
     lock = read_json(lock_path) if lock_path is not None and lock_path.is_file() else {}
-    model, format_part, hardware, memory = experiment_identity(recipe_dir.name)
+    _, format_part, _, _ = experiment_identity(recipe_dir.name)
     options = _obj(facts.get("options"))
     serving: dict[str, Any] = {}
     if isinstance(adapter, str):
@@ -614,7 +633,7 @@ def session_profile(
     if image.get("image_digests"):
         serving["image_digest"] = image["image_digests"][0]
     return {
-        "id": f"{model} / {format_part} / {hardware} / {memory}",
+        "id": recipe_identity(recipe_dir),
         "hardware": hardware_block(system),
         "os": os_block(system, meta),
         "software": software_block(meta, facts, runtime, lock, system),

@@ -247,6 +247,22 @@ def test_import_uses_next_free_sequence_number(tmp_path: Path) -> None:
     assert folder.name == "003-2026-11-15-baseline"
 
 
+def test_import_reuses_the_identity_of_existing_experiments(tmp_path: Path) -> None:
+    root = _make_repo(tmp_path)
+    curated = "Qwen3.8-27B / EXL3 / RX 9070-XT / 16 GB VRAM"  # punctuation drift, same slug
+    first = root / "recipes" / RECIPE / "001-2026-11-14-baseline"
+    first.mkdir(parents=True)
+    (first / "profile.yaml").write_text(f"id: {curated}\n", encoding="utf-8")
+    (first / "summary.md").write_text("# Baseline\n", encoding="utf-8")
+    (first / "configuration.md").write_text("# Baseline configuration\n", encoding="utf-8")
+    run_dir = _make_run(tmp_path)
+
+    folder = importer.import_run(run_dir, root)
+
+    profile = yaml.safe_load((folder / "profile.yaml").read_text(encoding="utf-8"))
+    assert profile["id"] == curated
+
+
 def test_import_suffix_extends_the_folder_name(tmp_path: Path) -> None:
     root = _make_repo(tmp_path)
     run_dir = _make_run(tmp_path)
