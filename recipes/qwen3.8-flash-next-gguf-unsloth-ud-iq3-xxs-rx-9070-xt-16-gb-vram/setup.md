@@ -31,7 +31,7 @@ The instance name defaults to the recipe identifier; file logs land in `$HOME/ll
 
 Readiness: `curl -f http://127.0.0.1:8080/health`. The API is `http://127.0.0.1:8080/v1` and serves `qwen3.8-flash-next-ud-iq3_xxs`.
 
-[Launch defaults](config/launch.json): 131,072 context tokens, MTP on, CPU vision. [Native settings](config/strata.json) contain sampling, cache, and image-token settings; restart the instance after editing them.
+[Launch defaults](config/launch.json): 131,072 context tokens, MTP on, CPU vision. To change them for one launch, pass the matching options to `start`; edit the manifest to change them persistently ([launch options](../../docs/launcher.md#launch-options)). [Native settings](config/strata.json) contain sampling, cache, and image-token settings; restart the instance after editing them.
 
 ## Baseline
 

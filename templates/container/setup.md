@@ -19,7 +19,7 @@ llm-recipes start <recipe> --detach
 llm-recipes logs <recipe> --follow
 ```
 
-The instance name defaults to the recipe identifier and the model data root defaults to `~/llm-recipes`; add `--name`, `--models`, or capacity options only where the launch deviates from these defaults or from `config/launch.json`. Include the API address and readiness check. Link `config/launch.json` and native settings. Explain any differences between the command and manifest defaults.
+The instance name defaults to the recipe identifier and the model data root defaults to `~/llm-recipes`; add `--name`, `--models`, or capacity options only where the launch deviates from these defaults or from `config/launch.json`. Link [launch options](../../docs/launcher.md#launch-options) where the guide tells readers how to override defaults per launch or in the manifest. Include the API address and readiness check. Link `config/launch.json` and native settings. Explain any differences between the command and manifest defaults.
 
 ## Baseline
 

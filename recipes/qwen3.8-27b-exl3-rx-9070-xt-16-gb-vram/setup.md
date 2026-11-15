@@ -42,7 +42,7 @@ The instance name defaults to the recipe identifier; file logs land in `$HOME/ll
 
 API: `http://127.0.0.1:5000/v1`; browser chat: `/ui/`; model status: `/ui/status`; the API serves `qwen3.8-27b-exl3-3bpw`.
 
-The manifest defaults to a 4,096-token context, drafting on and vision off; the launch command above overrides context and vision for the tested coding configuration. Edit [tabby.yml](config/tabby.yml) for sampling and other native defaults. Thinking is enabled by default, and clients control effort and reasoning budget.
+The manifest defaults to a 4,096-token context, drafting on and vision off; the launch command above overrides context and vision for the tested coding configuration. Override any launch default per start with the matching option ([launch options](../../docs/launcher.md#launch-options)). Edit [tabby.yml](config/tabby.yml) for sampling and other native defaults. Thinking is enabled by default, and clients control effort and reasoning budget.
 
 ## Baseline
 
