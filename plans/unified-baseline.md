@@ -286,7 +286,7 @@ Acceptance: tests drive the prompts with scripted answers and a fake server.
 - Set the warmup tolerance and maximum count, the quiet-system thresholds, and the minimum sustained output length from pilot data. Check that noise floors are plausible and comparable across recipes.
 - Confirm the proposed lengths and context matrix yield useful durations without exhausting memory. Record actual suite duration before documenting an estimate.
 - Replace setup-guide validation blocks with the unified command where a setup guide exists (desktop recipes have none). Update runtime/client instructions, authoring guidance, and templates.
-- The Strata `check_generation.py` helper and its tests were removed once the managed Strata baseline was verified; the TabbyAPI helpers stay until that server has been baselined.
+- The Strata `check_generation.py` helper and its tests were removed once the managed Strata baseline was verified; the TabbyAPI `check_generation.py` and `check_long_context.py` helpers were removed once its baseline covered the same checks (text, tools, vision, context matrix to 120k).
 - Replace each recipe's initial-check and vision experiments with a baseline, only after that recipe has a baseline covering the same content (text, tools, vision, long context, memory). Rules:
   - Hand-written coding-session experiments are kept.
   - Strata and ExLlamaV3 initial experiments have been replaced by baseline `001`. The ExLlamaV3 coding session is `002`. Preserve current assigned numbers; future baselines take the next number.
@@ -325,9 +325,9 @@ The initial implementation is complete when one execution per recipe produces us
 
 ## Current remaining work
 
-- Stage 1: real HTTP response fixtures for Strata, TabbyAPI, and LM Studio (TabbyAPI completion-log fixtures are recorded); comprehensive capability probing and server-side context verification.
+- Stage 1: complete. HTTP response fixtures recorded for Strata, TabbyAPI, and LM Studio (`tests/fixtures/`, via `scripts/record_fixtures.sh`) with capability findings: all three servers accept unknown model ids with HTTP 200; LM Studio has no token-count route and only string `tool_choice` values; Qwen servers can spend a small output budget entirely on reasoning.
 - Stage 2d: guided desktop lifecycle and confirmations; desktop attachment is implemented.
-- Stage 3: TabbyAPI and LM Studio workstation baselines, monitoring overhead measurements, and calibration of thresholds. Both Strata recipes have recorded baselines.
+- Stage 3: LM Studio workstation baseline, monitoring overhead measurements, and calibration of thresholds. The Strata and TabbyAPI/ExLlamaV3 recipes have recorded baselines.
 - Stage 4: conversation reuse and reasoning-enabled workloads.
 
 Profiles retain hardware, software/model versions, image identities, Python version, and vision configuration. Results retain measurements and the request policy. `policy.thinking_request` records explicit thinking controls after overrides, without claiming the server applied them. Historical results retain their recorded default flag. No additional corpus or environment metadata is required in the durable results.
