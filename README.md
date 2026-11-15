@@ -25,7 +25,7 @@ Serving needs an AMD Radeon GPU with ROCm support, Docker, Python 3.12 or later,
    llm-recipes list
    ```
 
-2. Open the chosen recipe's `setup.md` (table below). It covers building the container image and preparing model weights — multi-gigabyte downloads with tens of gigabytes of free disk. Prepared models live under `~/llm-recipes/recipes/<recipe-id>/`.
+2. Open the chosen recipe's `setup.md` (table below). It covers building the container image and preparing model weights — multi-gigabyte downloads with tens of gigabytes of free disk. Prepared models live under `~/llm-recipes/recipes/<recipe-id>/`. The Qwen3.8-27B GGUF recipe has no `setup.md`: it is served by LM Studio on the desktop, so its model comes from the app rather than the launcher.
 
 3. Serve the model on localhost and check it:
 
@@ -38,7 +38,7 @@ Serving needs an AMD Radeon GPU with ROCm support, Docker, Python 3.12 or later,
 
    The API is OpenAI-compatible at `http://127.0.0.1:<port>/v1` (port per recipe: 8080 Strata, 5000 TabbyAPI). Connect [Pi](docs/clients/pi.md) from the recipe's `config/pi.models.json` or any OpenAI client.
 
-4. Measure a baseline from the checkout: `sudo -v && python3 scripts/run_baseline.py run <recipe-id>`. Published measurements live in each recipe's dated experiment folders.
+4. Measure a baseline from the checkout: `sudo -v && python3 scripts/run_baseline.py run <recipe-id>`. For a recipe served by a desktop app, start the app and its API server first — the same command opens a guided interview instead. Published measurements live in each recipe's dated experiment folders.
 
 More detail: [launcher guide](docs/launcher.md) · [machine roots](docs/project-instructions.md#machine-roots-and-cutover) · [baseline contract](docs/baseline.md)
 
@@ -75,6 +75,7 @@ recipes/<model-format-hardware-memory>/
     configuration.md   # Generated from this experiment's profile
     summary.md         # Workload, statistics, and observations
     results.json       # Optional: baseline measurements rendered into summary.md
+    session-results.json # Optional: aggregated coding-session activity
     assets/            # Optional screenshots used in the report
 ```
 

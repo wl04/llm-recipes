@@ -9,6 +9,8 @@ recipes/<model-format-hardware-memory>/
     configuration.md
     summary.md
     profile.yaml
+    results.json         # Optional: baseline run data
+    session-results.json # Optional: coding-session activity
 ```
 
 1. Set `id` in `profile.yaml` using the naming rule below; the configuration title is generated from it. An overview in `configuration.md` is optional. Keep the generated-section markers in place.
@@ -22,6 +24,8 @@ For another result, copy the three files from `templates/recipe/NNN-YYYY-MM-DD-d
 A baseline experiment holds the output of the baseline runner instead of a hand-written statistics report. Name it `NNN-YYYY-MM-DD-baseline`, adding a suffix when its configuration differs from the recipe default, and add it with `run_baseline.py import` — the [import recipe](baseline.md#import-a-baseline-run) creates the folder, the marked summary, `results.json`, and the complete `profile.yaml`; you add only optional notes. The generator writes the title from the folder name (or the profile `title` key) and renders `results.json` into the marked results block, so the report contains no hand-written prose; anything you add outside the markers is kept. `--check` fails when `results.json` or the title has changed but has not been regenerated. See the [baseline contract](baseline.md) for the result format.
 
 A session experiment reports a real coding session against a launched instance instead of a hand-counted console log. Add it with `run_baseline.py session <instance> --create <slug>` — the [session recipe](baseline.md#report-a-coding-session) creates the folder, aggregates the engine logs, and seeds `profile.yaml`. Keep only the narrative outside the markers. Strata logs carry no timestamps, so window filtering and the wall-clock span apply to timestamped logs; the report shows everything else as `unavailable`.
+
+Both commands seed their marked report from `templates/recipe/baseline-summary.md` or `templates/recipe/session-summary.md`; `results.json` and `session-results.json` hold the machine-readable run data behind it.
 
 Write a brief current-state description in `recipe.md` and keep its experiment markers. The generator builds its experiment table from report titles, ordered by folder number descending, and links to each configuration and summary. For container recipes, add a prominent setup link and a footer link to the shared runtime guide.
 
@@ -70,6 +74,8 @@ recipes/<model-format-hardware-memory>/
     profile.yaml
     configuration.md
     summary.md
+    results.json         # Optional: baseline run data
+    session-results.json # Optional: coding-session activity
 
 runtimes/<runtime>/
   runtime.json

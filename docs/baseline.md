@@ -81,10 +81,10 @@ With `--logs`, `facts.json` may be absent (LM Studio logs are one such case); th
 
 | Suite | Workloads | Recorded baselines |
 |---|---|---|
-| v1 | checks, warmup, 8K/32K/64K/120K context, sustained coding | TabbyAPI/exl3, ISTA GGUF |
-| v2 | v1 plus conversation-reuse and reasoning | Unsloth GGUF, 27B GGUF (LM Studio) |
+| v1 | checks, warmup, 8K/32K/64K/120K context, sustained coding | TabbyAPI/exl3, ISTA GGUF, Unsloth GGUF (`001`) |
+| v2 | v1 plus conversation-reuse and reasoning | Unsloth GGUF (`002`), 27B GGUF (LM Studio) |
 
-Re-running a v1 recipe with the current suite closes the gap — roughly 6–11 minutes of GPU time.
+Re-running a recipe whose published baseline is v1 with the current suite closes the gap — roughly 6–11 minutes of GPU time.
 
 ## What a run measures
 
