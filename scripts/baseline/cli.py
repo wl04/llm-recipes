@@ -7,6 +7,7 @@ be running; without ``--base-url``/``--context`` the run is set up by the guided
 import argparse
 import json
 import platform
+import shutil
 import signal
 import sys
 import threading
@@ -118,6 +119,12 @@ def _parser() -> argparse.ArgumentParser:
         type=Path,
         help="Experiment folder to update: session-results.json, summary block, profile.yaml",
     )
+    session_command.add_argument(
+        "--create",
+        metavar="DESCRIPTION",
+        help="Create the next numbered experiment folder NNN-DATE-DESCRIPTION for the "
+        "instance's recipe from the templates, then fill it (requires an instance)",
+    )
     return parser
 
 
@@ -141,6 +148,46 @@ def render_run(directory: Path, root: Path = ROOT) -> Path:
     path, _, rendered = generator.update_results_block(directory)
     generator.write_atomic(path, rendered)
     return directory / "results.json"
+
+
+def create_session_folder(
+    root: Path, recipe: str, description: str, log_dir: Path, now: datetime | None = None
+) -> Path:
+    """Create a session experiment folder from the recipe templates; return its path.
+
+    The folder is the recipe's next free ``NNN-date-description``; the date comes
+    from the instance's ``facts.json`` when readable, else from ``now``. ``summary.md``
+    and ``configuration.md`` are copied from the template; ``profile.yaml`` is
+    deliberately left uncreated so that the session command seeds it from the run.
+
+    Raises:
+        ValueError: the description is not a lowercase-hyphen slug, or the recipe
+            folder does not exist in the repository.
+    """
+    if not importer.SUFFIX_RULE.fullmatch(description):
+        raise ValueError(f"{description}: use a lowercase-hyphen slug, like coding-session")
+    recipe_dir = root / "recipes" / recipe
+    if not recipe_dir.is_dir():
+        raise ValueError(f"{recipe}: not a recipe folder under {root / 'recipes'}")
+    facts_path = log_dir / "facts.json"
+    date = ""
+    if facts_path.is_file():
+        started = importer.read_json(facts_path).get("started_at")
+        date = started[:10] if isinstance(started, str) else ""
+    date = date or (now or datetime.now()).strftime("%Y-%m-%d")
+    numbers = [
+        int(match[1])
+        for child in recipe_dir.iterdir()
+        if child.is_dir() and (match := importer.FOLDER_NUMBER.match(child.name))
+    ]
+    number = max(numbers) + 1 if numbers else 1
+    while (experiment := recipe_dir / f"{number:03d}-{date}-{description}").exists():
+        number += 1
+    template = root / "templates/recipe/NNN-YYYY-MM-DD-description"
+    experiment.mkdir()
+    shutil.copyfile(template / "summary.md", experiment / "summary.md")
+    shutil.copyfile(template / "configuration.md", experiment / "configuration.md")
+    return experiment
 
 
 def session_run(
@@ -522,23 +569,36 @@ def main(
             if args.logs is not None
             else paths.logs_dir(paths.data_home(), args.instance)
         )
+        experiment = args.experiment
+        if args.create:
+            if args.logs is not None or args.instance is None:
+                print(
+                    "session --create needs the instance name; it also selects the recipe",
+                    file=sys.stderr,
+                )
+                return ExitCode.USAGE
+            try:
+                experiment = create_session_folder(root, args.instance, args.create, log_dir)
+            except (OSError, ValueError) as error:
+                print(f"Cannot create session experiment: {error}", file=sys.stderr)
+                return ExitCode.USAGE
         try:
             document = session_run(
                 log_dir,
                 root,
                 since=args.since,
                 until=args.until,
-                experiment=args.experiment,
+                experiment=experiment,
             )
         except (OSError, ValueError, yaml.YAMLError) as error:
             print(f"Cannot report session in {log_dir}: {error}", file=sys.stderr)
             return ExitCode.USAGE
-        if args.experiment is None:
+        if experiment is None:
             print(json.dumps(document, indent=2))
         else:
             totals = document["totals"]
             print(
-                f"Session in {args.experiment}: {totals['requests']} completions, "
+                f"Session in {experiment}: {totals['requests']} completions, "
                 f"{totals['generated_tokens']:,} tokens generated"
             )
         return ExitCode.OK

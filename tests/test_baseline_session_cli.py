@@ -254,3 +254,52 @@ def test_session_cli_detects_lm_studio_by_rotated_file_names(
     assert totals["context_buckets"][1]["requests"] == 1  # the 30,000-token prompt
     profile = yaml.safe_load((experiment / "profile.yaml").read_text())
     assert profile["settings"]["sampling"]["temperature"] == 0.6
+
+
+def test_session_create_builds_the_experiment_from_templates(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = runfixtures._make_repo(tmp_path)
+    monkeypatch.setattr(importer, "_repository_url", lambda _root: None)
+    monkeypatch.setenv("LLM_RECIPES_HOME", str(tmp_path / "data"))
+    logs = tmp_path / "data" / "logs" / runfixtures.RECIPE
+    logs.mkdir(parents=True)
+    (logs / "tabbyapi.log").write_text(TABBY_LOG)
+    (logs / "facts.json").write_text(json.dumps(_facts()))
+
+    code = cli.main(["session", runfixtures.RECIPE, "--create", "coding-session"], root=root)
+
+    assert code == 0
+    experiment = root / "recipes" / runfixtures.RECIPE / "001-2026-11-15-coding-session"
+    assert (experiment / "session-results.json").is_file()
+    assert (experiment / "profile.yaml").is_file()
+    assert report.SESSION_START in (experiment / "summary.md").read_text()
+    configuration = (experiment / "configuration.md").read_text()
+    assert gen.START in configuration and "Qwen3.8-27B" in configuration
+    assert "coding-session" in capsys.readouterr().out
+
+
+def test_session_create_rejects_invalid_arguments(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = runfixtures._make_repo(tmp_path)
+    monkeypatch.setenv("LLM_RECIPES_HOME", str(tmp_path / "data"))
+    log_dir = _log_dir(tmp_path, None, ("tabbyapi.log", TABBY_LOG))
+
+    assert cli.main(["session", runfixtures.RECIPE, "--create", "Bad Name"], root=root) != 0
+    assert "lowercase-hyphen" in capsys.readouterr().err
+    assert cli.main(["session", "--logs", str(log_dir), "--create", "coding"], root=root) != 0
+    assert "instance" in capsys.readouterr().err
+
+
+def test_session_create_rejects_an_unknown_recipe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = runfixtures._make_repo(tmp_path)
+    monkeypatch.setenv("LLM_RECIPES_HOME", str(tmp_path / "data"))
+
+    code = cli.main(["session", "no-such-recipe", "--create", "coding"], root=root)
+
+    assert code != 0
+    assert "no-such-recipe" in capsys.readouterr().err
+    assert not (root / "recipes" / "no-such-recipe").exists()

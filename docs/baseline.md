@@ -20,26 +20,54 @@ Other options: `--gpu-pci` (default: the AMD GPU with most VRAM), `--no-gpu`, `-
 
 ## Import a baseline run
 
-```bash
-python3 scripts/run_baseline.py import <run-dir>
-python3 scripts/run_baseline.py import <run-dir> --suffix <lowercase-hyphen-slug>  # optional folder-name extension
-```
+Add a completed run to the repository in four steps, from the development checkout (the experiment lands in the repository that contains the script — running import from an installed snapshot would add it to the snapshot instead):
 
-Run import from the development checkout: the experiment lands in the repository that contains the script, so running it from an installed snapshot would add the experiment to the snapshot instead.
+1. **Find the run directory** — each run is one directory under `~/llm-recipes/baselines/<recipe>/`; the newest holds `results.json`, `meta.json`, request and sample records, and `server-logs/`:
 
-The command creates the numbered experiment folder under the recipe, copies `results.json`, writes a complete `profile.yaml` from the run's `meta.json`, `facts.json`, recipe configuration, and runtime locks, and regenerates the configuration and recipe index — no manual `profile.yaml` editing. The profile reuses the identity of the recipe's existing experiments when they have one; folder-derived parts serve only the first experiment. See the [authoring guide](authoring.md) for folder naming.
+   ```bash
+   ls -dt ~/llm-recipes/baselines/<recipe>/*/ | head -1
+   ```
+
+2. **Import**:
+
+   ```bash
+   python3 scripts/run_baseline.py import <run-dir>
+   python3 scripts/run_baseline.py import <run-dir> --suffix <lowercase-hyphen-slug>  # optional folder-name extension
+   ```
+
+   The command creates the numbered experiment folder under the recipe, copies `results.json`, writes a complete `profile.yaml` from the run's `meta.json`, `facts.json`, recipe configuration, and runtime locks, and regenerates the configuration and recipe index — no manual `profile.yaml` editing. The profile reuses the identity of the recipe's existing experiments when they have one; folder-derived parts serve only the first experiment.
+
+3. **Optional notes** — record a non-obvious constraint or observation in `settings.notes` of the new `profile.yaml`, then re-run `python3 scripts/generate_configurations.py` so `configuration.md` matches.
+
+4. **Verify and commit**: `scripts/check.sh`, then commit the new experiment folder.
+
+See the [authoring guide](authoring.md) for folder naming.
 
 ## Report a coding session
 
-The session command aggregates one instance's coding activity from the engine's own logs — no client list is needed:
+The session command aggregates one instance's coding activity from the engine's own logs — no client list is needed. Adding a session experiment to the repository takes three steps, from the development checkout:
+
+1. **Create and fill the experiment in one command** (the instance must have been started by the launcher at least once, so its log directory with `*.log` files and `facts.json` exists):
+
+   ```bash
+   python3 scripts/run_baseline.py session <instance> --create <lowercase-hyphen-slug>
+   ```
+
+   This numbers the next experiment folder `NNN-<date>-<slug>` under the recipe, copies the `summary.md` and `configuration.md` scaffold from the template, aggregates the logs into `session-results.json`, writes the generated activity block into `summary.md`, and seeds `profile.yaml` from `facts.json` and the sampler parameters the engine echoed to its log. The folder date comes from the instance's `facts.json`.
+
+2. **Regenerate the recipe index**: `python3 scripts/generate_configurations.py`.
+
+3. **Write the narrative** in `summary.md` — Workload and Observations outside the generated markers — then `scripts/check.sh` and commit.
+
+To read the numbers without creating anything, run the same command without `--create`; it prints the document to stdout. To update an existing experiment instead of creating one, use `--experiment <folder>` — an existing `profile.yaml` is never overwritten, and a missing `summary.md` in that folder is an error (the command updates, never creates files).
 
 ```bash
-python3 scripts/run_baseline.py session <instance>          # launcher log directory
+python3 scripts/run_baseline.py session <instance>          # print to stdout
 python3 scripts/run_baseline.py session --logs <dir>        # any directory of *.log files
 python3 scripts/run_baseline.py session <instance> --experiment recipes/<recipe>/<NNN-...>
 ```
 
-It reads every `*.log` file in the instance's persistent log directory (the one `launch.py` prints at start) plus `facts.json` when present; a directory without top-level `*.log` files is searched recursively, which covers LM Studio's dated files rotated into month directories. Without `--experiment` the document prints to stdout. With `--experiment` it writes `session-results.json` into the experiment folder, replaces the generated session block in `summary.md`, and seeds `profile.yaml` from `facts.json` and the sampler parameters the engine echoed to its log — an existing profile is never overwritten. LM Studio logs have no `facts.json`, so its profile seeds from the recipe name and the sampler echo alone.
+With `--logs`, `facts.json` may be absent (LM Studio logs are one such case); the profile then seeds from the recipe name and the sampler echo alone. A directory without top-level `*.log` files is searched recursively, which covers LM Studio's dated files rotated into month directories.
 
 | Engine | Timestamps | Cancellation | Unclosed requests |
 |---|---|---|---|
