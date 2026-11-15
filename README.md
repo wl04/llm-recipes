@@ -9,6 +9,38 @@
 
 Configurations and results from running language models on my own hardware. Each experiment records the model, inference settings, hardware and software, performance, memory usage, and practical observations.
 
+[![CPU checks](https://github.com/wl04/llm-recipes/actions/workflows/check.yml/badge.svg)](https://github.com/wl04/llm-recipes/actions/workflows/check.yml)
+[![Python: 3.12+](https://img.shields.io/badge/python-3.12+-blue)](pyproject.toml)
+
+## Quick start
+
+Serving needs an AMD Radeon GPU with ROCm support, Docker, Python 3.12 or later, and `sudo` for container access. It runs entirely on your machine.
+
+1. Install the `llm-recipes` command from a checkout. It copies a runtime snapshot to `~/.llm-recipes` and symlinks shims into `~/.local/bin`; keep that directory on `PATH`. Re-run the same command after updating the repository.
+
+   ```bash
+   git clone https://github.com/wl04/llm-recipes.git && cd llm-recipes
+   python3 scripts/install.py install
+   llm-recipes list
+   ```
+
+2. Open the chosen recipe's `setup.md` (table below). It covers building the container image and preparing model weights — multi-gigabyte downloads with tens of gigabytes of free disk. Prepared models live under `~/llm-recipes/recipes/<recipe-id>/`.
+
+3. Serve the model on localhost and check it:
+
+   ```bash
+   llm-recipes doctor <recipe-id>
+   llm-recipes start <recipe-id> --detach
+   llm-recipes logs <recipe-id> --follow
+   llm-recipes stop <recipe-id>
+   ```
+
+   The API is OpenAI-compatible at `http://127.0.0.1:<port>/v1` (port per recipe: 8080 Strata, 5000 TabbyAPI). Connect [Pi](docs/clients/pi.md) from the recipe's `config/pi.models.json` or any OpenAI client.
+
+4. Measure a baseline from the checkout: `sudo -v && python3 scripts/run_baseline.py run <recipe-id>`. Published measurements live in each recipe's dated experiment folders.
+
+More detail: [launcher guide](docs/launcher.md) · [machine roots](docs/project-instructions.md#machine-roots-and-cutover) · [baseline contract](docs/baseline.md)
+
 ## Recipes
 
 | Model | Software | Hardware | Recipe |
@@ -39,7 +71,7 @@ Container recipes select a shared runtime and keep their model-specific configur
 recipes/<model-format-hardware-memory>/
   setup.md             # Model preparation, launch, and client configuration
   config/
-    launch.json        # Shared runtime, data directory, and launch defaults
+    launch.json        # Shared runtime, port, context, drafting, and vision defaults
     <server-config>    # Native serving settings
     models.lock.json   # Model revisions and preparation options
     pi.models.json     # Pi provider metadata
