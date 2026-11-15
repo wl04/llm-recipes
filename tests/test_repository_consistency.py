@@ -21,7 +21,7 @@ def test_recipe_matches_preparation_and_client_with_native_configuration(name: s
     recipe = RECIPES[name]
     config = recipe.directory / "config"
     lock = json.loads((config / "models.lock.json").read_text())
-    root = Path("/models") / recipe.data_directory
+    root = Path("/models") / "recipes" / recipe.name
     if recipe.adapter == "strata":
         native = json.loads((config / "strata.json").read_text())
         port, model = native["port"], native["model_name"]

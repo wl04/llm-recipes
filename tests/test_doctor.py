@@ -38,7 +38,8 @@ def test_doctor_uses_only_noninteractive_inspection_commands(tmp_path: Path) -> 
 
 
 def test_prepared_rejects_stale_receipt_for_strata(tmp_path: Path) -> None:
-    folder = tmp_path / STRATA.data_directory
+    folder = tmp_path / STRATA.data_subpath
+    folder.parent.mkdir()
     folder.mkdir()
     (folder / "prepared.json").write_text(json.dumps({"models": {}, "image": {}}))
 
@@ -65,7 +66,7 @@ def test_prepared_checks_sizes_and_missing_artifacts_for_strata(tmp_path: Path) 
     (recipe_dir / "config/models.lock.json").write_text(json.dumps(lock))
     recipe = replace(STRATA, directory=recipe_dir, draft="off")
     models = tmp_path / "models"
-    root = models / recipe.data_directory
+    root = models / recipe.data_subpath
     (root / "models").mkdir(parents=True)
     (root / "models/target.gguf").write_bytes(b"abc")
     versions = json.loads((recipe.runtime_directory / "container/versions.lock.json").read_text())

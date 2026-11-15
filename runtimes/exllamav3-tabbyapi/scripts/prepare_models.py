@@ -157,16 +157,13 @@ def preparation_lock(models: Path) -> Iterator[None]:
 
 
 def model_root(recipe: Path, models: Path) -> Path:
-    """Resolve the recipe's external data directory without escaping the mount."""
+    """Resolve the recipe's data folder under the models mount: recipes/<recipe>."""
     manifest = json.loads((recipe / "config/launch.json").read_text())
     if manifest.get("runtime") != "exllamav3-tabbyapi":
         raise ValueError("expected an exllamav3-tabbyapi recipe")
-    folder = manifest.get("data_directory")
-    if not isinstance(folder, str) or (
-        folder != "." and not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", folder)
-    ):
-        raise ValueError("invalid data_directory")
-    return models / folder
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", recipe.name):
+        raise ValueError("recipe folder name must match the recipe identifier")
+    return models / "recipes" / recipe.name
 
 
 def cli() -> None:

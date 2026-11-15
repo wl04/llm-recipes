@@ -34,7 +34,6 @@ def make_recipe(tmp_path: Path, adapter: str = "tabbyapi") -> Recipe:
         directory=directory,
         runtime="strata",
         runtime_directory=runtime,
-        data_directory=".",
         adapter=adapter,
         engine="exllamav3",
         image="registry/img:latest",

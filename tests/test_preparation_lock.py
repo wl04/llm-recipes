@@ -25,23 +25,23 @@ def test_preparation_lock_fails_when_already_held(tmp_path: Path) -> None:
                 pass
 
 
-def test_model_root_uses_recipe_data_directory(tmp_path: Path) -> None:
+def test_model_root_derives_from_recipe_folder_name(tmp_path: Path) -> None:
     import json
 
-    recipe = tmp_path / "recipe"
+    recipe = tmp_path / "recipes/my-model"
     (recipe / "config").mkdir(parents=True)
-    (recipe / "config/launch.json").write_text(
-        json.dumps({"runtime": "exllamav3-tabbyapi", "data_directory": "other-model"})
+    (recipe / "config/launch.json").write_text(json.dumps({"runtime": "exllamav3-tabbyapi"}))
+    assert (
+        prepare_models.model_root(recipe, tmp_path / "models")
+        == tmp_path / "models/recipes/my-model"
     )
-    assert prepare_models.model_root(recipe, tmp_path / "models") == tmp_path / "models/other-model"
 
 
-def test_model_root_rejects_parent_traversal(tmp_path: Path) -> None:
+def test_model_root_rejects_undeclarable_recipe_name(tmp_path: Path) -> None:
     import json
 
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config/launch.json").write_text(
-        json.dumps({"runtime": "exllamav3-tabbyapi", "data_directory": "../outside"})
-    )
-    with pytest.raises(ValueError, match="data_directory"):
-        prepare_models.model_root(tmp_path, tmp_path / "models")
+    recipe = tmp_path / "recipes/Outside"
+    (recipe / "config").mkdir(parents=True)
+    (recipe / "config/launch.json").write_text(json.dumps({"runtime": "exllamav3-tabbyapi"}))
+    with pytest.raises(ValueError, match="recipe folder name"):
+        prepare_models.model_root(recipe, tmp_path / "models")

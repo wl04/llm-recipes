@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import host_facts
+import paths
 
 
 @dataclass(frozen=True)
@@ -22,7 +23,6 @@ class Recipe:
     directory: Path
     runtime: str
     runtime_directory: Path
-    data_directory: str
     adapter: str
     engine: str
     image: str
@@ -30,6 +30,11 @@ class Recipe:
     context: int
     draft: str
     vision: str
+
+    @property
+    def data_subpath(self) -> Path:
+        """Data folder of this recipe under the models root; mirrors recipes/."""
+        return paths.RECIPES_SUBPATH / self.name
 
 
 @dataclass(frozen=True)
@@ -95,7 +100,7 @@ def resolve_launch_options(
 def discover_recipes(directory: Path) -> dict[str, Recipe]:
     """Read recipe-local manifests; reject malformed or unsupported definitions."""
     recipes = {}
-    fields = {"runtime", "data_directory", "port", "context", "draft", "vision"}
+    fields = {"runtime", "port", "context", "draft", "vision"}
     for manifest in sorted(directory.glob("*/config/launch.json")):
         try:
             data = json.loads(manifest.read_text())
@@ -109,10 +114,6 @@ def discover_recipes(directory: Path) -> dict[str, Recipe]:
                     raise ValueError(f"{key} must be an integer")
             if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", data["runtime"]):
                 raise ValueError("invalid runtime identifier")
-            if data["data_directory"] != "." and not re.fullmatch(
-                r"[a-z0-9][a-z0-9_-]*", data["data_directory"]
-            ):
-                raise ValueError("invalid data_directory")
             runtime = (directory.parent / "runtimes" / data["runtime"]).resolve()
             settings = json.loads((runtime / "runtime.json").read_text())
             if not isinstance(settings, dict) or set(settings) != {"adapter", "engine", "image"}:
@@ -124,8 +125,6 @@ def discover_recipes(directory: Path) -> dict[str, Recipe]:
                 ("strata", "strata"),
             }:
                 raise ValueError("supported adapter/engine: tabbyapi/exllamav3 or strata/strata")
-            if settings["adapter"] == "strata" and data["data_directory"] == ".":
-                raise ValueError("Strata data_directory must be a single directory name")
             if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_./:@-]*", settings["image"]):
                 raise ValueError("invalid image reference")
             if not (runtime / "scripts/serve.py").is_file():

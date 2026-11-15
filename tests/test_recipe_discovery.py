@@ -25,7 +25,6 @@ def write_recipe(root: Path, name: str) -> None:
         json.dumps(
             {
                 "runtime": "exllamav3-tabbyapi",
-                "data_directory": ".",
                 "port": 5000,
                 "context": 4096,
                 "draft": "on",
@@ -115,7 +114,7 @@ def test_discover_accepts_cpu_vision_for_strata(tmp_path: Path) -> None:
     write_recipe(tmp_path / "recipes", "strata-model")
     path = tmp_path / "recipes/strata-model/config/launch.json"
     config = json.loads(path.read_text())
-    config.update(runtime="strata", data_directory="strata", vision="cpu", port=8080)
+    config.update(runtime="strata", vision="cpu", port=8080)
     path.write_text(json.dumps(config))
 
     recipe = discover_recipes(tmp_path / "recipes")["strata-model"]
@@ -135,14 +134,13 @@ def test_discover_resolves_two_models_to_one_runtime(tmp_path: Path) -> None:
     (runtime / "runtime.json").write_text(
         json.dumps({"adapter": "strata", "engine": "strata", "image": "local/strata:1"})
     )
-    for name, data in (("ista", "strata"), ("unsloth", "strata-unsloth")):
+    for name in ("ista", "unsloth"):
         folder = tmp_path / "recipes" / name / "config"
         folder.mkdir(parents=True)
         (folder / "launch.json").write_text(
             json.dumps(
                 {
                     "runtime": "strata",
-                    "data_directory": data,
                     "port": 8080,
                     "context": 131072,
                     "draft": "on",
@@ -153,8 +151,8 @@ def test_discover_resolves_two_models_to_one_runtime(tmp_path: Path) -> None:
     recipes = discover_recipes(tmp_path / "recipes")
     assert recipes["ista"].runtime_directory == runtime
     assert recipes["unsloth"].runtime_directory == runtime
-    assert recipes["ista"].data_directory == "strata"
-    assert recipes["unsloth"].data_directory == "strata-unsloth"
+    assert recipes["ista"].data_subpath == Path("recipes/ista")
+    assert recipes["unsloth"].data_subpath == Path("recipes/unsloth")
     command = start_command(
         recipes["unsloth"],
         LaunchOptions("trial", tmp_path, tmp_path / "logs", 131072, "on", "cpu", 8080),
@@ -167,7 +165,7 @@ def test_discover_resolves_two_models_to_one_runtime(tmp_path: Path) -> None:
     assert command[-2:] == ["--recipe", "/recipe"]
 
 
-@pytest.mark.parametrize("field,value", [("runtime", "../other"), ("data_directory", "../other")])
+@pytest.mark.parametrize("field,value", [("runtime", "../other")])
 def test_discover_rejects_paths_outside_shared_roots(
     tmp_path: Path, field: str, value: str
 ) -> None:
@@ -180,12 +178,12 @@ def test_discover_rejects_paths_outside_shared_roots(
         discover_recipes(tmp_path / "recipes")
 
 
-def test_discover_rejects_mount_root_for_strata(tmp_path: Path) -> None:
+def test_discover_rejects_retired_data_directory_field(tmp_path: Path) -> None:
     write_recipe(tmp_path / "recipes", "model")
     path = tmp_path / "recipes/model/config/launch.json"
     config = json.loads(path.read_text())
-    config.update(runtime="strata", vision="cpu", port=8080)
+    config["data_directory"] = "model-data"
     path.write_text(json.dumps(config))
 
-    with pytest.raises(ValueError, match="data_directory"):
+    with pytest.raises(ValueError, match="expected fields"):
         discover_recipes(tmp_path / "recipes")

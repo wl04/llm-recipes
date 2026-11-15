@@ -56,7 +56,7 @@ def check_prepared(recipe: Recipe, models: Path) -> Finding:
     try:
         lock = read_json(recipe.directory / "config/models.lock.json")
         versions = read_json(recipe.runtime_directory / "container/versions.lock.json")
-        root = models / recipe.data_directory
+        root = models / recipe.data_subpath
         if recipe.adapter == "strata":
             if read_json(root / "prepared.json") != {"models": lock, "image": versions}:
                 raise ValueError("Preparation receipt differs from model or runtime lock")
@@ -118,7 +118,7 @@ def check_configuration(recipe: Recipe) -> Finding:
     try:
         folder = recipe.directory / "config"
         lock = read_json(folder / "models.lock.json")
-        root = Path("/models") / recipe.data_directory
+        root = Path("/models") / recipe.data_subpath
         if recipe.adapter == "strata":
             native = read_json(folder / "strata.json")
             port, model = native["port"], native["model_name"]

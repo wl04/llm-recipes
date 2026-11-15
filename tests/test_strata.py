@@ -122,8 +122,8 @@ def test_extract_unpacks_verified_single_root_archive(tmp_path: Path) -> None:
 
 def test_recipe_paths_keeps_model_data_separate() -> None:
     recipe_paths = load_module("paths_test", RUNTIME / "scripts/recipe_config.py").recipe_paths
-    assert recipe_paths(RECIPE) == (RECIPE / "config", "strata")
-    assert recipe_paths(UNSLOTH) == (UNSLOTH / "config", "strata-unsloth")
+    assert recipe_paths(RECIPE) == (RECIPE / "config", Path("recipes") / RECIPE.name)
+    assert recipe_paths(UNSLOTH) == (UNSLOTH / "config", Path("recipes") / UNSLOTH.name)
 
 
 def test_validate_model_files_rejects_missing_middle_shard(tmp_path: Path) -> None:

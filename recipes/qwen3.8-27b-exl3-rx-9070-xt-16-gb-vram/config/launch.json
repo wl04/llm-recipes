@@ -1,6 +1,5 @@
 {
   "runtime": "exllamav3-tabbyapi",
-  "data_directory": ".",
   "port": 5000,
   "context": 4096,
   "draft": "on",

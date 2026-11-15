@@ -6,7 +6,7 @@ network:
   allowed_origins: []
   disable_fetch_requests: true
 model:
-  model_dir: /models
+  model_dir: /models/recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
   model_name: qwen3.8-27b-exl3-3bpw
   backend: exllamav3
   max_seq_len: 4096
@@ -21,7 +21,7 @@ model:
     enable_thinking: true
 draft_model:
   draft_mode: model
-  draft_model_dir: /models
+  draft_model_dir: /models/recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
   draft_model_name: qwen3.8-27b-dflash2-exl3-3bpw
   draft_cache_mode: Q4
 memory:

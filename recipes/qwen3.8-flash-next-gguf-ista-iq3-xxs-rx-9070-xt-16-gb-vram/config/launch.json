@@ -1,6 +1,5 @@
 {
   "runtime": "strata",
-  "data_directory": "strata",
   "port": 8080,
   "context": 131072,
   "draft": "on",
