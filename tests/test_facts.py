@@ -159,7 +159,7 @@ def drive_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, port: str) -> P
     """Run ``launch.py start`` with every external process replaced by a fake."""
     (tmp_path / "models").mkdir()
     monkeypatch.setattr(launch, "refresh_sudo_ticket", lambda: None)
-    monkeypatch.setattr(launch, "gpu_groups", lambda: [])
+    monkeypatch.setattr(launch, "gpu_groups", list)
     monkeypatch.setattr(launch, "run_command", lambda command: 0)
     monkeypatch.setattr(host_facts, "collect", lambda: dict(HOST))
 
@@ -194,7 +194,7 @@ def test_facts_json_start_survives_a_missing_image_inspect(
 ) -> None:
     (tmp_path / "models").mkdir()
     monkeypatch.setattr(launch, "refresh_sudo_ticket", lambda: None)
-    monkeypatch.setattr(launch, "gpu_groups", lambda: [])
+    monkeypatch.setattr(launch, "gpu_groups", list)
     monkeypatch.setattr(launch, "run_command", lambda command: 0)
     monkeypatch.setattr(
         launcher,

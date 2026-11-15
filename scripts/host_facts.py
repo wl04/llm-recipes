@@ -8,6 +8,7 @@ as an argument so tests can pass a fabricated tree.
 import os
 import re
 import socket
+import contextlib
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -139,10 +140,8 @@ def gpu_block(
     except HostFactsError:
         device_id = ""
     driver: str | None = None
-    try:
+    with contextlib.suppress(OSError):
         driver = Path(os.readlink(device / "driver")).name
-    except OSError:
-        pass
     model: str | None = None
     if lspci is not None:
         try:

@@ -215,7 +215,7 @@ def resources_of(document: dict[str, Any]) -> dict[str, Any]:
 
 
 def test_resources_compute_cpu_cores_by_interpolating_counter_at_request_bounds() -> None:
-    samples = [sample(float(t), cpu_usec=2_000_000 * t) for t in range(0, 6)]
+    samples = [sample(float(t), cpu_usec=2_000_000 * t) for t in range(6)]
 
     metrics = resources_of(results(requests_between(1.5, 3.5), samples))
 
@@ -350,7 +350,7 @@ def test_resources_report_sample_count_and_largest_gap() -> None:
 
 
 def test_resources_join_samples_only_to_active_request_time() -> None:
-    samples = [sample(float(t), cpu_usec=1_000_000 * t) for t in range(0, 12)]
+    samples = [sample(float(t), cpu_usec=1_000_000 * t) for t in range(12)]
     requests = [
         request("c", 1, started_s=1.0, ended_s=2.0),
         request("c", 2, started_s=6.0, ended_s=7.0),

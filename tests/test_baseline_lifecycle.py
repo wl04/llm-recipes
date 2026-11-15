@@ -49,7 +49,7 @@ def make_control(
     *,
     findings: list[Finding] | None = None,
     vram_gib: float | None = 0.2,
-    record_facts: Callable[[], dict[str, object]] = lambda: {},
+    record_facts: Callable[[], dict[str, object]] = dict,
 ) -> lifecycle.ContainerControl:
     options = LaunchOptions(
         "baseline", tmp_path / "models", tmp_path / "logs", 131072, "on", "cpu", 8080, True

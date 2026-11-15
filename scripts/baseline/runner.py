@@ -374,7 +374,7 @@ class Runner:
         stream: bool,
         payload_extra: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        payload = workloads.request_payload(
+        return workloads.request_payload(
             self._config.kind,
             self._model,
             messages,
@@ -384,7 +384,6 @@ class Runner:
             stream=stream,
             case_extra=payload_extra,
         )
-        return payload
 
     def _post(self, payload: dict[str, Any]) -> dict[str, Any]:
         return api.post_json(

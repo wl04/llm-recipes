@@ -130,7 +130,7 @@ def test_install_copies_runtime_subset_and_writes_version_stamp(
 ) -> None:
     checkout = tmp_path / "checkout"
     make_checkout(checkout)
-    monkeypatch.setattr(install_module, "running_instances", lambda: [])
+    monkeypatch.setattr(install_module, "running_instances", list)
 
     code = install(checkout, roots["runtime"], force=False, with_dependencies=False)
 
@@ -265,7 +265,7 @@ def test_migrate_data_refuses_when_instance_running_or_prepare_lock_held(
     assert migrate_data(roots["runtime"] / "app", old_root, apply=True) == 1
     assert "instances are running" in capsys.readouterr().out
 
-    monkeypatch.setattr(install_module, "running_instances", lambda: [])
+    monkeypatch.setattr(install_module, "running_instances", list)
     (old_root / ".prepare.lock").touch()
     assert migrate_data(roots["runtime"] / "app", old_root, apply=True) == 1
     assert ".prepare.lock" in capsys.readouterr().out
@@ -278,7 +278,7 @@ def test_migrate_data_refuses_cross_device_move(
     old_root = roots["home"] / "Models" / "llm-recipes"
     prepare_old_root(old_root)
     prepare_app(roots["runtime"], paths.data_home())
-    monkeypatch.setattr(install_module, "running_instances", lambda: [])
+    monkeypatch.setattr(install_module, "running_instances", list)
     monkeypatch.setattr(install_module, "same_device", lambda _a, _b: False)
 
     code = migrate_data(roots["runtime"] / "app", old_root, apply=True)
@@ -297,7 +297,7 @@ def test_migrate_data_never_overwrites_existing_destination(
     prepare_app(roots["runtime"], paths.data_home())
     (paths.data_home() / "baselines").mkdir(parents=True)
     (paths.data_home() / "baselines/keep.txt").write_text("do not lose me")
-    monkeypatch.setattr(install_module, "running_instances", lambda: [])
+    monkeypatch.setattr(install_module, "running_instances", list)
 
     code = migrate_data(roots["runtime"] / "app", old_root, apply=True)
 
@@ -313,7 +313,7 @@ def test_migrate_data_dry_run_prints_manifest_without_changes(
     old_root = roots["home"] / "Models" / "llm-recipes"
     prepare_old_root(old_root)
     prepare_app(roots["runtime"], paths.data_home())
-    monkeypatch.setattr(install_module, "running_instances", lambda: [])
+    monkeypatch.setattr(install_module, "running_instances", list)
 
     code = migrate_data(roots["runtime"] / "app", old_root, apply=False)
 
@@ -337,7 +337,7 @@ def test_migrate_data_resumes_after_partial_completion(
         (source / "models" / ("one.gguf" if recipe == ISTA_RECIPE else "two.gguf")).write_text("x")
     (old_root / "qwen3.8-27b-dflash2-exl3-3bpw").mkdir()
     (old_root / "qwen3.8-27b-dflash2-source").mkdir()
-    monkeypatch.setattr(install_module, "running_instances", lambda: [])
+    monkeypatch.setattr(install_module, "running_instances", list)
 
     # Simulate an interrupted first pass: the logs directory is already moved.
     destination = paths.data_home() / "logs"
@@ -367,7 +367,7 @@ def test_migrate_data_applies_all_moves_and_cleans_old_root(
         (source / "models" / ("one.gguf" if recipe == ISTA_RECIPE else "two.gguf")).write_text("x")
     (old_root / "qwen3.8-27b-dflash2-exl3-3bpw").mkdir()
     (old_root / "qwen3.8-27b-dflash2-source").mkdir()
-    monkeypatch.setattr(install_module, "running_instances", lambda: [])
+    monkeypatch.setattr(install_module, "running_instances", list)
 
     code = migrate_data(roots["runtime"] / "app", old_root, apply=True)
 
@@ -392,7 +392,7 @@ def test_migrate_data_refuses_unmapped_directory(
     prepare_old_root(old_root)
     (old_root / "mystery-checkpoints").mkdir()
     prepare_app(roots["runtime"], paths.data_home())
-    monkeypatch.setattr(install_module, "running_instances", lambda: [])
+    monkeypatch.setattr(install_module, "running_instances", list)
 
     code = migrate_data(roots["runtime"] / "app", old_root, apply=True)
 

@@ -6,16 +6,16 @@ from typing import Any
 import pytest
 from baseline import engine_log, schema, session
 
-REQUEST = dict(
-    prompt_tokens=1000,
-    reused_tokens=400,
-    read_tokens=600,
-    prefill_ms=500,
-    generated_tokens=100,
-    decode_ms=1000,
-    drafts_accepted=40,
-    drafts_proposed=80,
-)
+REQUEST = {
+    "prompt_tokens": 1000,
+    "reused_tokens": 400,
+    "read_tokens": 600,
+    "prefill_ms": 500,
+    "generated_tokens": 100,
+    "decode_ms": 1000,
+    "drafts_accepted": 40,
+    "drafts_proposed": 80,
+}
 
 
 def entry(**overrides: object) -> engine_log.EngineRequest:

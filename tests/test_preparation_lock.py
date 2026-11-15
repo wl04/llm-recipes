@@ -20,9 +20,11 @@ def test_preparation_lock_allows_when_free(tmp_path: Path) -> None:
 def test_preparation_lock_fails_when_already_held(tmp_path: Path) -> None:
     with (tmp_path / ".prepare.lock").open("a") as guard:
         fcntl.flock(guard, fcntl.LOCK_EX)
-        with pytest.raises(SystemExit, match="already running"):
-            with prepare_models.preparation_lock(tmp_path):
-                pass
+        with (
+            pytest.raises(SystemExit, match="already running"),
+            prepare_models.preparation_lock(tmp_path),
+        ):
+            pass
 
 
 def test_model_root_derives_from_recipe_folder_name(tmp_path: Path) -> None:

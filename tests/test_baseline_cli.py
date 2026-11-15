@@ -312,7 +312,7 @@ def _in_order(answers: list[str]) -> Callable[[str], str]:
 @pytest.fixture
 def no_app_processes(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep host process detection out of tests; the app is not running on CI."""
-    monkeypatch.setattr(guided, "find_app_pids", lambda: [])
+    monkeypatch.setattr(guided, "find_app_pids", list)
 
 
 def desktop_recipe_dir(tmp_path: Path) -> Path:

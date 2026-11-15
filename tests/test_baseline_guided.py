@@ -95,7 +95,7 @@ def test_guide_stops_when_the_model_list_cannot_be_read() -> None:
         raise OSError("connection refused")
 
     with pytest.raises(guided.GuidedAborted, match="cannot read the model list"):
-        guided.guide(unreachable, lambda: [], ScriptedAsk(""), lambda message: None)
+        guided.guide(unreachable, list, ScriptedAsk(""), lambda message: None)
 
 
 def test_guide_rejects_unlisted_model_then_accepts_the_correction() -> None:

@@ -56,7 +56,7 @@ class ContainerControl:
         resolve: Callable[[str], host.ContainerInfo] = host.resolve_container,
         gpu_groups: Callable[[], list[int]] = launcher.gpu_groups,
         sleep: Callable[[float], None] = time.sleep,
-        record_facts: Callable[[], dict[str, object]] = lambda: {},
+        record_facts: Callable[[], dict[str, object]] = dict,
     ) -> None:
         self._recipe = recipe
         self._options = options

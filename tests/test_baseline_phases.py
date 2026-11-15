@@ -31,19 +31,19 @@ def test_settled_is_none_until_the_window_has_been_observed() -> None:
 
 
 def test_settled_is_false_while_the_server_is_busy() -> None:
-    busy = [sample(t, 2_000_000 * t, 2 * t, 100 * t) for t in range(0, 13)]
+    busy = [sample(t, 2_000_000 * t, 2 * t, 100 * t) for t in range(13)]
 
     assert settled(busy) is False
 
 
 def test_settled_is_false_while_the_system_is_busy() -> None:
-    busy = [sample(t, 50_000 * t, 60 * t, 100 * t) for t in range(0, 13)]
+    busy = [sample(t, 50_000 * t, 60 * t, 100 * t) for t in range(13)]
 
     assert settled(busy) is False
 
 
 def test_settled_only_considers_the_most_recent_window() -> None:
-    loading = [sample(t, 3_000_000 * t, 50 * t, 100 * t) for t in range(0, 10)]
+    loading = [sample(t, 3_000_000 * t, 50 * t, 100 * t) for t in range(10)]
     base = loading[-1]
     resting = [
         sample(
@@ -59,7 +59,7 @@ def test_settled_only_considers_the_most_recent_window() -> None:
 
 
 def test_settled_ignores_a_criterion_that_cannot_be_measured() -> None:
-    samples = [{"t": float(t), "values": {}, "errors": {}} for t in range(0, 13)]
+    samples = [{"t": float(t), "values": {}, "errors": {}} for t in range(13)]
 
     assert settled(samples) is True
 
