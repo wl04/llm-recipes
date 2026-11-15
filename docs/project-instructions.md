@@ -45,7 +45,7 @@ After editing profiles or adding results, follow [generation instructions](autho
 
 ## Machine roots and cutover
 
-Serving runs from the installed snapshot `~/.llm-recipes/app` (its own venv and `llm-recipes` / `llm-recipes-baseline` shims symlinked into `~/.local/bin`), never from the development checkout; `python3 scripts/install.py install` refreshes it. The data root is `~/llm-recipes` (`LLM_RECIPES_HOME`): `recipes/<recipe-id>/` model data, `.cache/`, `baselines/`, `logs/<instance>/` with each instance's `facts.json`.
+Serving runs from the installed snapshot `~/.llm-recipes/app` (its own venv and `llm-recipes` / `llm-recipes-baseline` shims symlinked into `~/.local/bin`), never from the development checkout; `python3 scripts/install.py install` refreshes it. Keep `~/.local/bin` on `PATH` so the shims resolve. The data root is `~/llm-recipes` (`LLM_RECIPES_HOME`): `recipes/<recipe-id>/` model data, `.cache/`, `baselines/`, `logs/<instance>/` with each instance's `facts.json`.
 
 To move the previous data root (one time): stop all instances from a system terminal, run `python3 scripts/install.py migrate-data` (dry run), then the same command with `--apply`, and start instances again via `llm-recipes`. Never run the cutover from a coding agent — the model backend serving the current session is among the data it moves.
 

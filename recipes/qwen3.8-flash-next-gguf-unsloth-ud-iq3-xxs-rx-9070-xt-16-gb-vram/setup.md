@@ -58,4 +58,4 @@ See [launcher controls](../../docs/launcher.md#foreground-and-background-executi
 
 ---
 
-[Recipe](recipe.md) · [Runtime](../../docs/runtimes/strata.md)
+[Recipe](recipe.md) · [Runtime](../../docs/runtimes/strata.md) · [Launcher installation](../../docs/project-instructions.md#machine-roots-and-cutover)
