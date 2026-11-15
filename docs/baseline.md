@@ -119,7 +119,10 @@ To add a baseline to the repository, run:
 
 ```bash
 python3 scripts/run_baseline.py import <run-dir>
+python3 scripts/run_baseline.py import <run-dir> --suffix <lowercase-hyphen-slug>  # optional folder-name extension
 ```
+
+Run import from the development checkout: the experiment lands in the repository that contains the script, so running it from an installed snapshot would add the experiment to the snapshot instead of the repository.
 
 The command creates the numbered experiment folder under the recipe, copies `results.json`, writes a complete `profile.yaml` from the run's `meta.json`, `facts.json`, recipe configuration, and runtime locks, and regenerates the configuration and recipe index. A baseline experiment then needs no manual `profile.yaml` editing. The profile reuses the identity of the recipe's existing experiments when they have one, so the recipe id never splits over display wording; folder-derived parts serve only the first experiment. See the [authoring guide](authoring.md) for folder naming.
 
