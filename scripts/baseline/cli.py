@@ -18,6 +18,7 @@ from typing import Any
 
 import generate_configurations as generator
 import host_facts
+import yaml
 from launcher import (
     Recipe,
     discover_recipes,
@@ -31,6 +32,7 @@ from baseline import (
     api,
     guided,
     host,
+    importer,
     lifecycle,
     monitor,
     schema,
@@ -90,6 +92,15 @@ def _parser() -> argparse.ArgumentParser:
     )
     render = commands.add_parser("render", help="Render results.json and summary.md for a run")
     render.add_argument("run_dir", type=Path)
+    import_command = commands.add_parser(
+        "import",
+        help="Create a repository experiment folder from a completed run directory",
+    )
+    import_command.add_argument("run_dir", type=Path)
+    import_command.add_argument(
+        "--suffix",
+        help="Append a lowercase-hyphen slug to the experiment folder name",
+    )
     return parser
 
 
@@ -411,5 +422,13 @@ def main(
             print(f"Cannot render {args.run_dir}: {error}", file=sys.stderr)
             return ExitCode.USAGE
         print(f"Rendered {results} and summary.md")
+        return ExitCode.OK
+    if args.command == "import":
+        try:
+            folder = importer.import_run(args.run_dir, root, recipes=recipes, suffix=args.suffix)
+        except (OSError, ValueError, yaml.YAMLError) as error:
+            print(f"Cannot import {args.run_dir}: {error}", file=sys.stderr)
+            return ExitCode.USAGE
+        print(f"Imported experiment {folder}")
         return ExitCode.OK
     return _run_command(args, suite or SuiteConfig(), root, recipes or root / "recipes")
