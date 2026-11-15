@@ -1,5 +1,6 @@
 """Request policy, deterministic prompt construction, and case planning."""
 
+import itertools
 from pathlib import Path
 
 import pytest
@@ -235,3 +236,29 @@ def test_thinking_request_records_fields_after_overrides() -> None:
     assert workloads.thinking_request(
         "tabbyapi", {"chat_template_kwargs": {"enable_thinking": True}, "temperature": 1}
     ) == {"chat_template_kwargs": {"enable_thinking": True}}
+
+
+def test_conversation_turns_replay_cumulative_prefixes_ending_at_tool_results() -> None:
+    turns = workloads.conversation_turns()
+
+    assert [[m["role"] for m in turn] for turn in turns] == [
+        ["user", "assistant", "tool"],
+        ["user", "assistant", "tool", "assistant", "tool"],
+        ["user", "assistant", "tool", "assistant", "tool", "assistant", "tool"],
+    ]
+    assert turns[0] == turns[1][:3] == turns[2][:3]
+    assert turns[1] == turns[2][:5]
+
+
+def test_conversation_turns_are_identical_across_calls() -> None:
+    assert workloads.conversation_turns() == workloads.conversation_turns()
+
+
+def test_conversation_turns_carry_tool_call_ids_matching_the_requests() -> None:
+    turns = workloads.conversation_turns()
+
+    for turn in turns:
+        for message, following in itertools.pairwise(turn):
+            for tool_call in message.get("tool_calls", []):
+                assert following["role"] == "tool"
+                assert following["tool_call_id"] == tool_call["id"]

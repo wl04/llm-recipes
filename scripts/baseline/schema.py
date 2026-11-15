@@ -10,7 +10,7 @@ from enum import IntEnum
 from typing import Any
 
 SCHEMA_VERSION = 1
-SUITE_VERSION = "1"
+SUITE_VERSION = "2"
 
 RUN_STATUSES = ("complete", "interrupted", "failed")
 SERVER_KINDS = ("strata", "tabbyapi", "lmstudio")

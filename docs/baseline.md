@@ -54,8 +54,9 @@ The suite runs at concurrency one, in this order:
 3. Five distinct approximately 8K-token code-review prompts.
 4. Three coding tasks: an LRU cache, a tokenizer, and an event store, each with tests requested.
 5. Approximately 32K, 64K, and 120K-token code-review prompts. The largest case runs twice; the others run once. Cases that cannot fit input plus output are skipped.
+6. Conversation reuse: one fixed multi-turn coding conversation (task, file read, failing test run, applied patch) is sent cold with its full history, then its three growing prefixes are replayed in order.
 
-Output caps are 1,024 tokens for context cases and 2,048 for sustained coding tasks. Sustained replies shorter than 512 tokens are marked insufficient samples. Generated code is not executed.
+Output caps are 1,024 tokens for context cases, 2,048 for sustained coding tasks, and 256 for conversation turns. Sustained replies shorter than 512 tokens are marked insufficient samples. Generated code is not executed.
 
 Long prompts use the running Python interpreter's standard-library source (PSF-licensed). Strata uses `/v1/messages/count_tokens`; TabbyAPI uses `/v1/token/encode` with chat messages and template variables. TabbyAPI's count excludes the assistant generation prefix, so final usage can differ slightly. Other servers use a calibrated characters-per-token estimate. Results show actual reported token counts. Comparable runs should use the same Python version.
 
@@ -84,7 +85,7 @@ Resources are sampled every 500 ms and summarized over active request intervals,
 
 System, cgroup, and device memory are distinct scopes and must not be added together. The Markdown RAM column shows **system-used RAM**; server RAM and process VRAM are also retained in `results.json`. Sample counts and maximum gaps accompany the resource summaries.
 
-Client first-output latency and decode rate are separate from engine timings. Decode is estimated as `(completion_tokens - 1) / (last output - first output)` using reported token counts, not chunk counts. Repeated 8K and largest-context cases report medians and relative spread (range divided by median); other cases are single observations. Mixed finish reasons show per-reason counts.
+Client first-output latency and decode rate are separate from engine timings. Decode is estimated as `(completion_tokens - 1) / (last output - first output)` using reported token counts, not chunk counts. Repeated 8K and largest-context cases report medians and relative spread (range divided by median); other cases are single observations. Mixed finish reasons show per-reason counts. The cached input token count comes from `usage.prompt_tokens_details.cached_tokens`; servers that omit it are reported as unavailable, and the conversation section then states that cache reuse is unknown rather than assuming it.
 
 Engine timings and draft acceptance come from Strata's `engine.log` or TabbyAPI's timestamped `.log` files in `server-logs/`, matched to requests in order. A mismatch stops matching. TabbyAPI durations/rates are rounded in the log; its aggregate decode rate is derived from reported token counts and rates. LM Studio engine metrics remain unavailable.
 

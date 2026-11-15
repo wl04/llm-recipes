@@ -159,6 +159,10 @@ def test_run_completes_every_workload_in_the_fixed_order(tmp_path: Path) -> None
         "sustained-event-store",
         "context-a",
         "context-big",
+        "conversation-fresh",
+        "conversation-reuse-1",
+        "conversation-reuse-2",
+        "conversation-reuse-3",
     ]
     assert [e["status"] for e in document["functional"]] == ["pass", "pass", "pass"]
     assert [e["id"] for e in document["functional"]] == ["text", "tools", "vision"]
@@ -255,8 +259,26 @@ def test_run_uses_distinct_content_for_every_request(tmp_path: Path) -> None:
     with FakeServer() as server:
         execute(tmp_path, server)
 
-    prompts = [str(p["messages"][0]["content"])[:400] for p in server.requests if p.get("stream")]
+    single_message = [p for p in server.requests if p.get("stream") and len(p["messages"]) == 1]
+    prompts = [str(p["messages"][0]["content"])[:400] for p in single_message]
     assert len(set(prompts)) == len(prompts)
+
+
+def test_run_replays_conversation_prefixes_after_the_cold_full_prompt(
+    tmp_path: Path,
+) -> None:
+    with FakeServer() as server:
+        _, raw, _ = execute(tmp_path, server)
+
+    conversation = [p for p in server.requests if p.get("stream") and len(p["messages"]) > 1]
+    full = conversation[0]["messages"]
+    assert [p["messages"] for p in conversation[1:]] == [full[:3], full[:5], full]
+    assert [c["id"] for c in results_of(raw)["cases"]][-4:] == [
+        "conversation-fresh",
+        "conversation-reuse-1",
+        "conversation-reuse-2",
+        "conversation-reuse-3",
+    ]
 
 
 def test_run_starts_monitoring_before_requests_and_keeps_it_until_after_them(

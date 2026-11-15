@@ -358,6 +358,7 @@ class Runner:
         self._probe()
         self._sustained()
         self._contexts()
+        self._conversation()
 
     def _payload(
         self,
@@ -661,6 +662,36 @@ class Runner:
                 ],
                 max_tokens=suite.sustained_output,
                 min_output_tokens=suite.min_sustained_output,
+            )
+
+    def _conversation(self) -> None:
+        """Replay a fixed multi-turn coding conversation: cold full prompt, then warm prefixes.
+
+        ``conversation-fresh`` sends the complete history while its prefixes are uncached.
+        The reuse ladder then replays the same prefixes in growing order, so reported cached
+        token counts and first-output latencies show prefix reuse, or nothing when the server
+        reports no cached-token counts.
+        """
+        turns = workloads.conversation_turns()
+        self._progress("conversation-fresh")
+        self._stream_request(
+            phase="case",
+            case="conversation-fresh",
+            run=1,
+            messages=[dict(m) for m in turns[-1]],
+            max_tokens=workloads.CONVERSATION_OUTPUT,
+            conversation_messages=len(turns[-1]),
+        )
+        for index, prefix in enumerate(turns, start=1):
+            case = f"conversation-reuse-{index}"
+            self._progress(case)
+            self._stream_request(
+                phase="case",
+                case=case,
+                run=1,
+                messages=[dict(m) for m in prefix],
+                max_tokens=workloads.CONVERSATION_OUTPUT,
+                conversation_messages=len(prefix),
             )
 
     def _contexts(self) -> None:

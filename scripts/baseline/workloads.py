@@ -50,6 +50,179 @@ WARMUP_PROMPTS = (
     "Write a Python function that flattens nested lists.",
 )
 
+# Conversation-reuse case: a fixed multi-turn coding session with tool results, embedded so
+# every run replays identical prefixes. Each cumulative prefix is one request; the model
+# continues after the file dump, after the failing test run, and after the applied patch.
+CONVERSATION_OUTPUT = 256
+
+_CONVERSATION_TASK = (
+    "worker.py has a race: after an entry's TTL expires, two concurrent get() calls can both "
+    "start a load, and the slower loader's stale value overwrites the fresher one, "
+    "occasionally resurrecting deleted keys. test_worker.py::test_stale_refresh_race fails "
+    "once in a while. Read the file, run the test, patch worker.py, and re-run the test. "
+    "When the tests pass, summarize the fix in a few sentences."
+)
+_CONVERSATION_SOURCE = '''\
+"""Background-revalidating metadata cache."""
+import threading
+import time
+
+
+class RevalidatingCache:
+    def __init__(self, loader, ttl=30.0):
+        self._loader = loader
+        self._ttl = ttl
+        self._data = {}            # key -> (value, expires_at)
+        self._lock = threading.Lock()
+
+    def get(self, key):
+        entry = self._data.get(key)
+        if entry and entry[1] > time.monotonic():
+            return entry[0]
+        value = self._loader(key)
+        self._store(key, value)
+        return value
+
+    def invalidate(self, key):
+        with self._lock:
+            self._data.pop(key, None)
+
+    def _store(self, key, value):
+        with self._lock:
+            self._data[key] = (value, time.monotonic() + self._ttl)
+
+    def refresh(self, key):
+        self._store(key, self._loader(key))
+
+    def snapshot(self):
+        now = time.monotonic()
+        with self._lock:
+            return {k: v for k, (v, exp) in self._data.items() if exp > now}
+'''
+_CONVERSATION_TESTS = """\
+$ pytest test_worker.py -q -p no:randomly -k stale_refresh --count=200
+...F...
+=================================== FAILURES ===================================
+___________________________ test_stale_refresh_race ____________________________
+
+    def test_stale_refresh_race():
+        slow = threading.Barrier(2)
+        def loader(key):
+            slow.wait(timeout=2)
+            return "stale-v2" if loader.calls == 0 else "fresh-v1"
+        cache = RevalidatingCache(loader, ttl=0.05)
+        cache._data["k"] = ("v1", time.monotonic() + 1)
+        time.sleep(0.06)                     # expire the entry
+        threads = [threading.Thread(target=cache.get, args=("k",)) for _ in range(2)]
+        for t in threads: t.start()
+        for t in threads: t.join()
+>       assert cache.snapshot()["k"] == "fresh-v1"
+E       AssertionError: assert 'stale-v2' == 'fresh-v1'
+
+1 failed, 5 passed (flaky: failed 38/200 runs)
+"""
+_CONVERSATION_PATCH = """\
+--- a/worker.py
++++ b/worker.py
+@@ -8,6 +8,7 @@ class RevalidatingCache:
+         self._lock = threading.Lock()
++        self._loading = {}                 # key -> threading.Event
+@@ -14,8 +15,20 @@ class RevalidatingCache:
+     def get(self, key):
+-        entry = self._data.get(key)
+-        if entry and entry[1] > time.monotonic():
+-            return entry[0]
+-        value = self._loader(key)
+-        self._store(key, value)
+-        return value
++        now = time.monotonic()
++        with self._lock:
++            entry = self._data.get(key)
++            if entry and entry[1] > now:
++                return entry[0]
++            waiter = self._loading.get(key)
++            if waiter is not None:
++                fresh = waiter
++            else:
++                fresh = threading.Event()
++                self._loading[key] = fresh
++        ...
+
+$ pytest test_worker.py -q -p no:randomly --count=200
+120 passed in 41.8s (0 flakes)"""
+
+
+def conversation_turns() -> list[list[dict[str, Any]]]:
+    """Cumulative message prefixes of the fixed coding conversation, shortest first.
+
+    The assistant messages carry realistic analyses and ``tool_calls``; the ``tool`` results
+    carry the file source, the flaky pytest report, and the applied patch with a clean rerun.
+    """
+    turns: list[list[dict[str, Any]]] = []
+    history: list[dict[str, Any]] = [{"role": "user", "content": _CONVERSATION_TASK}]
+
+    def add(message: dict[str, Any]) -> None:
+        history.append(message)
+        if message["role"] == "tool":
+            turns.append([dict(m) for m in history])
+
+    add(
+        {
+            "role": "assistant",
+            "content": "I will read worker.py first.",
+            "tool_calls": [
+                {
+                    "id": "call_read_1",
+                    "type": "function",
+                    "function": {"name": "read_file", "arguments": '{"path": "worker.py"}'},
+                }
+            ],
+        }
+    )
+    add({"role": "tool", "tool_call_id": "call_read_1", "content": _CONVERSATION_SOURCE})
+    add(
+        {
+            "role": "assistant",
+            "content": (
+                "get() checks expiry, then loads and stores without coordinating concurrent "
+                "misses: both callers pass the expiry check, both call the loader, and the "
+                "slower _store wins. I will reproduce it with the existing flaky test."
+            ),
+            "tool_calls": [
+                {
+                    "id": "call_tests_1",
+                    "type": "function",
+                    "function": {
+                        "name": "run_command",
+                        "arguments": '{"command": "pytest test_worker.py -q --count=200"}',
+                    },
+                }
+            ],
+        }
+    )
+    add({"role": "tool", "tool_call_id": "call_tests_1", "content": _CONVERSATION_TESTS})
+    add(
+        {
+            "role": "assistant",
+            "content": (
+                "Confirmed: one load must own the refresh and the loser must return the "
+                "winner's value. Applying a per-key in-flight guard to worker.py."
+            ),
+            "tool_calls": [
+                {
+                    "id": "call_edit_1",
+                    "type": "function",
+                    "function": {
+                        "name": "edit_file",
+                        "arguments": '{"path": "worker.py", "patch": "<in-flight guard>"}',
+                    },
+                }
+            ],
+        }
+    )
+    add({"role": "tool", "tool_call_id": "call_edit_1", "content": _CONVERSATION_PATCH})
+    return turns
+
 
 @dataclass(frozen=True)
 class Policy:

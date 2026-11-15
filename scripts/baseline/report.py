@@ -199,6 +199,45 @@ def _cases(cases: list[dict[str, Any]]) -> list[str]:
     return lines + (["", *extras] if extras else [])
 
 
+def _conversation(cases: list[dict[str, Any]]) -> list[str]:
+    fresh = next((case for case in cases if case["id"] == "conversation-fresh"), None)
+    reuse = [case for case in cases if case["id"].startswith("conversation-reuse-")]
+    if fresh is None or not reuse:
+        return []
+
+    def line(case: dict[str, Any], tail: str) -> str:
+        m = case.get("metrics", {})
+        parts = [_cell(case["id"]), _number(m.get("first_output_s")) + " s first output"]
+        if _has(m.get("cached_input_tokens")):
+            parts.append(
+                f"{int(m['cached_input_tokens']['value']):,} of "
+                f"{int(m['input_tokens']['value']):,} tokens reported cached"
+            )
+        return "- " + ", ".join(parts) + tail
+
+    lines = ["", "### Conversation reuse", "", line(fresh, " (full history, cold)")]
+    lines += [line(case, "") for case in reuse]
+    ratios = [
+        case["metrics"]["cached_input_tokens"]["value"] / case["metrics"]["input_tokens"]["value"]
+        for case in reuse
+        if _has(case.get("metrics", {}).get("cached_input_tokens"))
+        and _has(case.get("metrics", {}).get("input_tokens"))
+        and case["metrics"]["input_tokens"]["value"]
+    ]
+    if ratios:
+        lines += [
+            "",
+            f"Cache reuse: observed — up to {max(ratios) * 100:.0f}% of prompt tokens reported "
+            "cached on the replay ladder.",
+        ]
+    else:
+        lines += [
+            "",
+            "Cache reuse: unknown — the server reports no cached-token counts.",
+        ]
+    return lines
+
+
 def _resources(entries: list[dict[str, Any]], boot_metrics: dict[str, Any]) -> list[str]:
     ram_total = boot_metrics.get("mem_total_gib")
     vram_total = boot_metrics.get("gpu_vram_total_gib")
@@ -272,6 +311,7 @@ def render_results_block(document: dict[str, Any]) -> str:
     if "warmup" in document:
         lines += _warmup(document["warmup"])
     lines += _cases(document["cases"])
+    lines += _conversation(document["cases"])
     if document.get("resources"):
         boot_metrics = document.get("boot", {}).get("metrics", {})
         lines += _resources(document["resources"], boot_metrics)

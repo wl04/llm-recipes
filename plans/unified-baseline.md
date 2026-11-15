@@ -330,7 +330,7 @@ The initial implementation is complete when one execution per recipe produces us
   phases, `--yes`, served-model and context confirmation, and LM Studio process detection;
   tested with scripted answers and the fake server. What remains is running it on the
   workstation with the app open (LM Studio baseline `001`).
-- Stage 3: LM Studio workstation baseline, monitoring overhead measurements, and calibration of thresholds. The Strata and TabbyAPI/ExLlamaV3 recipes have recorded baselines.
-- Stage 4: conversation reuse and reasoning-enabled workloads.
+- Stage 3: threshold calibration is done (twelve recorded runs, see `docs/baseline.md`). Remaining: LM Studio workstation baseline and monitoring overhead measurements, which need GPU time. The Strata and TabbyAPI/ExLlamaV3 recipes have recorded baselines.
+- Stage 4: the conversation-reuse workload is implemented (suite v2): a fixed multi-turn coding conversation with tool results is sent cold, then its growing prefixes are replayed; reports show fresh versus reused prompt processing, with cache reuse reported as observed or explicitly unknown. Remaining on GPU: confirm reuse is observable on real servers, and the reasoning-enabled workload.
 
 Profiles retain hardware, software/model versions, image identities, Python version, and vision configuration. Results retain measurements and the request policy. `policy.thinking_request` records explicit thinking controls after overrides, without claiming the server applied them. Historical results retain their recorded default flag. No additional corpus or environment metadata is required in the durable results.
