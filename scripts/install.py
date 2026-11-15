@@ -100,15 +100,36 @@ def build_snapshot(root: Path, destination: Path, *, with_dependencies: bool) ->
     }
     (destination / "VERSION").write_text(json.dumps(stamp, indent=2) + "\n")
     if with_dependencies:
-        venv = destination / ".venv"
-        created = run_process([sys.executable, "-m", "venv", str(venv)])
-        if created.returncode:
-            raise RuntimeError(f"venv creation failed: {created.stderr.strip()}")
-        installed = run_process(
-            [str(venv / "bin/pip"), "install", "--quiet", *RUNTIME_REQUIREMENTS]
-        )
-        if installed.returncode:
-            raise RuntimeError(f"runtime dependency install failed: {installed.stderr.strip()}")
+        create_venv(destination / ".venv", sys.executable)
+
+
+def create_venv(venv: Path, base_python: str) -> None:
+    """Create the runtime venv with its dependencies, preferring ``uv`` when present."""
+    if shutil.which("uv"):
+        made = run_process(["uv", "venv", str(venv), "--python", base_python])
+        if made.returncode == 0:
+            installed = run_process(
+                [
+                    "uv",
+                    "pip",
+                    "install",
+                    "--quiet",
+                    "--python",
+                    str(venv / "bin/python"),
+                    *RUNTIME_REQUIREMENTS,
+                ]
+            )
+            if installed.returncode:
+                detail = installed.stderr.strip() or installed.stdout.strip()
+                raise RuntimeError(f"runtime dependency install failed: {detail}")
+            return
+    created = run_process([base_python, "-m", "venv", str(venv)])
+    if created.returncode:
+        detail = created.stderr.strip() or created.stdout.strip()
+        raise RuntimeError(f"venv creation failed: {detail}")
+    installed = run_process([str(venv / "bin/pip"), "install", "--quiet", *RUNTIME_REQUIREMENTS])
+    if installed.returncode:
+        raise RuntimeError(f"runtime dependency install failed: {installed.stderr.strip()}")
 
 
 def write_shims(prefix: Path) -> None:
