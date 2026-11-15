@@ -55,7 +55,7 @@ The suite runs at concurrency one, in this order:
 4. Three coding tasks: an LRU cache, a tokenizer, and an event store, each with tests requested.
 5. Approximately 32K, 64K, and 120K-token code-review prompts. The largest case runs twice; the others run once. Cases that cannot fit input plus output are skipped.
 6. Conversation reuse: one fixed multi-turn coding conversation (task, file read, failing test run, applied patch) is sent cold with its full history, then its three growing prefixes are replayed in order.
-7. One reasoning request with a multi-step arithmetic task. Strata requests thinking explicitly with `reasoning_effort: high`; other servers keep template and app-level defaults. LM Studio needs an exception: the runner disables thinking there for every other case, and no enabling value is verified yet, so the case runs without reasoning output until one is probed.
+7. One reasoning request with a multi-step arithmetic task. Strata and LM Studio request thinking explicitly with `reasoning_effort: high` (LM Studio thinks by default, so `high` matches the template default while the rest of the suite runs with `none`); other servers keep template and app-level defaults.
 
 Output caps are 1,024 tokens for context cases, 2,048 for sustained coding tasks, 1,536 for the reasoning request, and 256 for conversation turns. Sustained replies shorter than 512 tokens are marked insufficient samples. Generated code is not executed.
 

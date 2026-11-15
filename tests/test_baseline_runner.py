@@ -661,6 +661,19 @@ def test_run_enables_thinking_only_for_the_reasoning_request(tmp_path: Path) -> 
     assert raw.meta["policy"]["reasoning_request"] == {"reasoning_effort": "high"}
 
 
+def test_run_enables_high_only_for_the_reasoning_request_on_lmstudio(tmp_path: Path) -> None:
+    with FakeServer() as server:
+        _, raw, _ = execute(tmp_path, server, kind="lmstudio")
+
+    on = [p for p in server.requests if p.get("reasoning_effort") == "high"]
+    assert len(on) == 1
+    assert on[0]["max_tokens"] == 1536
+    assert "chat_template_kwargs" not in on[0]
+    off = [p for p in server.requests if p.get("reasoning_effort") not in (None, "high")]
+    assert all(p["reasoning_effort"] == "none" for p in off)
+    assert raw.meta["policy"]["reasoning_request"] == {"reasoning_effort": "high"}
+
+
 def test_run_reports_the_reasoning_case_with_visible_and_reasoning_text(tmp_path: Path) -> None:
     with FakeServer() as server:
         server.reasoning_tokens = 3

@@ -296,7 +296,7 @@ def test_request_payload_user_extra_wins_over_case_extra() -> None:
 
 def test_reasoning_request_records_the_enabling_control_per_kind() -> None:
     assert workloads.reasoning_request("strata", {}) == {"reasoning_effort": "high"}
-    assert workloads.reasoning_request("lmstudio", {}) == {}
+    assert workloads.reasoning_request("lmstudio", {}) == {"reasoning_effort": "high"}
     assert workloads.reasoning_request("strata", {"enable_thinking": False}) == {
         "reasoning_effort": "high",
         "enable_thinking": False,

@@ -11,6 +11,9 @@
 # streams the same short prompt once per candidate field and prints which variants produced
 # visible output without any reasoning content. Exits 0 if at least one control worked.
 # Measured thinking is on by default; a working "none" makes "high" worth checking too.
+# The vision request applies the first working control: with a vision adapter (mmproj) loaded
+# the model should answer "red"; an empty answer with a control applied means vision is
+# genuinely unsupported over this endpoint.
 set -euo pipefail
 
 base=${1:-http://127.0.0.1:1234}

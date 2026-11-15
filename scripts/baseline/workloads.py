@@ -25,7 +25,12 @@ THINKING_OFF: dict[str, dict[str, Any]] = {
     "lmstudio": {"reasoning_effort": "none"},
 }
 # Verified enabling control for the reasoning case; other servers keep template defaults.
-THINKING_ON: dict[str, dict[str, Any]] = {"strata": {"reasoning_effort": "high"}}
+# LM Studio lives in both maps: thinking is on by default, "none" disables it for every
+# other case, and the 2026-11-15 probe showed "high" is accepted and produces reasoning.
+THINKING_ON: dict[str, dict[str, Any]] = {
+    "strata": {"reasoning_effort": "high"},
+    "lmstudio": {"reasoning_effort": "high"},
+}
 TOKEN_LIMIT_FIELD = {"strata": "max_completion_tokens"}
 # Servers with a tokenizer route that counts a prompt without running it.
 TOKEN_COUNT_ROUTE = {"strata": "/v1/messages/count_tokens", "tabbyapi": "/v1/token/encode"}
