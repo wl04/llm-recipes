@@ -79,7 +79,7 @@ runtimes/<runtime>/
 docs/runtimes/<runtime>.md
 ```
 
-A runtime owns the image reference, API-server/engine pairing, build locks, and reusable scripts. A recipe selects the runtime and supplies model artifacts, preparation settings, native serving configuration, client metadata, and external data-directory names. Keep weights and conversion working files outside Git. Strata preparation uses the recipe's `data_directory`; ExLlamaV3 model locks define the target, draft, and work folders below that directory. Native serving paths must agree with the prepared paths.
+A runtime owns the image reference, API-server/engine pairing, build locks, and reusable scripts. A recipe selects the runtime and supplies model artifacts, preparation settings, native serving configuration, and client metadata. Keep weights and conversion working files outside Git. Each recipe's model data lives under `<data home>/recipes/<recipe-id>/`, derived from the recipe folder name. Strata preparation writes its shards, packs, and MTP there; ExLlamaV3 model locks define the target, draft, and conversion folders inside it. Native serving paths must agree with the prepared paths.
 
 Keep `setup.md` focused on model-specific capacity, preparation and launch commands, readiness, the baseline command, and a link to its Pi configuration. Runtime guides own build instructions, preparation/retry behavior, engine-specific capabilities, and file logs. The launcher guide owns common mounts and lifecycle controls; the Pi guide owns installation and client metadata alignment. Keep runnable commands in each recipe; link shared explanations. Shared scripts take `--recipe` explicitly. Each API check accepts a model identifier; avoid model-specific defaults in shared code.
 

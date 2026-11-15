@@ -1,19 +1,18 @@
 # Launcher guide
 
-Run commands from the repository root using host Python 3 and `sudo docker`. Build the image and prepare models following the selected recipe's `setup.md`.
+Serving normally runs through the installed `llm-recipes` command (the `~/.llm-recipes` snapshot; see [machine roots](project-instructions.md#machine-roots-and-cutover)). From the development checkout, run the equivalent `python3 scripts/launch.py` commands below from the repository root using host Python 3 and `sudo docker`. Build the image and prepare models following the selected recipe's `setup.md`.
 
 ## Recipes and instances
 
 A recipe defines a prepared model/server setup. An instance is one launch of that recipe. The API-server adapter controls startup; the inference engine performs inference. Supported combinations are `tabbyapi` / `exllamav3` and `strata` / `strata`.
 
 ```bash
-python3 scripts/launch.py list
-python3 scripts/launch.py start <recipe> --name coding --detach \
-  --models "$HOME/llm-recipes"
-python3 scripts/launch.py ps
-python3 scripts/launch.py status coding
-python3 scripts/launch.py logs coding --follow
-python3 scripts/launch.py stop coding
+llm-recipes list
+llm-recipes start <recipe> --detach
+llm-recipes ps
+llm-recipes status <recipe>
+llm-recipes logs <recipe> --follow
+llm-recipes stop <recipe>
 ```
 
 Replace `<recipe>` with a directory identifier from `list`. Without `--name`, the recipe identifier becomes the instance name. Names contain up to 160 lowercase letters, digits, dots, dashes, or underscores and start with a letter or digit. Distinct instances require distinct names and available host ports. Docker reports name or port conflicts.
@@ -23,7 +22,7 @@ Replace `<recipe>` with a directory identifier from `list`. Without `--name`, th
 ## Diagnose a recipe
 
 ```bash
-python3 scripts/launch.py doctor <recipe> --models "$HOME/llm-recipes"
+llm-recipes doctor <recipe>
 ```
 
 `doctor` reads the recipe defaults and reports `PASS`, `WARN`, `FAIL`, or `SKIP` for:
@@ -55,7 +54,7 @@ Explicit CLI options override the recipe's launch defaults.
 | --- | --- | --- |
 | `--name NAME` | Recipe identifier | Instance name |
 | `--models DIRECTORY` | `~/llm-recipes` | Prepared model directory |
-| `--logs DIRECTORY` | Per-instance state directory | Persistent server file logs |
+| `--logs DIRECTORY` | `<data home>/logs/<instance>` | Persistent server file logs |
 | `--port PORT` | Manifest port | Host loopback port; update the client's API address when changed |
 | `--context TOKENS` | Manifest context | Context capacity |
 | `--draft on\|off` | Manifest drafting setting | Configured speculative decoding |
@@ -65,7 +64,7 @@ Explicit CLI options override the recipe's launch defaults.
 
 Both adapters accept contexts of at least 1,024 tokens in multiples of 256, up to nine digits. Model and memory limits still determine usable context. GPU device group IDs are resolved at actual startup; dry runs omit them.
 
-Run `python3 scripts/launch.py start --help` for CLI help.
+Run `python3 scripts/launch.py start --help` (or `llm-recipes start --help`) for CLI help.
 
 ## Persistent logs
 
@@ -84,13 +83,12 @@ The launcher discovers `recipes/*/config/launch.json`. The recipe directory supp
 | Field | Meaning |
 | --- | --- |
 | `runtime` | Directory identifier under `runtimes/`, such as `strata` or `exllamav3-tabbyapi` |
-| `data_directory` | External data subdirectory under `--models`; ExLlamaV3 also accepts `.` for the mount root |
 | `port` | Container API port and default host port |
 | `context` | Default context capacity |
 | `draft` | Default `on` or `off` |
 | `vision` | TabbyAPI: `on/off`; Strata: `cpu/off` |
 
-The selected runtime's `runtime.json` defines `adapter`, `engine`, and `image`. Supported pairs are `tabbyapi` / `exllamav3` and `strata` / `strata`. The launcher validates the runtime identifier and serving entry point before constructing a command. Native server settings remain recipe-local. Keep the native server port equal to the manifest port; `--port` changes only the host mapping. Strata requires a named `data_directory`, while ExLlamaV3 also accepts `.`. The [container recipe template](../templates/container/config/launch.json) selects the shared ExLlamaV3/TabbyAPI runtime.
+The selected runtime's `runtime.json` defines `adapter`, `engine`, and `image`. Supported pairs are `tabbyapi` / `exllamav3` and `strata` / `strata`. The launcher validates the runtime identifier and serving entry point before constructing a command. The recipe's model data folder is `<data home>/recipes/<recipe-id>/`, derived from the recipe folder name and not configurable. Native server settings remain recipe-local. Keep the native server port equal to the manifest port; `--port` changes only the host mapping. The [container recipe template](../templates/container/config/launch.json) selects the shared ExLlamaV3/TabbyAPI runtime.
 
 ## Shared runtimes
 

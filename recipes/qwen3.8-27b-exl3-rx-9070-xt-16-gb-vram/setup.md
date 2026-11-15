@@ -16,9 +16,11 @@ bash runtimes/exllamav3-tabbyapi/scripts/prepare-models.sh "$recipe" download
 bash runtimes/exllamav3-tabbyapi/scripts/prepare-models.sh "$recipe" quantize-draft
 ```
 
-The optional third argument selects an external model directory, defaulting to `~/llm-recipes`. Use that same directory with the launcher's `--models`. The [model lock](config/models.lock.json) specifies source revisions and conversion options: a 3.0-bit draft target, `mul1` codebook, and output scales enabled.
+The optional third argument selects an external model directory, defaulting to the data root `~/llm-recipes`. The launcher's `--models` uses the same default. The [model lock](config/models.lock.json) specifies source revisions and conversion options: a 3.0-bit draft target, `mul1` codebook, and output scales enabled.
 
-| External directory | Contents |
+Prepared folders under `~/llm-recipes/recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/`:
+
+| Folder | Contents |
 |---|---|
 | `qwen3.8-27b-exl3-3bpw` | Prepared target |
 | `qwen3.8-27b-dflash2-source` | Original draft |
@@ -30,17 +32,17 @@ See [preparation and retry behavior](../../docs/runtimes/exllamav3-tabbyapi.md#p
 ## Launch
 
 ```bash
-python3 scripts/launch.py doctor qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
-  --models "$HOME/llm-recipes"
-python3 scripts/launch.py start qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
-  --name coding --detach --draft on --vision on --context 131072 \
-  --models "$HOME/llm-recipes"
-python3 scripts/launch.py logs coding --follow
+llm-recipes doctor qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
+llm-recipes start qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
+  --detach --vision on --context 131072
+llm-recipes logs qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram --follow
 ```
+
+The instance name defaults to the recipe identifier; file logs land in `$HOME/llm-recipes/logs/<instance>`.
 
 API: `http://127.0.0.1:5000/v1`; browser chat: `/ui/`; model status: `/ui/status`; the API serves `qwen3.8-27b-exl3-3bpw`.
 
-The manifest defaults to a 4,096-token context, drafting on and vision off; the launch command above overrides context and vision. Edit [tabby.yml](config/tabby.yml) for sampling and other native defaults. Thinking is enabled by default, and clients control effort and reasoning budget.
+The manifest defaults to a 4,096-token context, drafting on and vision off; the launch command above overrides context and vision for the tested coding configuration. Edit [tabby.yml](config/tabby.yml) for sampling and other native defaults. Thinking is enabled by default, and clients control effort and reasoning budget.
 
 ## Baseline
 
@@ -64,8 +66,8 @@ Follow [Pi setup](../../docs/clients/pi.md#configure-a-recipe) using [`config/pi
 ## Logs and stopping
 
 ```bash
-python3 scripts/launch.py logs coding --follow
-python3 scripts/launch.py stop coding
+llm-recipes logs qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram --follow
+llm-recipes stop qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
 ```
 
 See [launcher controls](../../docs/launcher.md#foreground-and-background-execution) and [TabbyAPI file logs](../../docs/runtimes/exllamav3-tabbyapi.md#serving).

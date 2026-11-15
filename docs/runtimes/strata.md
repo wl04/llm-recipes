@@ -23,11 +23,11 @@ The image name and API-server/engine pairing are declared in [`runtime.json`](..
 
 Run the preparation command in the recipe's setup guide with that recipe directory and external models root.
 
-The helper mounts the recipe and runtime read-only and the external models directory writable, running as the host UID. The recipe's `config/launch.json` supplies `data_directory`; its `models.lock.json` pins shard revisions, sizes and SHA-256 hashes, the projector, MTP source, and pack conversion options. Each recipe has its own `prepared.json` under its data directory.
+The helper mounts the recipe and runtime read-only and the external models directory writable, running as the host UID. The recipe's data folder is `recipes/<recipe-id>` under the models root, derived from the recipe folder name; `models.lock.json` pins shard revisions, sizes and SHA-256 hashes, the projector, MTP source, and pack conversion options. Each recipe has its own `prepared.json` in its data folder.
 
 Downloads resume through `.part` files and are verified before publication. Rerun after interruption. Preparation uses upstream `iq_pack.py`, `mtp_fetch.py`, `mtp_pack.py`, and `mtp_rt.py`. The packer discovers every shard from the first shard's filename. A lock with `pack.compat_bf16: true` enables upstream compatibility conversion and records it in `packs/iq3_xxs/conversions.json`; experts retain their published formats. MTP tensors are verified at the pinned checkpoint revision and converted according to the model lock. A filesystem lock prevents concurrent preparation of the same data directory. Stop the serving instance before preparing its files.
 
-Prepared files under `data_directory`:
+Prepared files under the recipe's data folder:
 
 ```text
 models/              # Published GGUF shards and projector

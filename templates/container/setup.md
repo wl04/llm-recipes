@@ -12,17 +12,14 @@ Provide the runtime preparation command with this recipe's directory and externa
 
 ## Launch
 
-After preparation, check the recipe with `python3 scripts/launch.py doctor <recipe> --models "$HOME/llm-recipes"`. Link to [diagnostics](../../docs/launcher.md#diagnose-a-recipe) for check scope and troubleshooting.
-
-Run from the repository root:
+After preparation, check the recipe with `llm-recipes doctor <recipe>`. Link to [diagnostics](../../docs/launcher.md#diagnose-a-recipe) for check scope and troubleshooting.
 
 ```bash
-python3 scripts/launch.py start <recipe> --name coding --detach \
-  --models "$HOME/llm-recipes"
-python3 scripts/launch.py logs coding --follow
+llm-recipes start <recipe> --detach
+llm-recipes logs <recipe> --follow
 ```
 
-Include the API address and readiness check. Link `config/launch.json` and native settings. Explain any differences between the command and manifest defaults.
+The instance name defaults to the recipe identifier and the model data root defaults to `~/llm-recipes`; add `--name`, `--models`, or capacity options only where the launch deviates from these defaults or from `config/launch.json`. Include the API address and readiness check. Link `config/launch.json` and native settings. Explain any differences between the command and manifest defaults.
 
 ## Baseline
 
@@ -42,7 +39,7 @@ Link to [Pi setup](../../docs/clients/pi.md#configure-a-recipe) and `config/pi.m
 ## Logs and stopping
 
 ```bash
-python3 scripts/launch.py stop coding
+llm-recipes stop <recipe>
 ```
 
 Link to [launcher controls](../../docs/launcher.md#foreground-and-background-execution) and the runtime's file-log documentation.

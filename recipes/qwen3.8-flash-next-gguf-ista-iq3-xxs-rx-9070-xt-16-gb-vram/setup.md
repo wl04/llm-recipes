@@ -12,30 +12,26 @@ Run from the repository root with the serving instance stopped:
 
 ```bash
 python3 runtimes/strata/scripts/prepare_models.py \
-  --recipe recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram \
-  --models "$HOME/llm-recipes"
+  --recipe recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram
 ```
 
-The [model lock](config/models.lock.json) selects two target shards, a BF16 CPU projector, and Q2_0 MTP. Target tensors retain their native formats. Files are prepared under `$HOME/llm-recipes/strata`.
+The [model lock](config/models.lock.json) selects two target shards, a BF16 CPU projector, and Q2_0 MTP. Target tensors retain their native formats. Files are prepared under `$HOME/llm-recipes/recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram/`.
 
 ## Launch
 
 Run one model instance at a time on the RX 9070 XT workstation. Stop the other recipe's instance before switching, then:
 
 ```bash
-python3 scripts/launch.py doctor qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram \
-  --models "$HOME/llm-recipes"
-python3 scripts/launch.py start qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram \
-  --name strata-coding --detach \
-  --draft on --vision cpu --context 131072 \
-  --models "$HOME/llm-recipes" \
-  --logs "$HOME/llm-recipes/logs/strata-coding"
-python3 scripts/launch.py logs strata-coding --follow
+llm-recipes doctor qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram
+llm-recipes start qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram --detach
+llm-recipes logs qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram --follow
 ```
+
+The instance name defaults to the recipe identifier; file logs land in `$HOME/llm-recipes/logs/<instance>`. The manifest already holds the tested configuration, so the command passes no capacity options.
 
 Readiness: `curl -f http://127.0.0.1:8080/health`. The API is `http://127.0.0.1:8080/v1` and serves `qwen3.8-flash-next-iq3_xxs`.
 
-[Launch defaults](config/launch.json): 131,072 context tokens, MTP on, CPU vision. [Native settings](config/strata.json) contain sampling, cache, and image-token settings; restart after editing them.
+[Launch defaults](config/launch.json): 131,072 context tokens, MTP on, CPU vision. [Native settings](config/strata.json) contain sampling, cache, and image-token settings; restart the instance after editing them.
 
 ## Baseline
 
@@ -55,8 +51,8 @@ Follow [Pi setup](../../docs/clients/pi.md#configure-a-recipe) using [`config/pi
 ## Logs and stopping
 
 ```bash
-python3 scripts/launch.py logs strata-coding --follow
-python3 scripts/launch.py stop strata-coding
+llm-recipes logs qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram --follow
+llm-recipes stop qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram
 ```
 
 See [launcher controls](../../docs/launcher.md#foreground-and-background-execution) and [Strata file logs](../../docs/runtimes/strata.md#serving).
