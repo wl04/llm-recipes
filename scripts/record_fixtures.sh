@@ -85,15 +85,23 @@ model=${MODEL:-}
 if [[ -z $model ]]; then
     model=$(python3 - "$out/models.json" <<'PY'
 import json, sys
-data = json.load(open(sys.argv[1]))
-ids = [m["id"] for m in data.get("data", []) if m.get("id")]
-if not ids:
-    sys.exit("no model ids in /v1/models")
-if len(ids) > 1:
-    print(f"serving {len(ids)} models: {ids}", file=sys.stderr)
-print(ids[0])
+
+def is_served(entry):
+    """A loaded model reports a runtime context; draft or catalog entries report nulls."""
+    if (entry.get("status") or {}).get("value") == "loaded":
+        return True
+    meta = entry.get("meta") or {}
+    parameters = entry.get("parameters") or {}
+    return any(v is not None for v in (entry.get("max_model_len"), meta.get("n_ctx"),
+                                       parameters.get("n_ctx")))
+
+served = [m["id"] for m in json.load(open(sys.argv[1])).get("data", [])
+          if m.get("id") and is_served(m)]
+if len(served) != 1:
+    sys.exit(f"{len(served)} served candidates: {served or 'none'}")
+print(served[0])
 PY
-) || die "could not read a model id from $out/models.json; set MODEL=<id> and rerun"
+) || die "could not determine the served model uniquely from $out/models.json; set MODEL=<id> and rerun. LM Studio lists every downloaded model without a loaded flag, so it needs MODEL= explicitly."
 fi
 [[ -n $model ]] || die "empty model id; set MODEL=<id> and rerun"
 echo "model: $model"
