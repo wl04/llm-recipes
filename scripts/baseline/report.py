@@ -373,7 +373,7 @@ SESSION_END = "<!-- END GENERATED SESSION -->"
 UNAVAILABLE = "unavailable"
 
 
-def _value(document: dict[str, Any], key: str, nested: str | None = None) -> Any:
+def _value(document: dict[str, Any], key: str, nested: str | None = None) -> Any:  # noqa: ANN401 - JSON field
     section: Any = document if nested is None else document.get(nested)
     return section.get(key) if isinstance(section, dict) else None
 

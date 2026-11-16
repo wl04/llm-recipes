@@ -23,10 +23,10 @@ TOOLS = [
         },
     }
 ]
-TOOL_CHOICE = {"type": "function", "function": {"name": TOOL_NAME}}
+TOOL_CHOICE: dict[str, object] = {"type": "function", "function": {"name": TOOL_NAME}}
 
 
-def forced_tool_choice(kind: str) -> Any:
+def forced_tool_choice(kind: str) -> str | dict[str, object]:
     """The forced tool-selection control as the given server kind accepts it.
 
     LM Studio rejects the OpenAI object form with HTTP 400 and supports only the

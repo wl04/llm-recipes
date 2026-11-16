@@ -505,7 +505,7 @@ class Runner:
         messages: list[dict[str, Any]],
         max_tokens: int,
         payload_extra: dict[str, Any] | None = None,
-        **extra: Any,
+        **extra: Any,  # noqa: ANN401 - request-body fields
     ) -> api.StreamResult | None:
         self._check_stop()
         payload = self._payload(
@@ -588,7 +588,7 @@ class Runner:
 
     def _prompt_request(
         self, *, phase: str, case: str, run: int, nonce: str, variant: int, tokens: int,
-        task: str, max_tokens: int, **extra: Any,
+        task: str, max_tokens: int, **extra: Any,  # noqa: ANN401 - request-body fields
     ) -> api.StreamResult | None:  # fmt: skip
         def build(chars: int) -> workloads.Prompt:
             return workloads.build_prompt(

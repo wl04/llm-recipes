@@ -18,7 +18,8 @@ target-version = "py312"
 # The families beyond the defaults each keep one written convention checkable:
 # PT states pytest style, BLE001 requires a reason for a blind except, ARG002 and PLW2901
 # keep signatures and loop variables meaningful, PLW1510 requires an explicit `check=` for
-# subprocess.run, and ERA001 rejects commented-out code.
+# subprocess.run, ERA001 rejects commented-out code, and ANN401 asks every `Any` to state
+# the JSON or request boundary it belongs to.
 select = [
     "E",
     "F",
@@ -40,6 +41,7 @@ select = [
     "TRY002",
     "PLW1510",
     "PLW2901",
+    "ANN401",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -50,6 +52,9 @@ select = [
 "runtimes/*/container/*.py" = ["E402", "I001"]
 # The app is imported after the Textual availability skip; conftest puts scripts/ on the path.
 "tests/test_tui.py" = ["E402"]
+# Recorded JSON documents and request builders stay loosely shaped; code reads them through
+# the schema module instead.
+"tests/*.py" = ["ANN401"]
 # Test doubles keep the parameter names of the interfaces they satisfy.
 "tests/fake_server.py" = ["ARG002"]
 "tests/test_baseline_guided.py" = ["ARG002"]
@@ -62,6 +67,7 @@ files = [
     "scripts/tui.py",
     "scripts/doctor.py",
     "scripts/paths.py",
+    "scripts/host_facts.py",
     "scripts/install.py",
     "scripts/baseline",
     "scripts/run_baseline.py",

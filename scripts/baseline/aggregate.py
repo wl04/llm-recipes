@@ -256,11 +256,13 @@ def _resource_metrics(
             return schema.unavailable(f"no samples during {window}")
         return schema.unavailable(f"{key} was not reported")
 
-    def peak(key: str, scale: float, unit: str, source: str, pick: Callable[..., float]) -> Any:
+    def peak(
+        key: str, scale: float, unit: str, source: str, pick: Callable[..., float]
+    ) -> dict[str, Any]:
         values = [v for _, v in _points(inside, key)]
         return _measured(pick(values) / scale, unit, source) if values else missing(key)
 
-    def mean(key: str, scale: float, unit: str, source: str) -> Any:
+    def mean(key: str, scale: float, unit: str, source: str) -> dict[str, Any]:
         value = _hold_mean(_points(samples, key), intervals)
         covered = bool(_points(inside, key))
         return (
@@ -269,14 +271,16 @@ def _resource_metrics(
             else missing(key)
         )
 
-    def delta(key: str, unit: str, source: str, per_second: bool, scale: float = 1.0) -> Any:
+    def delta(
+        key: str, unit: str, source: str, per_second: bool, scale: float = 1.0
+    ) -> dict[str, Any]:
         change = _counter_change(_points(samples, key), intervals)
         if change is None or not inside:
             return missing(key)
         total, seconds = change
         return _measured((total / seconds if per_second else total) / scale, unit, source)
 
-    def cpu_busy() -> Any:
+    def cpu_busy() -> dict[str, Any]:
         busy = _counter_change(_points(samples, "cpu_busy_ticks"), intervals)
         total = _counter_change(_points(samples, "cpu_total_ticks"), intervals)
         if busy is None or total is None or total[0] <= 0 or not inside:

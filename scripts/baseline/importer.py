@@ -121,7 +121,7 @@ def _seq(value: object) -> list[Any]:
     return value if isinstance(value, list) else []
 
 
-def _dig(mapping: Mapping[str, Any] | None, *keys: str) -> Any:
+def _dig(mapping: Mapping[str, Any] | None, *keys: str) -> Any:  # noqa: ANN401 - JSON field
     current: Any = mapping
     for key in keys:
         if not isinstance(current, Mapping):
@@ -130,7 +130,7 @@ def _dig(mapping: Mapping[str, Any] | None, *keys: str) -> Any:
     return current
 
 
-def _first(*values: Any) -> Any:
+def _first(*values: Any) -> Any:  # noqa: ANN401 - JSON field
     for value in values:
         if value is not None:
             return value
@@ -219,7 +219,7 @@ def _memory_architecture(description: str | None) -> str | None:
     return None
 
 
-def _rounded_gib(value: Any) -> int | None:
+def _rounded_gib(value: Any) -> int | None:  # noqa: ANN401 - JSON field
     return round(value) if isinstance(value, (int, float)) else None
 
 

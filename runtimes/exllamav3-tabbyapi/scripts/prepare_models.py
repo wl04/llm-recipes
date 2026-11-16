@@ -26,7 +26,7 @@ def digest(path: Path, algorithm: str = "sha256", git_blob: bool = False) -> str
     return result.hexdigest()
 
 
-def write_json(path: Path, value: Any) -> None:
+def write_json(path: Path, value: Any) -> None:  # noqa: ANN401 - JSON document
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, indent=2) + "\n")
     temporary.replace(path)
