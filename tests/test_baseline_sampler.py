@@ -2,6 +2,7 @@
 
 import threading
 import time
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -27,7 +28,7 @@ def collect(
     return Sampler(sources, interval_s, samples.append), samples
 
 
-def wait_until(condition: Any, timeout_s: float = 5.0) -> None:
+def wait_until(condition: Callable[[], bool], timeout_s: float = 5.0) -> None:
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         if condition():
@@ -55,6 +56,17 @@ def test_stop_takes_final_sample_after_the_last_tick() -> None:
 
     assert samples[-1]["t"] >= samples[-2]["t"]
     assert samples[-1]["values"]["counter"] == len(samples)
+
+
+def test_running_is_true_only_between_start_and_stop() -> None:
+    sampler, _ = collect([Source("c", Counter(), ("counter",))], interval_s=0.01)
+
+    sampler.start()
+    while_running = sampler.running
+    sampler.stop()
+
+    assert while_running
+    assert not sampler.running
 
 
 def test_sampling_continues_while_the_caller_is_blocked() -> None:

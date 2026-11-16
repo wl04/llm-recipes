@@ -113,3 +113,9 @@ class Sampler:
             self._thread.join()
             self._thread = None
             self.sample_once()
+
+    @property
+    def running(self) -> bool:
+        """Whether the sampling thread is alive; ``stop`` ends it before returning."""
+        thread = self._thread
+        return thread is not None and thread.is_alive()

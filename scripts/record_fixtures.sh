@@ -241,8 +241,16 @@ esac
 # timestamps included, as tests/fixtures/<kind>/completions.timestamped.log.
 if [[ -n "${LOG:-}" ]]; then
     if [[ -d $LOG ]]; then
-        log_file=$(find "$LOG" -maxdepth 1 -type f -name '*.log' | sort | head -1)
-        [[ -n $log_file ]] || die "no .log files under $LOG"
+        candidates=()
+        shopt -s nullglob
+        for candidate in "$LOG"/*.log; do
+            if [[ -f $candidate ]]; then
+                candidates+=("$candidate")
+            fi
+        done
+        shopt -u nullglob
+        (( ${#candidates[@]} )) || die "no .log files under $LOG"
+        log_file=${candidates[0]}
     elif [[ -f $LOG ]]; then
         log_file=$LOG
     else

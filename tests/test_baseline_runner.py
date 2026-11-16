@@ -2,7 +2,6 @@
 
 import signal
 import threading
-import time
 from pathlib import Path
 from typing import Any
 
@@ -400,7 +399,7 @@ def test_run_records_interruption_and_stops_monitoring(tmp_path: Path) -> None:
         )
         timer.start()
         try:
-            code, raw, _ = execute(tmp_path, server)
+            code, raw, sampler = execute(tmp_path, server)
         finally:
             timer.cancel()
 
@@ -412,7 +411,7 @@ def test_run_records_interruption_and_stops_monitoring(tmp_path: Path) -> None:
     assert len(interrupted) == 1
     assert max(s["t"] for s in raw.samples) > interrupted[0]["ended_s"] - 0.001
     assert [c["id"] for c in document["cases"]] == ["context-8k"]
-    time.sleep(0.05)
+    assert not sampler.running
     assert len(read_run(tmp_path / "run").samples) == count
 
 
