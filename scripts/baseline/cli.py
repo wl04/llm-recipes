@@ -409,6 +409,125 @@ def _attached_plan(
     )
 
 
+def _argument_refusal(args: argparse.Namespace, recipe: Recipe | None, recipes: Path) -> int | None:
+    """Refuse combinations of arguments that belong to another kind of recipe."""
+    if recipe is None and not (recipes / args.recipe).is_dir():
+        return _usage(f"Unknown recipe: {args.recipe}")
+    if recipe is not None and (args.pid is not None or args.base_url):
+        return _usage(
+            "Container recipes are started by the runner; --pid and --base-url are for desktop "
+            "recipes"
+        )
+    if recipe is not None and args.yes:
+        return _usage("--yes belongs to the guided desktop setup")
+    return None
+
+
+def _usage(message: str) -> int:
+    """Report an unusable command line."""
+    print(message, file=sys.stderr)
+    return ExitCode.USAGE
+
+
+def _request_extra(args: argparse.Namespace) -> dict[str, Any] | None:
+    """Parse ``--request-extra``; None when the value is not a non-empty JSON object."""
+    if not args.request_extra:
+        return {}
+    try:
+        parsed: object = json.loads(args.request_extra)
+    except json.JSONDecodeError:
+        parsed = None
+    if not isinstance(parsed, dict) or not parsed:
+        _usage("--request-extra must be a non-empty JSON object")
+        return None
+    return {str(key): value for key, value in parsed.items()}
+
+
+def _desktop_setup(args: argparse.Namespace) -> int | None:
+    """Complete a desktop run through the guided interview; None when it proceeded."""
+    try:
+        setup = guided.guide(
+            _served_model_ids,
+            guided.find_app_pids,
+            _ask,
+            _progress,
+            yes=args.yes,
+            base_url=args.base_url,
+            model=args.model,
+            context=args.context,
+            pid=args.pid,
+        )
+    except guided.GuidedAborted as error:
+        return _usage(f"Guided setup stopped: {error}")
+    args.base_url, args.model = setup.base_url, setup.model
+    args.context, args.pid = setup.context, setup.pid
+    return None
+
+
+def _run_config(
+    args: argparse.Namespace,
+    plan: Plan,
+    suite: SuiteConfig,
+    root: Path,
+    corpus: list[workloads.Document],
+    expectations: vision.Expectations,
+    extra: dict[str, Any],
+    gpu_address: str | None,
+    candidates: list[str],
+) -> RunConfig:
+    """Assemble the run record inputs from the validated command line and the plan."""
+    gpu_device = Path("/sys/bus/pci/devices") / gpu_address if gpu_address else None
+    meta_extra: dict[str, Any] = {
+        "boot": host.boot_state(Path("/proc"), gpu_device),
+        "host": {
+            "revision": host.repository_revision(root),
+            "python": platform.python_version(),
+            "kernel": platform.release(),
+            "system": _system_facts(),
+        },
+        "workload": {"image": str(args.image or "assets/checks/amdgpu-top.png")},
+        "gpu": {"address": gpu_address, "candidates": candidates},
+        **plan.meta_extra,
+    }
+    return RunConfig(
+        recipe=args.recipe,
+        kind=plan.kind,
+        base_url=plan.base_url,
+        model=args.model,
+        context_tokens=plan.context,
+        suite=suite,
+        corpus=corpus,
+        run_id=uuid.uuid4().hex[:8],
+        expectations=expectations,
+        image=args.image or root / "assets/checks/amdgpu-top.png",
+        image_is_default=args.image is None,
+        request_extra=extra,
+        target=plan.monitoring.target,
+        meta_extra=meta_extra,
+        gpu_address=gpu_address,
+        keep_running=args.keep_running,
+    )
+
+
+def _report_run(code: int, writer: RunWriter, root: Path) -> int:
+    """Render the recorded run and report its outcome."""
+    try:
+        results = render_run(writer.directory, root)
+    except ValueError as error:
+        print(f"The run was recorded but could not be rendered: {error}", file=sys.stderr)
+        return code if code != ExitCode.OK else ExitCode.CHECKS_FAILED
+    outcome = read_run(writer.directory).meta
+    status = outcome["run"]["status"]
+    for problem in [outcome["run"].get("error"), *outcome.get("problems", [])]:
+        if problem:
+            _progress(f"Problem: {problem}")
+    if status == "complete":
+        print(f"Baseline written to {writer.directory} (results: {results.name}, summary.md)")
+    else:
+        print(f"Baseline {status}; partial output in {writer.directory}")
+    return code
+
+
 def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recipes: Path) -> int:
     try:
         found = discover_recipes(recipes)
@@ -416,51 +535,20 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
         print(f"Recipe discovery failed: {error}", file=sys.stderr)
         return ExitCode.USAGE
     recipe = found.get(args.recipe)
-    if recipe is None and not (recipes / args.recipe).is_dir():
-        print(f"Unknown recipe: {args.recipe}", file=sys.stderr)
-        return ExitCode.USAGE
-    if recipe is not None and (args.pid is not None or args.base_url):
-        print(
-            "Container recipes are started by the runner; --pid and --base-url are for desktop "
-            "recipes",
-            file=sys.stderr,
-        )
-        return ExitCode.USAGE
-    if recipe is not None and args.yes:
-        print("--yes belongs to the guided desktop setup", file=sys.stderr)
-        return ExitCode.USAGE
+    refusal = _argument_refusal(args, recipe, recipes)
+    if refusal is not None:
+        return refusal
     models = models_dir(args.models)
     output = args.output or default_output(models, args.recipe)
     if output.resolve().is_relative_to(root.resolve()):
-        print("--output must be outside the repository", file=sys.stderr)
+        return _usage("--output must be outside the repository")
+    extra = _request_extra(args)
+    if extra is None:
         return ExitCode.USAGE
-    extra: dict[str, Any] = {}
-    if args.request_extra:
-        try:
-            extra = json.loads(args.request_extra)
-        except json.JSONDecodeError:
-            extra = {}
-        if not isinstance(extra, dict) or not extra:
-            print("--request-extra must be a non-empty JSON object", file=sys.stderr)
-            return ExitCode.USAGE
     if recipe is None and (args.yes or args.base_url is None or args.context is None):
-        try:
-            setup = guided.guide(
-                _served_model_ids,
-                guided.find_app_pids,
-                _ask,
-                _progress,
-                yes=args.yes,
-                base_url=args.base_url,
-                model=args.model,
-                context=args.context,
-                pid=args.pid,
-            )
-        except guided.GuidedAborted as error:
-            print(f"Guided setup stopped: {error}", file=sys.stderr)
-            return ExitCode.USAGE
-        args.base_url, args.model = setup.base_url, setup.model
-        args.context, args.pid = setup.context, setup.pid
+        aborted = _desktop_setup(args)
+        if aborted is not None:
+            return aborted
     try:
         expectations = vision.load_expectations(root / "assets/checks/amdgpu-top.expected.json")
         corpus = workloads.load_corpus(workloads.default_corpus_directory())
@@ -484,36 +572,8 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
     except (host.HostError, SourceError, ValueError) as error:
         print(f"Preflight failed: {error}", file=sys.stderr)
         return ExitCode.PREFLIGHT_FAILED if not isinstance(error, ValueError) else ExitCode.USAGE
-    gpu_device = Path("/sys/bus/pci/devices") / gpu_address if gpu_address else None
-    meta_extra: dict[str, Any] = {
-        "boot": host.boot_state(Path("/proc"), gpu_device),
-        "host": {
-            "revision": host.repository_revision(root),
-            "python": platform.python_version(),
-            "kernel": platform.release(),
-            "system": _system_facts(),
-        },
-        "workload": {"image": str(args.image or "assets/checks/amdgpu-top.png")},
-        "gpu": {"address": gpu_address, "candidates": candidates},
-        **plan.meta_extra,
-    }
-    config = RunConfig(
-        recipe=args.recipe,
-        kind=plan.kind,
-        base_url=plan.base_url,
-        model=args.model,
-        context_tokens=plan.context,
-        suite=suite,
-        corpus=corpus,
-        run_id=uuid.uuid4().hex[:8],
-        expectations=expectations,
-        image=args.image or root / "assets/checks/amdgpu-top.png",
-        image_is_default=args.image is None,
-        request_extra=extra,
-        target=plan.monitoring.target,
-        meta_extra=meta_extra,
-        gpu_address=gpu_address,
-        keep_running=args.keep_running,
+    config = _run_config(
+        args, plan, suite, root, corpus, expectations, extra, gpu_address, candidates
     )
     sampler = Sampler(plan.monitoring.sources, suite.sample_interval_s, writer.append_sample)
     runner = Runner(
@@ -529,21 +589,7 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
         code = runner.run()
     finally:
         signal.signal(signal.SIGTERM, previous)
-    try:
-        results = render_run(writer.directory, root)
-    except ValueError as error:
-        print(f"The run was recorded but could not be rendered: {error}", file=sys.stderr)
-        return code if code != ExitCode.OK else ExitCode.CHECKS_FAILED
-    outcome = read_run(writer.directory).meta
-    status = outcome["run"]["status"]
-    for problem in [outcome["run"].get("error"), *outcome.get("problems", [])]:
-        if problem:
-            _progress(f"Problem: {problem}")
-    if status == "complete":
-        print(f"Baseline written to {writer.directory} (results: {results.name}, summary.md)")
-    else:
-        print(f"Baseline {status}; partial output in {writer.directory}")
-    return code
+    return _report_run(code, writer, root)
 
 
 def _terminate(signum: int, frame: object) -> None:
