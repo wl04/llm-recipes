@@ -1,0 +1,9 @@
+{
+  "extraPaths": ["scripts"],
+  "executionEnvironments": [
+    {
+      "root": "tests",
+      "extraPaths": ["scripts", "runtimes/exllamav3-tabbyapi/scripts"]
+    }
+  ]
+}

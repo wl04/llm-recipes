@@ -39,7 +39,9 @@ bash scripts/check.sh
 
 The script runs Ruff lint and formatting checks, mypy, pytest, generated-document checks, and ShellCheck. Shell entry points are hand-formatted; ShellCheck is the only shell check. The workflow is `.github/workflows/check.yml`, which runs the script on the oldest interpreter the project claims to support and on the newest interpreter it is validated against; `requires-python` in `pyproject.toml` states the range. If ShellCheck is unavailable locally, the script skips shell checks with a warning; CI installs it.
 
-`pyproject.toml` defines the exact mypy targets and external-import exceptions. Strict checking covers the generator, launcher modules, host reporting, the ExLlamaV3 runtime helpers, and tests. The two runtimes carry same-named helper modules that import siblings by name, so `check.sh` checks `runtimes/strata` in its own mypy invocation; run `bash scripts/check.sh` rather than a bare `mypy` to cover both.
+`pyproject.toml` defines the exact mypy targets and external-import exceptions. Strict checking covers the generator, launcher modules, host reporting, the ExLlamaV3 runtime helpers, and tests. The two runtimes carry same-named helper modules that import siblings by name, so `check.sh` checks `runtimes/strata` in its own mypy invocation; run `bash scripts/check.sh` rather than a bare `mypy` to cover both. `mypy_path` points at `scripts` so a single-file `mypy` invocation resolves first-party modules; runtime directories stay off the search path because each is checked in its own invocation.
+
+`pyrightconfig.json` configures editor and agent-side Pyright-family analysis only; `check.sh` never reads it, and code stays independent of its rules. Imports it cannot resolve are advisory. `warn_unused_ignores` turns a `# type: ignore` added for an editor into a CI failure, so use `# pyright: ignore` when a suppression is unavoidable.
 
 After editing profiles or adding results, follow [generation instructions](authoring.md#generate-configuration-guides) and commit profiles with generated Markdown. Preserve generated-section markers. Update templates and the authoring guide when changing structure or conventions.
 
