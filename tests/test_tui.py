@@ -1,10 +1,4 @@
-"""Headless tests for the recipe TUI.
-
-The app fetches host data in threaded workers; the scheduler itself is not
-exercised here. Tests disable the background refresh and drive the
-synchronous fill, selection, and status methods directly — that is the
-app's own logic; workers only move IO calls off the UI thread.
-"""
+"""Headless dashboard and process-lifecycle tests."""
 
 from __future__ import annotations
 
@@ -12,9 +6,6 @@ import asyncio
 from pathlib import Path
 
 import pytest
-
-pytest.importorskip("textual")
-
 import tui
 from launcher import Recipe
 from textual.widgets import DataTable, Static
@@ -192,3 +183,133 @@ def test_status_updates_status_line() -> None:
 )
 def test_doctor_badge_summarizes_failures(failures: int, expected: str) -> None:
     assert tui.doctor_badge(failures) == expected
+
+
+def test_main_authenticates_before_opening_dashboard(monkeypatch: pytest.MonkeyPatch) -> None:
+    authenticated = False
+
+    def authenticate() -> None:
+        nonlocal authenticated
+        authenticated = True
+
+    def run(app: tui.LlmRecipesApp) -> None:
+        assert authenticated
+
+    monkeypatch.setattr(tui, "refresh_sudo_ticket", authenticate, raising=False)
+    monkeypatch.setattr(tui.LlmRecipesApp, "run", run)
+    assert tui.main() == 0
+
+
+def test_start_records_facts_before_launch(monkeypatch: pytest.MonkeyPatch) -> None:
+    recorded: list[str] = []
+    monkeypatch.setattr(tui, "gpu_groups", list)
+    monkeypatch.setattr(tui, "prepare_start", lambda *args: None)
+    monkeypatch.setattr(
+        tui,
+        "record_start_warning",
+        lambda recipe, options: recorded.append(recipe.name),
+        raising=False,
+    )
+
+    def execute(command: list[str]) -> int:
+        assert recorded == ["alpha"]
+        return 0
+
+    monkeypatch.setattr(tui, "execute", execute)
+    monkeypatch.setattr(tui, "load_instances", list)
+
+    async def scenario() -> None:
+        app = make_app()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app._recipes = {"alpha": RECIPE}
+            worker = app.start_instance("alpha")
+            await asyncio.wait_for(worker.wait(), timeout=5)
+            await pilot.pause()
+            assert recorded == ["alpha"]
+            assert "Started alpha" in str(app.query_one("#status", Static).render())
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("close_app", [False, True])
+def test_logs_reaps_quiet_process_when_closed(
+    monkeypatch: pytest.MonkeyPatch, close_app: bool
+) -> None:
+    import sys
+
+    async def scenario() -> None:
+        process = await asyncio.create_subprocess_exec(
+            sys.executable,
+            "-u",
+            "-c",
+            "import time; print('ready'); time.sleep(60)",
+            stdout=asyncio.subprocess.PIPE,
+        )
+        started = asyncio.Event()
+
+        async def start(instance: str) -> asyncio.subprocess.Process:
+            started.set()
+            return process
+
+        monkeypatch.setattr(tui, "start_log_process", start)
+        app = make_app()
+        try:
+            async with app.run_test() as pilot:
+                await pilot.pause()
+                app.push_screen(tui.LogStreamScreen("alpha"))
+                await asyncio.wait_for(started.wait(), timeout=5)
+                if not close_app:
+                    await pilot.press("escape")
+                    await asyncio.wait_for(process.wait(), timeout=5)
+            await asyncio.wait_for(process.wait(), timeout=5)
+            assert process.returncode is not None
+        finally:
+            if process.returncode is None:
+                process.kill()
+                await process.wait()
+
+    asyncio.run(scenario())
+
+
+def test_doctor_updates_recipe_badge(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tui, "load_doctor", lambda recipe: (3, 0))
+
+    async def scenario() -> None:
+        app = make_app()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app._recipes = {"alpha": RECIPE}
+            app._fill_recipes(app._recipes)
+            worker = app._check_doctor("alpha")
+            await asyncio.wait_for(worker.wait(), timeout=5)
+            await pilot.pause()
+            assert app.query_one("#recipe-table", DataTable).get_cell("alpha", "doctor") == "ok"
+
+    asyncio.run(scenario())
+
+
+def test_load_instances_reports_docker_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    import subprocess
+
+    monkeypatch.setattr(
+        "tui.subprocess.run",
+        lambda *args, **kwargs: subprocess.CompletedProcess([], 1, "", "daemon unavailable"),
+    )
+    with pytest.raises(RuntimeError, match="daemon unavailable"):
+        tui.load_instances()
+
+
+def test_execute_avoids_interactive_sudo_and_reports_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import subprocess
+
+    def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        assert command == ["sudo", "-n", "docker", "stop", "example"]
+        assert kwargs["capture_output"] is True
+        return subprocess.CompletedProcess(command, 1, "", "credentials expired")
+
+    monkeypatch.setattr("tui.subprocess.run", run)
+    with pytest.raises(RuntimeError, match="credentials expired"):
+        tui.execute(["sudo", "docker", "stop", "example"])

@@ -12,7 +12,6 @@ from pathlib import Path
 import paths
 from doctor import diagnose
 from launcher import (
-    FACTS_NAME,
     Recipe,
     discover_recipes,
     gpu_groups,
@@ -20,7 +19,7 @@ from launcher import (
     lifecycle_command,
     parse_instances,
     prepare_start,
-    record_start_facts,
+    record_start_warning,
     refresh_sudo_ticket,
     resolve_launch_options,
     run_command,
@@ -41,6 +40,7 @@ def parser() -> argparse.ArgumentParser:
     """Define the CLI without requiring recipe files or Docker access."""
     cli = argparse.ArgumentParser(description=__doc__)
     commands = cli.add_subparsers(dest="action", required=True)
+    commands.add_parser("tui", help="open the terminal dashboard")
     list_command = commands.add_parser("list", help="list available recipes")
     list_command.add_argument("--json", action="store_true", help="machine-readable output")
     ps_command = commands.add_parser("ps", help="list running launcher instances")
@@ -204,10 +204,9 @@ def _start(recipe: Recipe, args: argparse.Namespace) -> int:
     command = start_command(recipe, options, groups=gpu_groups(), uid=uid, gid=gid)
     prepare_start(recipe, options)
     refresh_sudo_ticket()
-    try:
-        record_start_facts(recipe, options)
-    except (OSError, ValueError, subprocess.SubprocessError) as error:
-        print(f"warning: {FACTS_NAME} was not written: {error}", file=sys.stderr)
+    warning = record_start_warning(recipe, options)
+    if warning:
+        print(warning, file=sys.stderr)
     print(f"Instance: {name}\nPersistent logs: {options.logs}", flush=True)
     print(f"API address: http://127.0.0.1:{options.port}/v1 (after model loading)", flush=True)
     return run_command(command)
@@ -218,6 +217,10 @@ def main(argv: list[str] | None = None) -> int:
     cli = parser()
     args = cli.parse_args(argv)
     try:
+        if args.action == "tui":
+            from tui import main as run_tui
+
+            return run_tui()
         if args.action == "ps":
             return _ps(args)
         if args.action == "status" and args.json:

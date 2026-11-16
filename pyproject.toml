@@ -4,8 +4,7 @@ version = "0.1.0"
 description = "Language model configurations, results, and serving recipes"
 requires-python = ">=3.12"
 
-[project.optional-dependencies]
-tui = ["textual>=8.2,<9"]
+dependencies = ["PyYAML==6.0.3", "textual==8.2.8"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -54,8 +53,6 @@ select = [
 "tests/test_baseline_session_cli.py" = ["E501"]
 # Container build scripts import and validate after runtime lock checks by design.
 "runtimes/*/container/*.py" = ["E402", "I001"]
-# The app is imported after the Textual availability skip; conftest puts scripts/ on the path.
-"tests/test_tui.py" = ["E402"]
 # Recorded JSON documents and request builders stay loosely shaped; code reads them through
 # the schema module instead.
 "tests/*.py" = ["ANN401"]

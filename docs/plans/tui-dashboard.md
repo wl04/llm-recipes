@@ -23,13 +23,13 @@ complete. They are separate feature work, not prerequisites for shipping the ins
 
 ## Installation and command integration
 
-- [ ] Include Textual in the normal runtime installation and align dependency declarations
+- [x] Include Textual in the normal runtime installation and align dependency declarations
       with the development pin. Remove the optional-extra installation contract.
-- [ ] Add `llm-recipes tui` dispatch to the existing command, without another executable or
+- [x] Add `llm-recipes tui` dispatch to the existing command, without another executable or
       installation flag. Obtain sudo credentials before entering the interactive screen.
-- [ ] Verify the installed command works outside the checkout and uses installed recipes.
+- [x] Verify the installed command works outside the checkout and uses installed recipes.
       Test command dispatch and a headless dashboard mount with the runtime dependencies.
-- [ ] Update the README, launcher guide, project instructions, and applicable templates to
+- [x] Update the README, launcher guide, project instructions, and applicable templates to
       use the installed command. Keep direct script execution as a development entry point.
 
 ## Architecture guarantees

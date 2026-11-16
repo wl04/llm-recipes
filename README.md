@@ -107,6 +107,8 @@ The installed launcher keeps code and machine data outside this checkout:
 
 Different models or independently maintained quantizations have separate recipes. Context, sampling, and vision changes are recorded as experiments within the same recipe.
 
+The installed terminal dashboard is available with `llm-recipes tui`; see the [launcher guide](docs/launcher.md#terminal-dashboard).
+
 ---
 
 [Adding recipes and results](docs/authoring.md) · [Launcher guide](docs/launcher.md) · [Baseline contract](docs/baseline.md) · [Pi setup](docs/clients/pi.md) · [Development](docs/project-instructions.md)

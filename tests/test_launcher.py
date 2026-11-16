@@ -297,3 +297,10 @@ def test_status_json_reports_error_when_query_cannot_complete(
     result = json.loads(capsys.readouterr().out)
     assert result["status"] == "error"
     assert result["error"]
+
+
+def test_tui_command_dispatches_to_dashboard(monkeypatch: pytest.MonkeyPatch) -> None:
+    import tui
+
+    monkeypatch.setattr(tui, "main", lambda: 7)
+    assert launch.main(["tui"]) == 7

@@ -108,13 +108,13 @@ The log worker blocks while reading `docker logs --follow`; dismissal only cance
 worker, and the subprocess is terminated only when the read loop exits. Textual's documented
 thread cancellation is cooperative, not a mechanism that interrupts a blocking pipe read.
 
-- [ ] Share the small launch-orchestration step responsible for facts and its warning policy
+- [x] Share the small launch-orchestration step responsible for facts and its warning policy
       between CLI and TUI; retain interface-specific presentation and baseline lifecycle control.
-- [ ] Give the log screen explicit ownership of its subprocess. On dismissal/unmount, stop and
+- [x] Give the log screen explicit ownership of its subprocess. On dismissal/unmount, stop and
       reap it so a quiet log stream cannot strand a worker. Bound termination waits.
-- [ ] Add a headless UI lifecycle test with a quiet fake log process and a start test verifying
-      facts are recorded. Existing tests do not exercise this cancellation lifecycle.
-- [ ] Complete the TUI plan's installation and command integration, including installed-command
+- [x] Add a headless UI lifecycle test with a quiet fake log process and a start test verifying
+      facts are recorded.
+- [x] Complete the TUI plan's installation and command integration, including installed-command
       smoke coverage and documentation updates. Keep dashboard imports lazy so ordinary CLI
       commands do not initialize Textual.
 
@@ -149,11 +149,11 @@ checked as nonempty strings, then used directly in a filesystem path.
 
 ## 8. Tighten documentation ownership and small contracts — lower priority
 
-- [ ] Resolve the installed-versus-checkout wording: project instructions say serving never
+- [x] Resolve the installed-versus-checkout wording: project instructions say serving never
       runs from the checkout, while the launcher guide, TUI, and baseline runner explicitly do.
       Describe installed serving as the normal user flow and checkout execution as development
       and measurement behavior, matching the code.
-- [ ] Correct `record_start_facts`' claim that a start cannot proceed without its record; the CLI
+- [x] Correct `record_start_facts`' claim that a start cannot proceed without its record; the CLI
       intentionally warns and proceeds. Keep one documented policy shared by interfaces.
 - [ ] Validate `VERSION` as a JSON object in `paths.version_stamp`; valid JSON such as `[]` or
       `null` currently reaches `.get` and raises despite the documented fallback behavior.

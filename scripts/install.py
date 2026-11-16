@@ -19,7 +19,7 @@ import paths
 from launcher import refresh_sudo_ticket
 
 RUNTIME_INCLUDES = ("scripts", "recipes", "runtimes", "assets", "templates")
-RUNTIME_REQUIREMENTS = ("PyYAML==6.0.3",)
+RUNTIME_REQUIREMENTS = ("PyYAML==6.0.3", "textual==8.2.8")
 COMMANDS = {"llm-recipes": "launch.py", "llm-recipes-baseline": "run_baseline.py"}
 IGNORED_DIRECTORIES = shutil.ignore_patterns("__pycache__", "*.pyc", ".venv")
 

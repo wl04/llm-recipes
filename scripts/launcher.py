@@ -470,8 +470,7 @@ def record_start_facts(
     """Collect image identity and host facts, and atomically write the instance facts file.
 
     Returns the written document. The image must already be present locally; a missing
-    image or an unwritable log directory raises, so a start never proceeds silently
-    without its record.
+    image or an unwritable log directory raises; callers decide whether to abort or warn.
     """
     inspect = run if run is not None else _capture_quiet
     collect = host if host is not None else host_facts.collect
@@ -487,3 +486,12 @@ def record_start_facts(
     )
     write_json_atomic(options.logs / FACTS_NAME, facts)
     return facts
+
+
+def record_start_warning(recipe: Recipe, options: LaunchOptions) -> str | None:
+    """Record launch facts, returning a visible warning if collection fails."""
+    try:
+        record_start_facts(recipe, options)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        return f"warning: {FACTS_NAME} was not written: {error}"
+    return None

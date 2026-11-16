@@ -45,6 +45,8 @@ llm-recipes stop <recipe>
 
 Link to [launcher controls](../../docs/launcher.md#foreground-and-background-execution) and the runtime's file-log documentation.
 
+Use `llm-recipes tui` to start this recipe with its defaults and view instance logs. See the [launcher guide](../../docs/launcher.md#terminal-dashboard).
+
 ---
 
 [Recipe](recipe.md) · [Runtime](../../docs/runtimes/<runtime>.md)
