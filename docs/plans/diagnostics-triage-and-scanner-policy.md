@@ -27,13 +27,16 @@ closes the plan.
 
 ## Assessment
 
-The editor counter and a workspace sweep measure different populations. A sweep at
-`severity=error` over 86 scanned files reports **18 blocking findings across 8 files**: 12
-unresolved-import errors from the primary checker and 6 from auxiliary lanes. Warnings and hints
-form separate populations, and the status line shows the session subset rather than the workspace
-total. Auxiliary lanes answer per file, so a file whose lane did not answer is not confirmed clean;
-counts are therefore read per rule id, and an unconfirmed lane is stated rather than folded into a
-total.
+The editor counter and a workspace sweep measure different populations, and a lane reports fewer
+findings cold than warm: the same `ast-grep` rule produced nothing under `runtimes/` in the session's
+first sweep and 22 findings in a later one, with no change to those files. A `severity=error` sweep
+over 86 scanned files reported 18 blocking findings; a `severity=all` sweep with a longer wait budget
+reports **99 findings across 8 rule types, 41 at error severity, over 25 files**, with 9 push-only
+lanes not answering. Counts are therefore read per rule id, and an unconfirmed lane is stated rather
+than folded into a total.
+
+Evidence per rule id, the verdict on each, and the disposition mechanism each tool documents live in
+[../diagnostics-inventory.md](../diagnostics-inventory.md). This plan changes code and configuration.
 
 What matters first is which tool produced each finding, because the fix belongs to that tool:
 
@@ -41,9 +44,10 @@ What matters first is which tool produced each finding, because the fix belongs 
 | --- | --- | --- |
 | mypy (`check.sh`) | none outstanding | already the build gate |
 | `Pyright:reportMissingImports` — `torch` ×3, `exllamav3` ×3, `exllamav3_ext`, `common.config_models` ×2, `common.sampling`, `huggingface_hub`, `serve.server` | 12 | pyright configuration, by path scope |
-| `ast-grep:unchecked-throwing-call-python` — `doctor.py:26`, `install.py:119,176,214` | 4 | no mypy or pyright equivalent exists |
+| `ast-grep:unchecked-throwing-call-python` — 4 in `scripts/` (`doctor.py:26`, `install.py:119,176,214`), 23 in `runtimes/` | 4 cold, 27 warm | item 8, no mypy or pyright equivalent exists |
 | `tarfile-extractall-traversal` (both `container/fetch_sources.py`) | 2 | already mitigated; per-line rule disposition |
-| Below the error threshold at `severity=all` — `dynamic-urllib-use-detected`, `python-path-traversal`, `jscpd`, `typos` | remainder | per lane, see items 3, 9, 10 |
+| `unchecked-numeric-parse-python` 48, `no-ellipsis-body` 4, `no-yield-from-non-iterable` 1 (ast-grep warnings), `dynamic-urllib-use-detected` 3, `typos` 2 | 57 | items 3, 8, 9, 10 |
+| `python-path-traversal`, `python-insecure-deserialization` (opengrep) | seen on the push advisory lane only; the sweep's opengrep lane timed out | item 8 |
 
 `bash scripts/check.sh` reports the Python sources clean, so every blocking finding in the table
 except the import class comes from a checker that CI never runs. That distinction decides the
@@ -266,8 +270,12 @@ verbatim engine log text that the parser under test consumes, and `tests/test_ba
 streams a short token as generated text. Correcting either destroys the scenario being asserted.
 The lane reads a `.typos.toml` / `typos.toml` configuration file.
 
-- [ ] Add `.typos.toml` with the fixture words under `[default.extend-words]`, each entry naming the
-      fixture it belongs to, and confirm by re-running the lane that the configuration is honoured.
+- [x] Add `.typos.toml` with the fixture words under `[default.extend-words]` as identity mappings.
+- [ ] Confirm the lane honours it. Measured: the two findings survive the file within one session.
+      The lane is a per-session server and resolves its configuration once
+      (`typos config resolved mode=project_config|injected_default`), which is the likely cause; the
+      check needs a fresh session. If a fresh session still reports them, the lane is not reading
+      project config and the disposition is the inline comment form instead.
 - [ ] Do not edit the fixtures and do not exclude the test directory, which would stop checking real
       code in those files.
 - [ ] Keep this plan and future ones free of the literal fixture strings, so the policy document does
@@ -275,11 +283,12 @@ The lane reads a `.typos.toml` / `typos.toml` configuration file.
 
 ## 10. Decide the advisory-runner and coverage-warning policy
 
-**Evidence:** `jscpd` reports an 11-line block shared by the two `container/fetch_sources.py` files
-and a 7-line block between `scripts/baseline/importer.py:617` and `:693`. `gitleaks`, `dead-code`,
-`madge`, and `jscpd` run every sweep, the last clean sweep fetching `gitleaks (421ms)`,
-`opengrep (2068ms)`, `jscpd (49ms)`. Three files sit in an inconclusive language-server lane
-because no server covers them.
+**Evidence:** a full `severity=all` sweep reports no `jscpd`, `gitleaks`, `madge` or `dead-code`
+findings; an earlier sweep reported an 11-line block shared by the two `container/fetch_sources.py`
+files and a 7-line block between `scripts/baseline/importer.py:617` and `:693`. Whether a lane ran at
+all shows only in its coverage footer, so a zero-finding lane counts as unconfirmed until it answers,
+and the duplication claims are re-checked before any refactor. Three files sit in an inconclusive
+language-server lane because no server covers them.
 
 - [ ] Extract the duplicated 7 lines in `scripts/baseline/importer.py` into one helper, relying on
       the existing coverage around both call sites. This is first-party code and a real duplication
