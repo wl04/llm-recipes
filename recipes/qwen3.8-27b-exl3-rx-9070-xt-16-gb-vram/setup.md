@@ -16,7 +16,7 @@ bash runtimes/exllamav3-tabbyapi/scripts/prepare-models.sh "$recipe" download
 bash runtimes/exllamav3-tabbyapi/scripts/prepare-models.sh "$recipe" quantize-draft
 ```
 
-The optional third argument selects an external model directory, defaulting to the data root `~/llm-recipes`. The launcher's `--models` uses the same default. The [model lock](config/models.lock.json) specifies source revisions and conversion options: a 3.0-bit draft target, `mul1` codebook, and output scales enabled.
+The optional third argument selects an external model directory, defaulting to the data root (`~/llm-recipes`, overridable with `LLM_RECIPES_HOME`). The launcher's `--models` uses the same default. The [model lock](config/models.lock.json) specifies source revisions and conversion options: a 3.0-bit draft target, `mul1` codebook, and output scales enabled.
 
 Prepared folders under `~/llm-recipes/recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/`:
 

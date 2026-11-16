@@ -73,3 +73,8 @@ def cache_dir(models_root: Path) -> Path:
 def baselines_dir(models_root: Path) -> Path:
     """Parent directory of baseline run outputs."""
     return models_root / BASELINES_DIRNAME
+
+
+if __name__ == "__main__":
+    # Shell entry points ask this module for the data root so they cannot drift from data_home().
+    print(data_home())

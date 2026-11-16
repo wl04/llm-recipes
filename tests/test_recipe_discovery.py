@@ -5,7 +5,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from launcher import LaunchOptions, discover_recipes, instance_name, run_command, start_command
+from launcher import (
+    LaunchOptions,
+    discover_recipes,
+    gpu_access_args,
+    instance_name,
+    run_command,
+    start_command,
+)
 
 
 def write_recipe(root: Path, name: str) -> None:
@@ -66,6 +73,32 @@ def test_start_labels_recipe_and_named_instance(tmp_path: Path) -> None:
     assert "io.llm-recipes.recipe=model" in command
     assert "io.llm-recipes.instance=coding" in command
     assert "127.0.0.1:5001:5000" in command
+
+
+def test_gpu_access_grants_each_group_once_before_the_devices() -> None:
+    arguments = gpu_access_args([989, 988, 989])
+
+    assert arguments == [
+        "--group-add",
+        "988",
+        "--group-add",
+        "989",
+        "--device=/dev/kfd",
+        "--device=/dev/dri",
+    ]
+
+
+def test_start_grants_gpu_access_after_the_container_user(tmp_path: Path) -> None:
+    write_recipe(tmp_path / "recipes", "model")
+    recipe = discover_recipes(tmp_path / "recipes")["model"]
+    options = LaunchOptions("coding", tmp_path, tmp_path / "logs", 131072, "on", "off", 5001)
+
+    command = start_command(recipe, options, groups=[989, 988, 989], uid=1000, gid=1000)
+    user_index = command.index("--user")
+    gpu_arguments = command[command.index("--group-add") : command.index("--publish")]
+
+    assert command[user_index + 1] == "1000:1000"
+    assert gpu_arguments == gpu_access_args([989, 988, 989])
 
 
 def test_run_returns_failure_without_replacing_process() -> None:

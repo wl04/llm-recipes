@@ -219,11 +219,8 @@ def start_command(
             "120",
         ]
     command += ["--user", f"{uid}:{gid}"]
-    for group in sorted(set(groups)):
-        command += ["--group-add", str(group)]
+    command += gpu_access_args(groups)
     command += [
-        "--device=/dev/kfd",
-        "--device=/dev/dri",
         "--publish",
         f"127.0.0.1:{port}:{recipe.port}",
     ]
@@ -240,6 +237,14 @@ def start_command(
     command += mount(models / ".cache", "/cache")
     command += mount(logs, "/logs")
     return [*command, recipe.image, *engine_command(recipe, context, draft, vision)]
+
+
+def gpu_access_args(groups: list[int]) -> list[str]:
+    """Container arguments granting AMD compute and render access for the given groups."""
+    group_arguments: list[str] = []
+    for group in sorted(set(groups)):
+        group_arguments += ["--group-add", str(group)]
+    return [*group_arguments, "--device=/dev/kfd", "--device=/dev/dri"]
 
 
 def gpu_groups() -> list[int]:

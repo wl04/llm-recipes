@@ -5,25 +5,23 @@ if [[ $# -lt 2 || $# -gt 3 || ( "$2" != download && "$2" != quantize-draft ) ]];
     exit 2
 fi
 runtime_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+scripts_dir=$(cd -- "$runtime_dir/../../scripts" && pwd)
 recipe_dir=$(cd -- "$1" && pwd)
 action=$2
 image=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["image"])' "$runtime_dir/runtime.json")
-for mount_path in "$runtime_dir" "$recipe_dir" "${3:-$HOME/llm-recipes}"; do
+model_dir=${3:-$(python3 "$scripts_dir/paths.py")}
+for mount_path in "$runtime_dir" "$recipe_dir" "$model_dir"; do
     if [[ "$mount_path" == *","* || "$mount_path" == *$'\n'* ]]; then
         echo "Mount paths must not contain commas or newlines" >&2
         exit 2
     fi
 done
-model_dir=${3:-"$HOME/llm-recipes"}
 mkdir -p -- "$model_dir"
 model_dir=$(cd -- "$model_dir" && pwd)
 gpu_args=()
 if [[ $action == quantize-draft ]]; then
-    gpu_args+=(--device=/dev/kfd --device=/dev/dri)
-    gpu_args+=(--group-add "$(stat -c %g /dev/kfd)")
-    for render_node in /dev/dri/renderD*; do
-        gpu_args+=(--group-add "$(stat -c %g "$render_node")")
-    done
+    gpu_access=$(python3 "$scripts_dir/gpu_access.py")
+    mapfile -t gpu_args <<<"$gpu_access"
 fi
 sudo docker run --rm \
     --user "$(id -u):$(id -g)" \

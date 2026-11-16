@@ -68,6 +68,7 @@ files = [
     "scripts/generate_configurations.py",
     "scripts/launch.py",
     "scripts/launcher.py",
+    "scripts/gpu_access.py",
     "scripts/tui.py",
     "scripts/doctor.py",
     "scripts/paths.py",
