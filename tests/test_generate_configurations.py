@@ -769,3 +769,112 @@ def test_render_omits_setting_sections_without_values(tmp_path: Path) -> None:
 
     assert "## Sampling" not in document
     assert "## Thinking" not in document
+
+
+def write_session_experiment(root: Path) -> Path:
+    from baseline import session
+
+    result = write_baseline_experiment(root)
+    (result / "results.json").unlink()
+    (result / "summary.md").write_text(
+        BASELINE_SUMMARY.replace("GENERATED RESULTS", "GENERATED SESSION")
+    )
+    document = session.session_stats([], engine="strata", log_files=("engine.log",))
+    (result / "session-results.json").write_text(json.dumps(document))
+    return result
+
+
+def test_main_renders_session_preserving_authored_text_and_is_idempotent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result = write_session_experiment(tmp_path)
+
+    assert run_main(monkeypatch, tmp_path) == 0
+    summary = (result / "summary.md").read_text()
+    assert "### Session activity" in summary
+    assert "Authored intro." in summary
+    assert "Authored observations." in summary
+    assert run_main(monkeypatch, tmp_path, "--check") == 0
+    assert run_main(monkeypatch, tmp_path) == 0
+    assert (result / "summary.md").read_text() == summary
+
+
+def test_main_check_detects_stale_session_without_writing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    result = write_session_experiment(tmp_path)
+    assert run_main(monkeypatch, tmp_path) == 0
+    summary = result / "summary.md"
+    summary.write_text(summary.read_text().replace("### Session activity", "stale content"))
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+
+    assert run_main(monkeypatch, tmp_path, "--check") == 1
+    assert {p: p.read_bytes() for p in before} == before
+
+
+@pytest.mark.parametrize("contents", ["not JSON", "null", "[]", "{}", '{"schema_version":1}'])
+def test_main_rejects_invalid_session_before_writing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, contents: str
+) -> None:
+    result = write_session_experiment(tmp_path)
+    (result / "session-results.json").write_text(contents)
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+
+    assert run_main(monkeypatch, tmp_path) == 2
+    assert {p: p.read_bytes() for p in before} == before
+
+
+@pytest.mark.parametrize(
+    "markers",
+    [
+        "",
+        "<!-- BEGIN GENERATED SESSION -->",
+        "<!-- END GENERATED SESSION -->\n<!-- BEGIN GENERATED SESSION -->",
+        "<!-- BEGIN GENERATED SESSION -->\n<!-- END GENERATED SESSION -->\n"
+        "<!-- BEGIN GENERATED SESSION -->\n<!-- END GENERATED SESSION -->",
+    ],
+)
+def test_main_rejects_missing_or_invalid_session_markers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, markers: str
+) -> None:
+    result = write_session_experiment(tmp_path)
+    summary = result / "summary.md"
+    summary.write_text("# 002 · 2026-01-02 — Baseline\n\n" + markers)
+    before = summary.read_text()
+
+    assert run_main(monkeypatch, tmp_path) == 2
+    assert summary.read_text() == before
+
+
+def test_main_rejects_competing_result_sources(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    result = write_session_experiment(tmp_path)
+    (result / "results.json").write_text(schema.dump_results(sample_results()))
+
+    assert run_main(monkeypatch, tmp_path) == 2
+    assert "both results.json and session-results.json" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "log_files",
+        "availability.timestamps",
+        "availability.draft_acceptance",
+        "availability.unclosed_requests",
+        "window.since",
+    ],
+)
+def test_main_reports_incomplete_session_as_validation_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, field: str
+) -> None:
+    result = write_session_experiment(tmp_path)
+    path = result / "session-results.json"
+    document = json.loads(path.read_text())
+    keys = field.split(".")
+    target = document if len(keys) == 1 else document[keys[0]]
+    del target[keys[-1]]
+    path.write_text(json.dumps(document))
+
+    assert run_main(monkeypatch, tmp_path) == 2

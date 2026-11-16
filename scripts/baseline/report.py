@@ -483,12 +483,15 @@ def write_session_block(summary_path: Path, block: str) -> None:
             + "\n"
         )
         return
-    if starts != 1 or ends != 1:
+    summary_path.write_text(replace_session_block(text, block, summary_path))
+
+
+def replace_session_block(text: str, block: str, summary_path: Path) -> str:
+    """Replace exactly one ordered session-marker pair, preserving authored text."""
+    if text.count(SESSION_START) != 1 or text.count(SESSION_END) != 1:
         raise ValueError(f"{summary_path} must contain exactly one generated session block")
     if text.index(SESSION_START) > text.index(SESSION_END):
         raise ValueError(f"{summary_path} has session markers in the wrong order")
     before, middle = text.split(SESSION_START)
     _old, after = middle.split(SESSION_END)
-    summary_path.write_text(
-        before + SESSION_START + "\n\n" + block.rstrip() + "\n" + SESSION_END + after
-    )
+    return before + SESSION_START + "\n\n" + block.rstrip() + "\n" + SESSION_END + after

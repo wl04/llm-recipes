@@ -1,7 +1,8 @@
 # NNN · YYYY-MM-DD — Workload / variant
 
-<!-- `run_baseline.py session --create` replaces the title line; if you copy this
-template by hand, replace the placeholder so it matches the folder. -->
+<!-- Regenerate the title and session block from profile.yaml and session-results.json:
+.venv/bin/python scripts/generate_configurations.py
+Validate without writing: add --check. Keep the session markers and edit narrative outside them. -->
 
 ## Workload
 

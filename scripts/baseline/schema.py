@@ -239,12 +239,19 @@ def validate_session(document: object) -> None:
         value = data.get(key)
         if value is not None:
             _text(value, key)
+    for index, name in enumerate(_sequence(data.get("log_files"), "log_files")):
+        _text(name, f"log_files[{index}]")
     window = _mapping(data["window"], "window")
     for key in ("since", "until"):
+        if key not in window:
+            raise ValueError(f"window is missing {key}")
         value = window.get(key)
         if value is not None:
             _text(value, f"window.{key}")
     availability = _mapping(data["availability"], "availability")
+    for key in ("timestamps", "draft_acceptance", "unclosed_requests"):
+        if key not in availability:
+            raise ValueError(f"availability is missing {key}")
     for key, value in availability.items():
         if type(value) is not bool:
             raise ValueError(f"availability.{key} must be true or false")

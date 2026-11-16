@@ -23,9 +23,9 @@ For another result, copy the three files from `templates/recipe/NNN-YYYY-MM-DD-d
 
 A baseline experiment holds the output of the baseline runner instead of a hand-written statistics report. Name it `NNN-YYYY-MM-DD-baseline`, adding a suffix when its configuration differs from the recipe default, and add it with `run_baseline.py import` — the [import recipe](baseline.md#import-a-baseline-run) creates the folder, the marked summary, `results.json`, and the complete `profile.yaml`; you add only optional notes. The generator writes the title from the folder name (or the profile `title` key) and renders `results.json` into the marked results block, so the report contains no hand-written prose; anything you add outside the markers is kept. `--check` fails when `results.json` or the title has changed but has not been regenerated. See the [baseline contract](baseline.md) for the result format.
 
-A session experiment reports a real coding session against a launched instance instead of a hand-counted console log. Add it with `run_baseline.py session <instance> --create <slug>` — the [session recipe](baseline.md#report-a-coding-session) creates the folder, aggregates the engine logs, and seeds `profile.yaml`. Keep only the narrative outside the markers. Strata logs carry no timestamps, so window filtering and the wall-clock span apply to timestamped logs; the report shows everything else as `unavailable`.
+A session experiment reports a real coding session against a launched instance instead of a hand-counted console log. Add it with `run_baseline.py session <instance> --create <slug>` — the [session recipe](baseline.md#report-a-coding-session) creates the folder, aggregates the engine logs, and seeds `profile.yaml`. The generator renders `session-results.json` into the session markers; keep narrative outside them. Use the [generation commands](#generate-configuration-guides) after editing the JSON. Strata logs carry no timestamps, so window filtering and the wall-clock span apply to timestamped logs; the report shows everything else as `unavailable`.
 
-Both commands seed their marked report from `templates/recipe/baseline-summary.md` or `templates/recipe/session-summary.md`; `results.json` and `session-results.json` hold the machine-readable run data behind it.
+Both commands seed their marked report from `templates/recipe/baseline-summary.md` or `templates/recipe/session-summary.md`; `results.json` and `session-results.json` hold the machine-readable run data behind it. Each experiment uses one result type; folders containing both are rejected. Generated reports require exactly one matching, ordered marker pair.
 
 Write a brief current-state description in `recipe.md` and keep its experiment markers. The generator builds its experiment table from report titles, ordered by folder number descending, and links to each configuration and summary. For container recipes, add a prominent setup link and a footer link to the shared runtime guide.
 
@@ -112,7 +112,7 @@ Generate the guides, then check that they are current:
 
 Edit the result profiles to change configuration details. The generator renders each result's `profile.yaml` into the marked section of the `configuration.md` in the same folder. Each result has its own guide and report. Text outside the markers stays editable. YAML key order controls table order. Store explanatory notes as YAML values; YAML comments are not rendered.
 
-Run generation after editing a profile or adding a result. Commit the YAML and generated Markdown together. `--check` exits unsuccessfully when the generated section needs updating and leaves files untouched.
+Run generation after editing a profile, `results.json`, or `session-results.json`, or adding an experiment. Commit the source data and generated Markdown together. `--check` exits unsuccessfully when the generated section needs updating and leaves files untouched.
 
 On Windows, use `.venv\Scripts\python.exe` in place of `.venv/bin/python`.
 

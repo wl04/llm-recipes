@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render configuration guides, baseline result tables, and recipe experiment indexes."""
+"""Render configuration guides, baseline and session reports, and recipe experiment indexes."""
 
 import argparse
 import html
@@ -12,7 +12,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 import yaml
-from baseline import report
+from baseline import report, schema
 
 ROOT = Path(__file__).resolve().parents[1]
 START = "<!-- BEGIN GENERATED CONFIGURATIONS -->"
@@ -605,8 +605,20 @@ def update_results_block(result: Path) -> tuple[Path, str, str]:
     return path, original, _render_results_block(result, original)
 
 
+def _render_session_block(result: Path, text: str) -> str:
+    data_path = result / "session-results.json"
+    try:
+        document = json.loads(data_path.read_text())
+        schema.validate_session(document)
+    except ValueError as error:
+        raise ValueError(f"{data_path}: {error}") from error
+    return report.replace_session_block(
+        text, report.render_session(document), result / "summary.md"
+    )
+
+
 def update_summary(result: Path) -> tuple[Path, str, str]:
-    """Generate the summary title and render ``results.json`` into the marked block if present."""
+    """Generate the summary title and the marked baseline or session report."""
     profile = result / "profile.yaml"
     data = yaml.safe_load(profile.read_text())
     if not isinstance(data, dict):
@@ -618,8 +630,14 @@ def update_summary(result: Path) -> tuple[Path, str, str]:
         raise ValueError(f"{path}: the first line must be the report title")
     title = expected_title(result, data)
     text = original if first == title else title + separator + rest
-    if (result / "results.json").is_file():
+    baseline = (result / "results.json").is_file()
+    session = (result / "session-results.json").is_file()
+    if baseline and session:
+        raise ValueError(f"{result}: cannot contain both results.json and session-results.json")
+    if baseline:
         text = _render_results_block(result, text)
+    elif session:
+        text = _render_session_block(result, text)
     return path, original, text
 
 

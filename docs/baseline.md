@@ -57,7 +57,7 @@ The session command aggregates one instance's coding activity from the engine's 
 
    This numbers the next experiment folder `NNN-<date>-<slug>` under the recipe, copies the `summary.md` and `configuration.md` scaffold from the template, aggregates the logs into `session-results.json`, writes the generated activity block into `summary.md`, and seeds `profile.yaml` from `facts.json` and the sampler parameters the engine echoed to its log. The folder date comes from the instance's `facts.json`.
 
-2. **Regenerate the recipe index**: `python3 scripts/generate_configurations.py`.
+2. **Regenerate the report, configuration, and recipe index**: `python3 scripts/generate_configurations.py`.
 
 3. **Write the narrative** in `summary.md` — Workload and Observations outside the generated markers — then `scripts/check.sh` and commit.
 

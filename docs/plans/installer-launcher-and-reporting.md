@@ -9,16 +9,16 @@ Review date: 2026-11-16. Code reviewed: `b17aa9f`.
 - [x] 3. Installer authentication and error reporting
 - [x] 4. Machine-readable status failures
 - [x] 5. TUI integration and lifecycle correctness
-- [ ] 6. Generated coding-session summaries in CI — next
-- [ ] 7. Transactional report creation
+- [x] 6. Generated coding-session summaries in CI
+- [ ] 7. Transactional report creation — next
 - [ ] 8. Documentation and small contracts — partially complete; see checklist below
 
-Implementation and CPU validation for items 1–5 are complete. Target-machine validation
+Implementation and CPU validation for items 1–6 are complete. Target-machine validation
 is listed separately under [Delivery and validation](#delivery-and-validation).
 
 ## Implementation order
 
-Complete items 6–7 next. Address the remaining item 8 tasks alongside related fixes.
+Complete item 7 next. Address the remaining item 8 tasks alongside related fixes.
 
 ## Assessment
 
@@ -129,16 +129,11 @@ Reference: [Textual thread workers](https://textual.textualize.io/guide/workers/
 
 ## 6. Validate generated coding-session summaries in CI — medium priority
 
-**Evidence:** `generate_configurations.py::update_summary` renders `results.json` but not
-`session-results.json`. Session blocks are written separately by the baseline CLI. Consequently
-the standard generation check cannot detect a stale session block. The current checked-in
-Unsloth coding-session block was compared with `report.render_session` and matches today.
-
-- [ ] Make the generator render and check session blocks using the existing renderer, retaining
+- [x] Make the generator render and check session blocks using the existing renderer, retaining
       authored text and generated markers. Define behavior if both result types are present.
-- [ ] Test stale content, malformed data, and missing/duplicate markers. Ensure `--check` never
+- [x] Test stale content, malformed data, and missing/duplicate markers. Ensure `--check` never
       writes files and a normal generation pass is idempotent.
-- [ ] Update the authoring guide and session template instructions to name the same regeneration
+- [x] Update the authoring guide and session template instructions to name the same regeneration
       command. Regenerate affected files after the change.
 
 ## 7. Make report creation fail cleanly — medium priority
