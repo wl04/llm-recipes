@@ -43,6 +43,8 @@ Add a completed run to the repository in four steps, from the development checko
 
 See the [authoring guide](authoring.md) for folder naming.
 
+Imports prefer embedded launch facts, then the run’s `server-logs/facts.json`, then the instance log directory. Recorded recipe identity and configuration hashes are checked before profile creation. A mismatch names the files to review; use the matching recipe/runtime files to import. Runs without recorded hashes use current configuration as a fallback. Context, cache capacity, drafting, and vision rows reflect recorded launch overrides.
+
 ## Report a coding session
 
 The session command aggregates one instance's coding activity from the engine's own logs — no client list is needed. Adding a session experiment to the repository takes three steps, from the development checkout:

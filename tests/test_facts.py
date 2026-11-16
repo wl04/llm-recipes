@@ -222,3 +222,21 @@ def test_launch_refreshes_sudo_ticket_once_per_docker_command(
 
     assert code == 0
     assert calls == [1]
+
+
+def test_start_facts_records_runtime_descriptor_and_build_lock(tmp_path: Path) -> None:
+    recipe = make_recipe(tmp_path)
+    runtime = recipe.runtime_directory
+    (runtime / "container").mkdir(parents=True, exist_ok=True)
+    (runtime / "runtime.json").write_text("{}")
+    (runtime / "container/versions.lock.json").write_text('{"version": 1}')
+
+    facts: dict[str, Any] = launcher.start_facts(
+        recipe, make_options(tmp_path), host=HOST, image=IMAGE, started_at="2026-11-16"
+    )
+
+    assert facts["config_sha256"]["runtime.json"] == hashlib.sha256(b"{}").hexdigest()
+    assert (
+        facts["config_sha256"]["versions.lock.json"]
+        == hashlib.sha256(b'{"version": 1}').hexdigest()
+    )

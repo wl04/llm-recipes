@@ -399,6 +399,12 @@ def start_facts(
     for config in recipe_config_files(recipe):
         if config.is_file():
             config_hashes[config.name] = file_sha256(config)
+    for path in (
+        recipe.runtime_directory / "runtime.json",
+        recipe.runtime_directory / "container/versions.lock.json",
+    ):
+        if path.is_file():
+            config_hashes[path.name] = file_sha256(path)
     return {
         "started_at": started_at,
         "instance": options.name,

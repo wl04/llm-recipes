@@ -72,7 +72,7 @@ The default directory is `<models>/logs/<instance>`, with `<models>` the data ro
 
 `logs --follow` reads console output while the container exists. After it exits, read the files in the host log directory. Server-specific filenames, rotation, and retention are documented in the [runtime guides](#shared-runtimes).
 
-Each start also writes `facts.json` into the log directory: the image reference and digests, effective launch options, recipe configuration hashes, and host facts (CPU, RAM, GPU, driver) read from `/proc` and `/sys` without elevated access. `launch.py start` and the baseline runner record it atomically; the last start wins on restart, and a write failure only warns — the container still starts. `run_baseline.py session <instance>` and `run_baseline.py import` read it; the [session report](baseline.md#report-a-coding-session) uses it to seed experiment profiles.
+Each start also writes `facts.json` into the log directory: the image reference and digests, effective launch options, recipe configuration hashes, runtime descriptor and build-lock hashes, and host facts (CPU, RAM, GPU, driver) read from `/proc` and `/sys` without elevated access. `launch.py start` and the baseline runner record it atomically; the last start wins on restart, and a write failure only warns — the container still starts. `run_baseline.py session <instance>` and `run_baseline.py import` read it; the [session report](baseline.md#report-a-coding-session) uses it to seed experiment profiles.
 
 Queries (`list`, `ps`, `status`) accept `--json` for machine-readable output, used by the optional terminal dashboard: `.venv/bin/python scripts/tui.py` from the checkout, where `textual` comes from the pinned development dependencies ([dashboard plan](plans/tui-dashboard.md)).
 

@@ -34,15 +34,15 @@ The importer also reads current model/build locks. Launch facts contain configur
 but the importer does not compare them. `_facts` checks the mutable instance log directory
 before the run's `server-logs/facts.json` when embedded facts are absent.
 
-- [ ] Apply effective launch values consistently in baseline and session imports, including
+- [x] Apply effective launch values consistently in baseline and session imports, including
       dependent cache settings. Reuse a small adapter-specific settings transformation where
       practical; do not introduce another generic configuration schema.
-- [ ] Prefer embedded facts, then run-local facts, then a live log directory fallback. Validate
+- [x] Prefer embedded facts, then run-local facts, then a live log directory fallback. Validate
       recipe identity when selecting facts.
-- [ ] Check recorded config hashes before treating current recipe files as the run's settings.
+- [x] Check recorded config hashes before treating current recipe files as the run's settings.
       On mismatch, report the affected fields and require review or leave unknown values unset;
       do not silently describe current files as historical configuration. Keep this lightweight.
-- [ ] Test context overrides for both adapters, conflicting live/run-local facts, and a recipe
+- [x] Test context overrides for both adapters, conflicting live/run-local facts, and a recipe
       edited between measurement and import. Audit existing imported profiles for the same
       discrepancies; correct only values supported by their run data.
 

@@ -20,7 +20,7 @@ POLICY = {
     "repetition_penalty": 1.0,
     "presence_penalty": 0.0,
 }
-SYSTEM = {
+SYSTEM: dict[str, Any] = {
     "hostname": "ubuntu-ws",
     "os": {"name": "Ubuntu", "version": "26.10"},
     "kernel": "7.3.0-10-generic",
@@ -220,7 +220,7 @@ def test_import_creates_a_complete_experiment_folder(
     settings = profile["settings"]
     assert settings["sampling"] is None
     assert settings["serving"]["context_length_tokens"] == 65536
-    assert settings["serving"]["cache_capacity"] == 4096
+    assert settings["serving"]["cache_capacity"] == 65536
     assert settings["serving"]["vision"] == "cpu"
     assert settings["thinking"]["control"] == "chat_template_kwargs.enable_thinking=false"
     assert settings["requests"]["token_counting"] == "/v1/token/encode"
@@ -349,3 +349,130 @@ def test_experiment_identity_splits_documented_recipe_names() -> None:
 def test_experiment_identity_rejects_a_name_without_hardware() -> None:
     with pytest.raises(ValueError, match="memory part"):
         importer.experiment_identity("qwen3.8-27b-exl3")
+
+
+@pytest.mark.parametrize(
+    ("adapter", "context", "key", "expected"),
+    [
+        ("tabbyapi", 163840, "cache_capacity", 163840),
+        ("strata", 4096, "gpu_resident_kv_cells", 4096),
+    ],
+)
+def test_settings_apply_effective_cache_when_context_overridden(
+    tmp_path: Path, adapter: str, context: int, key: str, expected: int
+) -> None:
+    root = _make_repo(tmp_path)
+    recipe = root / "recipes" / RECIPE
+    if adapter == "strata":
+        (recipe / "config/tabby.yml").unlink()
+        (recipe / "config/strata.json").write_text(
+            json.dumps(
+                {
+                    "args": ["--kv-resident", "32768", "--spec", "4", "--vision"],
+                    "vision": {"min_tokens": 1024, "max_tokens": 1024},
+                }
+            )
+        )
+    facts = {"options": {"context": context, "draft": "off", "vision": "off"}}
+    settings = importer.settings_block({}, {}, facts, recipe, adapter)
+    assert settings["serving"][key] == expected
+    assert settings["serving"]["speculative_decoding"] is False
+    assert settings["serving"]["vision"] is False
+    if adapter == "strata":
+        assert settings["serving"]["max_draft_tokens"] == 0
+        assert "vision_min_image_tokens" not in settings["serving"]
+
+
+def test_build_profile_prefers_run_local_facts_over_live_logs(tmp_path: Path) -> None:
+    root = _make_repo(tmp_path)
+    run = tmp_path / "run"
+    (run / "server-logs").mkdir(parents=True)
+    live = tmp_path / "live"
+    live.mkdir()
+    (run / "server-logs/facts.json").write_text(json.dumps({**FACTS, "recipe": RECIPE}))
+    (live / "facts.json").write_text(json.dumps({"recipe": "another-model"}))
+    profile = importer.build_profile(
+        run,
+        _results(),
+        _meta(launch_facts=None, container={"logs": str(live)}),
+        root / "recipes" / RECIPE,
+    )
+    assert profile["hardware"]["cpu"] == SYSTEM["cpu"]["model"]
+
+
+@pytest.mark.parametrize("session", [False, True])
+def test_profile_rejects_changed_config_before_import(tmp_path: Path, session: bool) -> None:
+    root = _make_repo(tmp_path)
+    recipe = root / "recipes" / RECIPE
+    facts = {**FACTS, "recipe": RECIPE, "config_sha256": {"tabby.yml": "0" * 64}}
+    if session:
+        with pytest.raises(ValueError, match=r"tabby\.yml"):
+            importer.session_profile(facts, recipe, root)
+    else:
+        with pytest.raises(ValueError, match=r"tabby\.yml"):
+            importer.build_profile(tmp_path, _results(), _meta(launch_facts=facts), recipe)
+
+
+def test_profile_rejects_facts_for_another_recipe(tmp_path: Path) -> None:
+    root = _make_repo(tmp_path)
+    with pytest.raises(ValueError, match="another-model"):
+        importer.build_profile(
+            tmp_path,
+            _results(),
+            _meta(launch_facts={"recipe": "another-model"}),
+            root / "recipes" / RECIPE,
+        )
+
+
+@pytest.mark.parametrize(
+    ("adapter", "context", "key", "expected"),
+    [
+        ("tabbyapi", 163840, "cache_capacity", 163840),
+        ("strata", 4096, "gpu_resident_kv_cells", 4096),
+        ("strata", 163840, "gpu_resident_kv_cells", 32768),
+    ],
+)
+def test_session_profile_applies_effective_cache_from_facts(
+    tmp_path: Path, adapter: str, context: int, key: str, expected: int
+) -> None:
+    root = _make_repo(tmp_path)
+    facts = {
+        **FACTS,
+        "adapter": adapter,
+        "options": {"context": context, "draft": "off", "vision": "off"},
+    }
+    profile = importer.session_profile(facts, root / "recipes" / RECIPE, root)
+    assert profile["settings"]["serving"][key] == expected
+
+
+@pytest.mark.parametrize("filename", ["models.lock.json", "launch.json"])
+def test_profile_accepts_matching_hash_then_rejects_edited_file(
+    tmp_path: Path, filename: str
+) -> None:
+    import hashlib
+
+    root = _make_repo(tmp_path)
+    recipe = root / "recipes" / RECIPE
+    path = recipe / "config" / filename
+    facts = {**FACTS, "config_sha256": {filename: hashlib.sha256(path.read_bytes()).hexdigest()}}
+    importer.build_profile(tmp_path, _results(), _meta(launch_facts=facts), recipe)
+    path.write_text(path.read_text() + "\n")
+    with pytest.raises(ValueError, match=filename):
+        importer.build_profile(tmp_path, _results(), _meta(launch_facts=facts), recipe)
+
+
+def test_profile_rejects_changed_runtime_lock(tmp_path: Path) -> None:
+    root = _make_repo(tmp_path)
+    facts = {**FACTS, "config_sha256": {"versions.lock.json": "0" * 64}}
+    with pytest.raises(ValueError, match=r"versions\.lock\.json"):
+        importer.session_profile(facts, root / "recipes" / RECIPE, root)
+
+
+def test_build_profile_prefers_embedded_facts_over_run_local(tmp_path: Path) -> None:
+    root = _make_repo(tmp_path)
+    (tmp_path / "server-logs").mkdir()
+    (tmp_path / "server-logs/facts.json").write_text(json.dumps({"recipe": "wrong"}))
+    profile = importer.build_profile(
+        tmp_path, _results(), _meta(launch_facts=FACTS), root / "recipes" / RECIPE
+    )
+    assert profile["hardware"]["cpu"] == SYSTEM["cpu"]["model"]

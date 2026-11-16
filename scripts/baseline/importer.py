@@ -6,6 +6,7 @@ observed. Fields no source records stay ``null``, and ``profile.yaml`` is comple
 enough that a container baseline needs no manual edits after import.
 """
 
+import hashlib
 import json
 import platform
 import re
@@ -443,6 +444,62 @@ def _native_serving(recipe_dir: Path) -> dict[str, Any]:
     return rows
 
 
+def _effective_serving(
+    serving: dict[str, Any], adapter: str | None, context: object, draft: object, vision: object
+) -> None:
+    """Apply the serving adapters' launch overrides to profile rows."""
+    if type(context) is int:
+        serving["context_length_tokens"] = context
+        if adapter == "tabbyapi":
+            serving["cache_capacity"] = context
+        elif adapter == "strata":
+            serving["gpu_resident_kv_cells"] = min(context, 32768)
+    if isinstance(draft, str):
+        serving["speculative_decoding"] = draft == "on"
+        if adapter == "strata" and draft == "off":
+            serving["max_draft_tokens"] = 0
+    if isinstance(vision, str):
+        serving["vision"] = VISION_VALUES.get(vision, vision)
+        if vision == "off":
+            serving.pop("vision_min_image_tokens", None)
+            serving.pop("vision_max_image_tokens", None)
+
+
+def _validate_facts(facts: Mapping[str, Any] | None, recipe_dir: Path) -> None:
+    """Reject mismatched identities or recorded files that have changed."""
+    if not facts:
+        return
+    identity = facts.get("recipe")
+    if identity is not None and identity != recipe_dir.name:
+        raise ValueError(f"Facts describe recipe {identity!r}, expected {recipe_dir.name!r}")
+    files = {
+        name: recipe_dir / "config" / name
+        for name in ("launch.json", "models.lock.json", "tabby.yml", "strata.json")
+    }
+    runtime = facts.get("runtime")
+    if isinstance(runtime, str):
+        runtime_dir = recipe_dir.parents[1] / "runtimes" / runtime
+        files.update(
+            {
+                "runtime.json": runtime_dir / "runtime.json",
+                "versions.lock.json": runtime_dir / "container/versions.lock.json",
+            }
+        )
+    changed = []
+    for name, digest in _obj(facts.get("config_sha256")).items():
+        path = files.get(name)
+        if path is None:
+            raise ValueError(f"Unknown recorded configuration file: {name}")
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+            changed.append(name)
+    if changed:
+        raise ValueError(
+            "Recorded configuration differs: "
+            + ", ".join(changed)
+            + ". Review the run with its matching recipe/runtime files before importing."
+        )
+
+
 def settings_block(
     meta: Mapping[str, Any],
     results: Mapping[str, Any],
@@ -463,16 +520,16 @@ def settings_block(
     context = _first(
         _dig(results, "server", "context_tokens"),
         _dig(facts, "options", "context"),
+        launch.get("context"),
         static_launch.get("context"),
     )
-    if context is not None:
-        serving["context_length_tokens"] = context
-    draft = _first(launch.get("draft"), static_launch.get("draft"))
-    if isinstance(draft, str):
-        serving["speculative_decoding"] = draft == "on"
-    vision = _first(launch.get("vision"), static_launch.get("vision"))
-    if isinstance(vision, str):
-        serving["vision"] = VISION_VALUES.get(vision, vision)
+    _effective_serving(
+        serving,
+        adapter,
+        context,
+        _first(launch.get("draft"), _dig(facts, "options", "draft"), static_launch.get("draft")),
+        _first(launch.get("vision"), _dig(facts, "options", "vision"), static_launch.get("vision")),
+    )
     kind = _dig(results, "server", "kind")
     token_counting = workloads.TOKEN_COUNT_ROUTE.get(kind) if isinstance(kind, str) else None
     return {
@@ -495,8 +552,8 @@ def _facts(meta: Mapping[str, Any], run_dir: Path) -> dict[str, Any] | None:
         return dict(recorded)
     logs = _dig(meta, "container", "logs")
     candidates = [
-        Path(logs) / FACTS_NAME if isinstance(logs, str) else None,
         run_dir / "server-logs" / FACTS_NAME,
+        Path(logs) / FACTS_NAME if isinstance(logs, str) else None,
     ]
     for candidate in candidates:
         if candidate is not None and candidate.is_file():
@@ -538,6 +595,7 @@ def build_profile(
 ) -> dict[str, Any]:
     """Compose a schema-v2 ``profile.yaml`` document from the run and recipe sources."""
     facts = _facts(meta, run_dir)
+    _validate_facts(facts, recipe_dir)
     system = facts.get("host") if isinstance(facts, Mapping) else None
     if not isinstance(system, Mapping):
         recorded = _dig(meta, "host", "system")
@@ -597,6 +655,7 @@ def session_profile(
     ``facts`` is the launcher's instance document; ``sampling`` comes from the engine
     log. Fields no source records stay ``null``.
     """
+    _validate_facts(facts, recipe_dir)
     system_value = facts.get("host")
     system = system_value if isinstance(system_value, Mapping) else None
     meta: dict[str, Any] = {
@@ -623,12 +682,9 @@ def session_profile(
     if isinstance(adapter, str):
         for row, value in _native_serving(recipe_dir).items():
             serving[row] = value
-    if isinstance(options.get("context"), int):
-        serving["context_length_tokens"] = options["context"]
-    if isinstance(options.get("draft"), str):
-        serving["speculative_decoding"] = options["draft"] == "on"
-    if isinstance(options.get("vision"), str):
-        serving["vision"] = VISION_VALUES.get(options["vision"], options["vision"])
+    _effective_serving(
+        serving, adapter, options.get("context"), options.get("draft"), options.get("vision")
+    )
     image = _obj(facts.get("image"))
     if image.get("image_digests"):
         serving["image_digest"] = image["image_digests"][0]
