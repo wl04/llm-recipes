@@ -1,16 +1,36 @@
 # Plan: TUI dashboard
 
-An optional terminal dashboard over the launcher: recipes, instances, logs, and eventually
-baseline runs. The CLI contract is the product; the TUI is sugar over it and replaceable.
+A terminal dashboard over the launcher: recipes, instances, logs, and eventually baseline
+runs. One installation provides both CLI commands and the interactive dashboard.
+
+## Priority and dependencies
+
+Start with the [installer, launcher, and reporting reliability plan](installer-launcher-and-reporting.md#implementation-order).
+Complete its items 1–4 before implementing this plan's installation and command integration
+alongside reliability item 5. That work delivers the existing dashboard through `llm-recipes tui`.
+
+Defer the baseline-launcher and recent-runs screens below until the reliability plan is
+complete. They are separate feature work, not prerequisites for shipping the installed TUI.
 
 ## Constraints
 
-- **Textual** is an **optional extra**, never a hard dependency:
-  `[project.optional-dependencies] tui = ["textual>=8.2,<9"]`. Nothing in `check.sh` starts the
-  GUI. `scripts/tui.py` imports Textual lazily, `tests/test_tui.py` skips when Textual is
-  absent, and `textual` is pinned in `dev-requirements.txt` so CI exercises the real package.
-- Maintenance rests on one maintainer (Textual's company wound down its stewardship):
-  the pinned range holds, and nothing outside `scripts/tui.py` may import Textual.
+- `python3 scripts/install.py install` installs the serving snapshot and a pinned Textual
+  dependency. `llm-recipes tui` opens the dashboard from that snapshot, using the same recipe
+  discovery, machine roots, and launcher operations as the CLI.
+- Keep Textual imports in the dashboard module; load it when the `tui` subcommand is selected.
+  Standard CLI commands do not initialize the UI.
+- CI installs the pinned dependency and exercises the dashboard with headless tests.
+
+## Installation and command integration
+
+- [ ] Include Textual in the normal runtime installation and align dependency declarations
+      with the development pin. Remove the optional-extra installation contract.
+- [ ] Add `llm-recipes tui` dispatch to the existing command, without another executable or
+      installation flag. Obtain sudo credentials before entering the interactive screen.
+- [ ] Verify the installed command works outside the checkout and uses installed recipes.
+      Test command dispatch and a headless dashboard mount with the runtime dependencies.
+- [ ] Update the README, launcher guide, project instructions, and applicable templates to
+      use the installed command. Keep direct script execution as a development entry point.
 
 ## Architecture guarantees
 
@@ -47,7 +67,7 @@ The TUI consumes the launcher through these contracts.
 
 ## Risks
 
-- Textual API drift inside the pinned range: the app keeps to the stable widget and
+- Textual API drift when updating the pinned version: the app keeps to the stable widget and
   `work` APIs already used by `scripts/tui.py`; new screens extend, not rewrite.
 - A frozen worker thread can strand a started container: every start/stop action
   reports its exit status in the status bar, and the CLI remains the fallback at any
