@@ -1,0 +1,5 @@
+# Payload tokens, not prose: an arbitrary fixture event body, and a truncated identifier copied
+# verbatim from the engine log line the parser tests feed as input.
+[default.extend-words]
+Hel = "Hel"
+availabl = "availabl"
