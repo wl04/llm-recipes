@@ -178,6 +178,18 @@ def test_main_lists_only_install_in_command_help(capsys: pytest.CaptureFixture[s
     assert "{install}" in capsys.readouterr().out
 
 
+def test_main_reports_help_when_module_docstring_is_absent(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(install_module, "__doc__", None)
+
+    with pytest.raises(SystemExit) as result:
+        install_module.main(["--help"])
+
+    assert result.value.code == 0
+    assert "{install}" in capsys.readouterr().out
+
+
 def test_install_preserves_unrelated_executable_before_swap(
     roots: dict[str, Path], tmp_path: Path
 ) -> None:

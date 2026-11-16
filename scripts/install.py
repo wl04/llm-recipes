@@ -229,7 +229,7 @@ def install(root: Path, prefix: Path, *, force: bool, with_dependencies: bool) -
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     setup = commands.add_parser("install", help="copy the runtime snapshot and refresh shims")
     setup.add_argument("--force", action="store_true", help="swap even while instances run")
