@@ -88,6 +88,70 @@ def _validate_metrics(value: object, name: str) -> None:
         _text(item["source"], f"{label}.source")
 
 
+def _validate_functional(entries: object) -> None:
+    """Check each functional check entry."""
+    for index, entry in enumerate(_sequence(entries, "functional")):
+        item = _mapping(entry, f"functional[{index}]")
+        _text(item.get("id"), f"functional[{index}].id")
+        _choice(item.get("status"), FUNCTIONAL_STATUSES, f"functional[{index}].status")
+
+
+def _validate_boot(data: dict[str, object]) -> None:
+    """Check the optional cold-boot section."""
+    boot = _mapping(data["boot"], "boot")
+    _validate_metrics(boot.get("metrics", {}), "boot.metrics")
+    for note in _sequence(boot.get("warnings", []), "boot.warnings"):
+        _text(note, "boot.warnings entry")
+
+
+def _validate_warmup(data: dict[str, object]) -> None:
+    """Check the optional warmup section."""
+    warmup = _mapping(data["warmup"], "warmup")
+    requests = warmup.get("requests")
+    if type(requests) is not int or requests < 0:
+        raise ValueError("warmup.requests must be a non-negative integer")
+    if type(warmup.get("converged")) is not bool:
+        raise ValueError("warmup.converged must be true or false")
+    _validate_metrics(warmup.get("metrics", {}), "warmup.metrics")
+
+
+def _validate_phases(entries: object) -> None:
+    """Check each run phase entry."""
+    for index, entry in enumerate(_sequence(entries, "phases")):
+        item = _mapping(entry, f"phases[{index}]")
+        _text(item.get("id"), f"phases[{index}].id")
+        _choice(item.get("status"), PHASE_STATUSES, f"phases[{index}].status")
+        _validate_metrics(item.get("metrics", {}), f"phases[{index}].metrics")
+
+
+def _validate_cases(entries: object) -> set[str]:
+    """Check every case entry and return the case identifiers they declare."""
+    case_ids: set[str] = set()
+    for index, entry in enumerate(_sequence(entries, "cases")):
+        name = f"cases[{index}]"
+        item = _mapping(entry, name)
+        case_id = _text(item.get("id"), f"{name}.id")
+        if case_id in case_ids:
+            raise ValueError(f"{name}.id is a duplicate: {case_id}")
+        case_ids.add(case_id)
+        _choice(item.get("status"), CASE_STATUSES, f"{name}.status")
+        runs = item.get("runs")
+        if type(runs) is not int or runs < 0:
+            raise ValueError(f"{name}.runs must be a non-negative integer")
+        _validate_metrics(item.get("metrics", {}), f"{name}.metrics")
+    return case_ids
+
+
+def _validate_resources(entries: object, case_ids: set[str]) -> None:
+    """Check each resource entry and that it names a declared case."""
+    for index, entry in enumerate(_sequence(entries, "resources")):
+        name = f"resources[{index}]"
+        item = _mapping(entry, name)
+        if item.get("case") not in case_ids:
+            raise ValueError(f"{name}.case must name an existing case")
+        _validate_metrics(item.get("metrics", {}), f"{name}.metrics")
+
+
 def validate_results(document: object) -> None:
     """Reject a document that violates the contract.
 
@@ -109,47 +173,14 @@ def validate_results(document: object) -> None:
     context = server.get("context_tokens")
     if type(context) is not int or context < 1:
         raise ValueError("server.context_tokens must be a positive integer")
-    for index, entry in enumerate(_sequence(data.get("functional", []), "functional")):
-        item = _mapping(entry, f"functional[{index}]")
-        _text(item.get("id"), f"functional[{index}].id")
-        _choice(item.get("status"), FUNCTIONAL_STATUSES, f"functional[{index}].status")
+    _validate_functional(data.get("functional", []))
     if "boot" in data:
-        boot = _mapping(data["boot"], "boot")
-        _validate_metrics(boot.get("metrics", {}), "boot.metrics")
-        for note in _sequence(boot.get("warnings", []), "boot.warnings"):
-            _text(note, "boot.warnings entry")
+        _validate_boot(data)
     if "warmup" in data:
-        warmup = _mapping(data["warmup"], "warmup")
-        requests = warmup.get("requests")
-        if type(requests) is not int or requests < 0:
-            raise ValueError("warmup.requests must be a non-negative integer")
-        if type(warmup.get("converged")) is not bool:
-            raise ValueError("warmup.converged must be true or false")
-        _validate_metrics(warmup.get("metrics", {}), "warmup.metrics")
-    for index, entry in enumerate(_sequence(data.get("phases", []), "phases")):
-        item = _mapping(entry, f"phases[{index}]")
-        _text(item.get("id"), f"phases[{index}].id")
-        _choice(item.get("status"), PHASE_STATUSES, f"phases[{index}].status")
-        _validate_metrics(item.get("metrics", {}), f"phases[{index}].metrics")
-    case_ids: set[str] = set()
-    for index, entry in enumerate(_sequence(data["cases"], "cases")):
-        name = f"cases[{index}]"
-        item = _mapping(entry, name)
-        case_id = _text(item.get("id"), f"{name}.id")
-        if case_id in case_ids:
-            raise ValueError(f"{name}.id is a duplicate: {case_id}")
-        case_ids.add(case_id)
-        _choice(item.get("status"), CASE_STATUSES, f"{name}.status")
-        runs = item.get("runs")
-        if type(runs) is not int or runs < 0:
-            raise ValueError(f"{name}.runs must be a non-negative integer")
-        _validate_metrics(item.get("metrics", {}), f"{name}.metrics")
-    for index, entry in enumerate(_sequence(data.get("resources", []), "resources")):
-        name = f"resources[{index}]"
-        item = _mapping(entry, name)
-        if item.get("case") not in case_ids:
-            raise ValueError(f"{name}.case must name an existing case")
-        _validate_metrics(item.get("metrics", {}), f"{name}.metrics")
+        _validate_warmup(data)
+    _validate_phases(data.get("phases", []))
+    case_ids = _validate_cases(data["cases"])
+    _validate_resources(data.get("resources", []), case_ids)
 
 
 SESSION_SCHEMA_VERSION = 1
