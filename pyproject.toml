@@ -9,6 +9,10 @@ tui = ["textual>=8.2,<9"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--strict-markers"
+markers = [
+    "subprocess: starts a repository script as a child process; the rest of the suite runs in-process",
+]
 
 [tool.ruff]
 line-length = 100
