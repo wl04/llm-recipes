@@ -61,7 +61,7 @@ select = [
 "tests/test_baseline_guided.py" = ["ARG002"]
 
 [tool.mypy]
-mypy_path = "scripts"
+mypy_path = "$MYPY_CONFIG_FILE_DIR/scripts"
 files = [
     "scripts/generate_configurations.py",
     "scripts/launch.py",
