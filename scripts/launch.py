@@ -13,6 +13,7 @@ import paths
 from doctor import diagnose
 from launcher import (
     FACTS_NAME,
+    Recipe,
     discover_recipes,
     gpu_groups,
     instances_command,
@@ -72,116 +73,141 @@ def parser() -> argparse.ArgumentParser:
     return cli
 
 
+def _ps(args: argparse.Namespace) -> int:
+    """List running launcher instances as a table or as JSON."""
+    refresh_sudo_ticket()
+    if not args.json:
+        return run_command(running_command())
+    listing = capture(instances_command())
+    if listing.returncode:
+        sys.stderr.write(listing.stderr)
+        return listing.returncode
+    print(json.dumps(parse_instances(listing.stdout), indent=2))
+    return 0
+
+
+def _status(args: argparse.Namespace) -> int:
+    """Report one instance as JSON without a Docker table."""
+    refresh_sudo_ticket()
+    inspection = capture(lifecycle_command("status", args.instance))
+    status = inspection.stdout.strip() or "not-found"
+    print(json.dumps({"instance": args.instance, "status": status}, indent=2))
+    return 0
+
+
+def _lifecycle(args: argparse.Namespace) -> int:
+    """Run ``status``, ``logs``, or ``stop`` as a Docker command."""
+    refresh_sudo_ticket()
+    return run_command(
+        lifecycle_command(args.action, args.instance, getattr(args, "follow", False))
+    )
+
+
+def _list(recipes: dict[str, Recipe], args: argparse.Namespace) -> int:
+    """Print available recipes as a table or as JSON."""
+    if args.json:
+        print(
+            json.dumps(
+                [
+                    {
+                        "name": recipe.name,
+                        "runtime": recipe.runtime,
+                        "adapter": recipe.adapter,
+                        "engine": recipe.engine,
+                        "image": recipe.image,
+                        "port": recipe.port,
+                        "context": recipe.context,
+                    }
+                    for recipe in recipes.values()
+                ],
+                indent=2,
+            )
+        )
+        return 0
+    print("RECIPE  |  API SERVER  |  ENGINE  |  PORT")
+    for recipe in recipes.values():
+        print(f"{recipe.name}  |  {recipe.adapter}  |  {recipe.engine}  |  {recipe.port}")
+    return 0
+
+
+def _doctor(recipe: Recipe, args: argparse.Namespace) -> int:
+    """Print read-only diagnostics; the exit status reports whether any check failed."""
+    findings = diagnose(recipe, args.models.expanduser().resolve())
+    if args.json:
+        print(
+            json.dumps(
+                [
+                    {"status": item.status, "name": item.name, "detail": item.detail}
+                    for item in findings
+                ],
+                indent=2,
+            )
+        )
+    else:
+        for item in findings:
+            print(f"{item.status}: {item.name}: {item.detail}")
+        print(
+            "Checks use recipe defaults. No GPU execution, image build-pin inspection, "
+            "or weight rehashing performed."
+        )
+    return int(any(item.status == "FAIL" for item in findings))
+
+
+def _start(recipe: Recipe, args: argparse.Namespace) -> int:
+    """Validate the launch plan, then start the container after the host is prepared."""
+    name = args.name if args.name is not None else recipe.name
+    models = args.models.expanduser().resolve()
+    options = resolve_launch_options(
+        recipe,
+        name=name,
+        models=models,
+        logs=(args.logs if args.logs is not None else paths.logs_dir(models, name))
+        .expanduser()
+        .resolve(),
+        context=args.context,
+        draft=args.draft,
+        vision=args.vision,
+        port=args.port,
+        detached=args.detach,
+    )
+    uid, gid = os.getuid(), os.getgid()
+    # Validate the plan before host-device access or directory creation.
+    command = start_command(recipe, options, groups=[], uid=uid, gid=gid)
+    if args.dry_run:
+        print("# GPU group IDs are resolved from device nodes at launch.")
+        print(shlex.join(command))
+        return 0
+    command = start_command(recipe, options, groups=gpu_groups(), uid=uid, gid=gid)
+    prepare_start(recipe, options)
+    refresh_sudo_ticket()
+    try:
+        record_start_facts(recipe, options)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print(f"warning: {FACTS_NAME} was not written: {error}", file=sys.stderr)
+    print(f"Instance: {name}\nPersistent logs: {options.logs}", flush=True)
+    print(f"API address: http://127.0.0.1:{options.port}/v1 (after model loading)", flush=True)
+    return run_command(command)
+
+
 def main(argv: list[str] | None = None) -> int:
     """Resolve CLI inputs and invoke reusable launch operations."""
     cli = parser()
     args = cli.parse_args(argv)
     try:
         if args.action == "ps":
-            refresh_sudo_ticket()
-            if args.json:
-                listing = capture(instances_command())
-                if listing.returncode:
-                    sys.stderr.write(listing.stderr)
-                    return listing.returncode
-                print(json.dumps(parse_instances(listing.stdout), indent=2))
-                return 0
-            return run_command(running_command())
+            return _ps(args)
         if args.action == "status" and args.json:
-            refresh_sudo_ticket()
-            inspection = capture(lifecycle_command("status", args.instance))
-            status = inspection.stdout.strip() or "not-found"
-            print(json.dumps({"instance": args.instance, "status": status}, indent=2))
-            return 0
+            return _status(args)
         if args.action not in ("start", "list", "doctor"):
-            refresh_sudo_ticket()
-            return run_command(
-                lifecycle_command(
-                    args.action,
-                    args.instance,
-                    getattr(args, "follow", False),
-                )
-            )
+            return _lifecycle(args)
         recipes = discover_recipes(ROOT / "recipes")
         if args.action == "list":
-            if args.json:
-                print(
-                    json.dumps(
-                        [
-                            {
-                                "name": recipe.name,
-                                "runtime": recipe.runtime,
-                                "adapter": recipe.adapter,
-                                "engine": recipe.engine,
-                                "image": recipe.image,
-                                "port": recipe.port,
-                                "context": recipe.context,
-                            }
-                            for recipe in recipes.values()
-                        ],
-                        indent=2,
-                    )
-                )
-                return 0
-            print("RECIPE  |  API SERVER  |  ENGINE  |  PORT")
-            for recipe in recipes.values():
-                print(f"{recipe.name}  |  {recipe.adapter}  |  {recipe.engine}  |  {recipe.port}")
-            return 0
+            return _list(recipes, args)
         if args.recipe not in recipes:
             raise ValueError(f"Unknown recipe: {args.recipe}. Use 'list' to see available recipes.")
-        recipe = recipes[args.recipe]
         if args.action == "doctor":
-            findings = diagnose(recipe, args.models.expanduser().resolve())
-            if args.json:
-                print(
-                    json.dumps(
-                        [
-                            {"status": item.status, "name": item.name, "detail": item.detail}
-                            for item in findings
-                        ],
-                        indent=2,
-                    )
-                )
-                return int(any(item.status == "FAIL" for item in findings))
-            for item in findings:
-                print(f"{item.status}: {item.name}: {item.detail}")
-            print(
-                "Checks use recipe defaults. No GPU execution, image build-pin inspection, "
-                "or weight rehashing performed."
-            )
-            return int(any(item.status == "FAIL" for item in findings))
-        name = args.name if args.name is not None else recipe.name
-        models = args.models.expanduser().resolve()
-        options = resolve_launch_options(
-            recipe,
-            name=name,
-            models=models,
-            logs=(args.logs if args.logs is not None else paths.logs_dir(models, name))
-            .expanduser()
-            .resolve(),
-            context=args.context,
-            draft=args.draft,
-            vision=args.vision,
-            port=args.port,
-            detached=args.detach,
-        )
-        # Validate the plan before host-device access or directory creation.
-        command = start_command(recipe, options, groups=[], uid=os.getuid(), gid=os.getgid())
-        if args.dry_run:
-            print("# GPU group IDs are resolved from device nodes at launch.")
-            print(shlex.join(command))
-            return 0
-        groups = gpu_groups()
-        command = start_command(recipe, options, groups=groups, uid=os.getuid(), gid=os.getgid())
-        prepare_start(recipe, options)
-        refresh_sudo_ticket()
-        try:
-            record_start_facts(recipe, options)
-        except (OSError, ValueError, subprocess.SubprocessError) as error:
-            print(f"warning: {FACTS_NAME} was not written: {error}", file=sys.stderr)
-        print(f"Instance: {name}\nPersistent logs: {options.logs}", flush=True)
-        print(f"API address: http://127.0.0.1:{options.port}/v1 (after model loading)", flush=True)
-        return run_command(command)
+            return _doctor(recipes[args.recipe], args)
+        return _start(recipes[args.recipe], args)
     except ValueError as error:
         cli.error(str(error))
     except OSError as error:
