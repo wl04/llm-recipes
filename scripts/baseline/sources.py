@@ -9,6 +9,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import host_facts
+
 CGROUP_KEYS = ("cpu_usec", "mem_bytes", "mem_anon_bytes", "mem_file_bytes", "swap_bytes")
 GPU_KEYS = (
     "gpu_busy_percent",
@@ -18,7 +20,6 @@ GPU_KEYS = (
     "gpu_power_uw",
     "gpu_temp_mc",
 )
-AMD_VENDOR = "0x1002"
 
 
 class SourceError(Exception):
@@ -127,19 +128,11 @@ def find_gpu(pci_root: Path = Path("/sys/bus/pci/devices")) -> tuple[str, list[s
     Raises:
         SourceError: no AMD GPU with a readable VRAM size was found.
     """
-    found: list[tuple[int, str]] = []
-    if pci_root.is_dir():
-        for device in pci_root.iterdir():
-            try:
-                if (device / "vendor").read_text().strip() != AMD_VENDOR:
-                    continue
-                found.append((_integer(device / "mem_info_vram_total"), device.name))
-            except (OSError, ValueError, IndexError):
-                continue
-    if not found:
+    devices = host_facts.amd_devices(pci_root)
+    if not devices:
         raise SourceError("No AMD GPU with readable VRAM was found")
-    found.sort(key=lambda item: (-item[0], item[1]))
-    return found[0][1], [name for _, name in found]
+    candidates = [name for _, name in devices]
+    return candidates[0], candidates
 
 
 def _kib(value: str) -> int:

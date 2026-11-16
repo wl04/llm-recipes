@@ -86,8 +86,12 @@ def memory_total_gib(proc: Path = Path("/proc")) -> float:
     raise HostFactsError(f"{proc}/meminfo does not define MemTotal")
 
 
-def _amd_devices(pci_root: Path) -> list[tuple[int, str]]:
-    """AMD PCI devices sorted by total VRAM descending, PCI names as keys."""
+def amd_devices(pci_root: Path) -> list[tuple[int, str]]:
+    """AMD PCI devices with a readable VRAM size, largest VRAM first, PCI name as tie-break.
+
+    This is the machine's GPU selection rule: the first entry is the discrete GPU to measure
+    and to report, and every entry is a candidate for the same role.
+    """
     found: list[tuple[int, str]] = []
     if pci_root.is_dir():
         for device in pci_root.iterdir():
@@ -130,7 +134,7 @@ def gpu_block(
     The description falls back to ``None`` when ``lspci`` is unavailable; architecture
     is ``None`` for device IDs missing from the reviewed table.
     """
-    devices = _amd_devices(sys_root / "bus/pci/devices")
+    devices = amd_devices(sys_root / "bus/pci/devices")
     if not devices:
         raise HostFactsError(f"No AMD GPU with readable VRAM found under {sys_root}")
     vram_bytes, pci_name = devices[0]
