@@ -138,6 +138,18 @@ def yaml_dump(config: dict[str, Any]) -> str:
     return stream.getvalue()
 
 
+def launch_runtime(path: Path) -> str:
+    """Read the recipe runtime selector, reporting unreadable or incomplete settings."""
+    try:
+        settings = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"{path}: recipe launch settings are not readable") from exc
+    runtime = settings.get("runtime") if isinstance(settings, dict) else None
+    if not isinstance(runtime, str):
+        raise RuntimeError(f'{path}: recipe launch settings have no "runtime" field')
+    return runtime
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--recipe", type=Path, required=True)
@@ -149,7 +161,11 @@ def main() -> None:
     if args.context < 1024 or args.context % 256:
         parser.error("context must be at least 1024 and a multiple of 256")
     recipe = args.recipe.resolve()
-    if json.loads((recipe / "config/launch.json").read_text())["runtime"] != "exllamav3-tabbyapi":
+    try:
+        declared_runtime = launch_runtime(recipe / "config/launch.json")
+    except RuntimeError as error:
+        parser.error(str(error))
+    if declared_runtime != "exllamav3-tabbyapi":
         parser.error("expected an exllamav3-tabbyapi recipe")
     yaml = YAML(typ="safe")
     config = yaml.load(recipe / "config/tabby.yml")

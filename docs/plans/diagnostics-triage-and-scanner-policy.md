@@ -115,9 +115,9 @@ Reference: [pyright configuration](https://github.com/microsoft/pyright/blob/mai
 - [x] Confirm the strata `Dockerfile` finding: no finding under the Docker server.
 - [ ] Reproduce `python-path-traversal` at `severity=all` and compare each site against the
       containment checks that exist; close a gap or record the guard as the reason.
-- [ ] Fix `serve.py:152` so an unreadable or keyless `launch.json` reaches `parser.error`, test-first
-      in `tests/test_serve_validation.py`, which imports the module directly and exercises no `main`
-      path today.
+- [x] Fix the recipe guard in `serve.py` so unreadable, non-object, or keyless launch settings reach
+      `parser.error` instead of a traceback; `tests/test_serve_validation.py` now drives `main` through
+      each of those cases plus the runtime mismatch and asserts exit code 2.
 - [ ] Decide `check_hip.cpp` and the two Dockerfiles under item 10: `clangd` is absent, so those files
       sit in the unconfirmed lane.
 

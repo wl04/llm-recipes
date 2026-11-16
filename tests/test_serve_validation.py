@@ -131,3 +131,61 @@ def test_load_json_object_reports_missing_and_malformed_fields(tmp_path: Path) -
     path.write_text("{ not json")
     with pytest.raises(RuntimeError, match="not valid JSON"):
         serve.check_manifest_file(path, ("source", "sha256"))
+
+
+@pytest.mark.parametrize("contents", [None, "{ not json"], ids=["missing", "malformed"])
+def test_main_rejects_recipe_when_launch_settings_are_unreadable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    contents: str | None,
+) -> None:
+    if contents is not None:
+        (tmp_path / "config").mkdir()
+        (tmp_path / "config" / "launch.json").write_text(contents)
+    monkeypatch.setattr(sys, "argv", ["serve", "--recipe", str(tmp_path)])
+
+    with pytest.raises(SystemExit) as exit_call:
+        serve.main()
+
+    captured = capsys.readouterr()
+
+    assert exit_call.value.code == 2
+    assert "config/launch.json" in captured.err
+    assert "launch settings are not readable" in captured.err
+
+
+def test_main_rejects_recipe_when_launch_settings_have_no_runtime_field(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "launch.json").write_text('{"runtime": 7}')
+    monkeypatch.setattr(sys, "argv", ["serve", "--recipe", str(tmp_path)])
+
+    with pytest.raises(SystemExit) as exit_call:
+        serve.main()
+
+    captured = capsys.readouterr()
+
+    assert exit_call.value.code == 2
+    assert 'launch settings have no "runtime" field' in captured.err
+
+
+def test_main_rejects_recipe_for_another_runtime(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "launch.json").write_text('{"runtime": "exllamav2"}')
+    monkeypatch.setattr(sys, "argv", ["serve", "--recipe", str(tmp_path)])
+
+    with pytest.raises(SystemExit) as exit_call:
+        serve.main()
+
+    captured = capsys.readouterr()
+
+    assert exit_call.value.code == 2
+    assert "expected an exllamav3-tabbyapi recipe" in captured.err
