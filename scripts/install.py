@@ -257,47 +257,50 @@ def post_check(app: Path, recipe: str) -> None:
         raise ValueError(f"{root}: missing lock-referenced entries: {', '.join(missing)}")
 
 
-def migrate_data(app: Path, old_root: Path, *, apply: bool) -> int:
-    """Move the old data root into the data home; dry-run unless ``apply``."""
-    prefix = paths.runtime_prefix()
+def _cutover_blocker(app: Path, old_root: Path) -> tuple[int, str] | None:
+    """Report why the cutover must stop, with its exit code, or None when it may run."""
     if not (app / "scripts/launch.py").is_file():
-        log(f"refusing: install the runtime snapshot first ({app} is missing)")
-        return 1
+        return 1, f"refusing: install the runtime snapshot first ({app} is missing)"
     if not old_root.is_dir():
-        log(f"nothing to migrate: {old_root} does not exist")
-        return 0
+        return 0, f"nothing to migrate: {old_root} does not exist"
     if locked_elsewhere(old_root):
-        log(f"refusing: a model preparation holds {old_root / '.prepare.lock'}")
-        return 1
+        return 1, f"refusing: a model preparation holds {old_root / '.prepare.lock'}"
     if running_instances():
-        log("refusing: launcher-managed instances are running; stop them first")
-        return 1
-    completed = read_journal(prefix)
-    moves = move_plan(old_root)
-    unmapped = sorted(
+        return 1, "refusing: launcher-managed instances are running; stop them first"
+    return None
+
+
+def _unmapped(old_root: Path, completed: set[str]) -> list[str]:
+    """Directories under the old root that the move plan does not cover."""
+    return sorted(
         path.name
         for path in old_root.iterdir()
         if path.is_dir()
         and path.name not in {*SHARED_DIRECTORIES, *RETIRED_DATA_FOLDERS}
         and f"{paths.data_home() / path.name}" not in completed
     )
-    if unmapped:
-        log(f"refusing: unmapped directories under {old_root}: {', '.join(unmapped)}")
-        return 1
+
+
+def _move_refusal(moves: list[tuple[Path, Path]], completed: set[str]) -> str | None:
+    """Check every pending move before anything is renamed; report the journaled skips."""
     for source, destination in moves:
-        key = str(destination)
-        if key in completed:
+        if str(destination) in completed:
             log(f"skip (journaled): {source} -> {destination}")
             continue
         if not source.exists():
             log(f"skip (absent): {source}")
             continue
         if destination.exists():
-            log(f"refusing: destination already exists: {destination}")
-            return 1
+            return f"refusing: destination already exists: {destination}"
         if not same_device(source.parent, destination.parent):
-            log(f"refusing: cross-device move for {source}; move it manually")
-            return 1
+            return f"refusing: cross-device move for {source}; move it manually"
+    return None
+
+
+def _perform_moves(
+    moves: list[tuple[Path, Path]], completed: set[str], prefix: Path, *, apply: bool
+) -> None:
+    """Rename the pending entries in plan order, journaling each move, or report a dry run."""
     for source, destination in moves:
         if str(destination) in completed or not source.exists():
             continue
@@ -308,26 +311,34 @@ def migrate_data(app: Path, old_root: Path, *, apply: bool) -> int:
         os.rename(source, destination)
         append_journal(prefix, source, destination)
         log(f"moved: {source} -> {destination}")
-    if not apply:
-        log("dry run only; pass --apply to perform the moves above")
-        return 0
+
+
+def _post_check_failure(app: Path) -> str | None:
+    """The first post-check error across the migrated recipes, or None when all resolve."""
     for recipe in (EXL3_RECIPE, ISTA_RECIPE, UNSLOTH_RECIPE):
         try:
             post_check(app, recipe)
         except ValueError as error:
-            log(f"post-check FAILED: {error}")
-            log(f"journal for reverse application: {prefix / JOURNAL_NAME}")
-            return 1
+            return str(error)
+    return None
+
+
+def _retire_old_root(old_root: Path) -> None:
+    """Keep the old root when it still holds entries, otherwise remove it when empty."""
     leftover = sorted(entry.name for entry in old_root.iterdir()) if old_root.exists() else []
     if leftover:
         log(f"old root not empty, keeping it: {old_root} ({', '.join(leftover)})")
-    else:
-        old_root.rmdir()
-        log(f"removed empty {old_root}")
-        models = old_root.parent
-        if models.is_dir() and not any(models.iterdir()):
-            models.rmdir()
-            log(f"removed empty {models}")
+        return
+    old_root.rmdir()
+    log(f"removed empty {old_root}")
+    models = old_root.parent
+    if models.is_dir() and not any(models.iterdir()):
+        models.rmdir()
+        log(f"removed empty {models}")
+
+
+def _report_recipes(app: Path) -> None:
+    """Run the launcher's read-only doctor for every installed recipe."""
     for recipe_folder in sorted((app / "recipes").iterdir()):
         diagnosis = run_process(
             [
@@ -341,6 +352,37 @@ def migrate_data(app: Path, old_root: Path, *, apply: bool) -> int:
         )
         log(f"doctor {recipe_folder.name}:")
         log(diagnosis.stdout.strip() or diagnosis.stderr.strip() or "(no output)")
+
+
+def migrate_data(app: Path, old_root: Path, *, apply: bool) -> int:
+    """Move the old data root into the data home; dry-run unless ``apply``."""
+    prefix = paths.runtime_prefix()
+    blocker = _cutover_blocker(app, old_root)
+    if blocker is not None:
+        code, message = blocker
+        log(message)
+        return code
+    completed = read_journal(prefix)
+    moves = move_plan(old_root)
+    unmapped = _unmapped(old_root, completed)
+    if unmapped:
+        log(f"refusing: unmapped directories under {old_root}: {', '.join(unmapped)}")
+        return 1
+    refusal = _move_refusal(moves, completed)
+    if refusal is not None:
+        log(refusal)
+        return 1
+    _perform_moves(moves, completed, prefix, apply=apply)
+    if not apply:
+        log("dry run only; pass --apply to perform the moves above")
+        return 0
+    failure = _post_check_failure(app)
+    if failure is not None:
+        log(f"post-check FAILED: {failure}")
+        log(f"journal for reverse application: {prefix / JOURNAL_NAME}")
+        return 1
+    _retire_old_root(old_root)
+    _report_recipes(app)
     return 0
 
 
