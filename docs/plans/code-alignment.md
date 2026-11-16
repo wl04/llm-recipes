@@ -13,9 +13,3 @@ that have to change.
 - [ ] `scripts/baseline/aggregate.py:build_results` (80 lines, 13 branches) — build each
       `results.json` section in its own function; `schema.validate_results` is already one check per
       section, and the two files should mirror each other.
-
-## Decide on `shfmt`
-
-- [ ] `AGENTS.md` names `shfmt -d` "if configured" while `scripts/check.sh` runs ShellCheck only.
-      Either add `shfmt -d` for the shell entry points to `scripts/check.sh`, or drop the mention of
-      `shfmt` from the rules. The repository currently formats shell by hand.
