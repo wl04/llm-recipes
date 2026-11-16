@@ -176,3 +176,155 @@ def test_main_lists_only_install_in_command_help(capsys: pytest.CaptureFixture[s
 
     assert result.value.code == 0
     assert "{install}" in capsys.readouterr().out
+
+
+def test_install_preserves_unrelated_executable_before_swap(
+    roots: dict[str, Path], tmp_path: Path
+) -> None:
+    checkout = tmp_path / "checkout"
+    make_checkout(checkout)
+    executable = roots["home"] / ".local/bin/llm-recipes"
+    executable.parent.mkdir(parents=True)
+    executable.write_text("other tool")
+    with pytest.raises(RuntimeError, match="refusing"):
+        install(checkout, roots["runtime"], force=True, with_dependencies=False)
+    assert executable.read_text() == "other tool"
+    assert not (roots["runtime"] / "app").exists()
+
+
+def test_install_restores_snapshot_when_shim_activation_fails(
+    roots: dict[str, Path], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    checkout = tmp_path / "checkout"
+    make_checkout(checkout)
+    install(checkout, roots["runtime"], force=True, with_dependencies=False)
+    (checkout / "scripts/launch.py").write_text("print('new')")
+
+    def fail(_prefix: Path) -> None:
+        raise OSError("activation failed")
+
+    monkeypatch.setattr(install_module, "write_shims", fail)
+    with pytest.raises(OSError, match="activation failed"):
+        install(checkout, roots["runtime"], force=True, with_dependencies=False)
+    assert (roots["runtime"] / "app/scripts/launch.py").read_text() == "print('launch')\n"
+
+
+def test_install_refuses_concurrent_install_without_touching_staging(
+    roots: dict[str, Path], tmp_path: Path
+) -> None:
+    import fcntl
+
+    checkout = tmp_path / "checkout"
+    make_checkout(checkout)
+    roots["runtime"].mkdir(parents=True)
+    staging = roots["runtime"] / "app.new"
+    staging.mkdir()
+    (staging / "keep").touch()
+    with (roots["runtime"] / ".install.lock").open("w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        with pytest.raises(RuntimeError, match="installation"):
+            install(checkout, roots["runtime"], force=True, with_dependencies=False)
+    assert (staging / "keep").exists()
+
+
+def test_install_runs_venv_entrypoint_after_snapshot_swap(
+    roots: dict[str, Path], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import venv
+
+    checkout = tmp_path / "checkout"
+    make_checkout(checkout)
+    prefix = roots["runtime"] / "spaces ' and $literal"
+
+    def create(path: Path, _python: str) -> None:
+        venv.EnvBuilder(with_pip=False).create(path)
+        probe = path / "bin/probe"
+        # Shell trampoline handles long paths and spaces like installed entry points do.
+        import shlex
+
+        probe.write_text(
+            "#!/bin/sh\nexec " + shlex.quote(str(path / "bin/python")) + " -c 'print(42)'\n"
+        )
+        probe.chmod(0o755)
+
+    monkeypatch.setattr(install_module, "create_venv", create)
+    install(checkout, prefix, force=True, with_dependencies=True)
+    result = subprocess.run(
+        [str(prefix / "app/.venv/bin/probe")], check=False, capture_output=True, text=True
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == "42"
+    result = subprocess.run(
+        [str(roots["home"] / ".local/bin/llm-recipes")], check=False, capture_output=True, text=True
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == "launch"
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_install_restores_shims_after_partial_activation(
+    roots: dict[str, Path], monkeypatch: pytest.MonkeyPatch, tmp_path: Path, existing: bool
+) -> None:
+    checkout = tmp_path / "checkout"
+    make_checkout(checkout)
+    prefix = roots["runtime"]
+    if existing:
+        install(checkout, prefix, force=True, with_dependencies=False)
+    shim = prefix / "bin/llm-recipes"
+    old = shim.read_bytes() if existing else None
+    original = install_module.write_shims
+
+    def fail_after_writing(path: Path) -> None:
+        original(path)
+        shim.write_text("incomplete")
+        raise OSError("shim failure")
+
+    monkeypatch.setattr(install_module, "write_shims", fail_after_writing)
+    with pytest.raises(OSError, match="shim failure"):
+        install(checkout, prefix, force=True, with_dependencies=False)
+
+    if existing:
+        assert shim.read_bytes() == old
+        assert (roots["home"] / ".local/bin/llm-recipes").resolve() == shim
+        assert (prefix / "app/scripts/launch.py").exists()
+    else:
+        assert not shim.exists()
+        assert not (roots["home"] / ".local/bin/llm-recipes").is_symlink()
+        assert not (prefix / "app").exists()
+
+
+def test_install_keeps_active_environment_when_new_dependencies_fail(
+    roots: dict[str, Path], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    checkout = tmp_path / "checkout"
+    make_checkout(checkout)
+
+    def create(path: Path, _python: str) -> None:
+        path.mkdir(parents=True)
+
+    monkeypatch.setattr(install_module, "create_venv", create)
+    install(checkout, roots["runtime"], force=True, with_dependencies=True)
+    active = (roots["runtime"] / "app/.venv").resolve()
+    monkeypatch.setattr(install_module, "RUNTIME_REQUIREMENTS", ("test-package==1",))
+
+    def fail(path: Path, _python: str) -> None:
+        path.mkdir(parents=True)
+        raise RuntimeError("dependency install failed")
+
+    monkeypatch.setattr(install_module, "create_venv", fail)
+    with pytest.raises(RuntimeError, match="dependency install failed"):
+        install(checkout, roots["runtime"], force=True, with_dependencies=True)
+    assert (roots["runtime"] / "app/.venv").resolve() == active
+    assert (active / ".ready").exists()
+    assert not (roots["runtime"] / "app.new").exists()
+
+
+def test_install_preserves_unrelated_symlink(roots: dict[str, Path], tmp_path: Path) -> None:
+    checkout = tmp_path / "checkout"
+    make_checkout(checkout)
+    link = roots["home"] / ".local/bin/llm-recipes"
+    link.parent.mkdir(parents=True)
+    link.symlink_to("/another/install")
+    with pytest.raises(RuntimeError, match="unrelated"):
+        install(checkout, roots["runtime"], force=True, with_dependencies=False)
+    assert link.readlink() == Path("/another/install")

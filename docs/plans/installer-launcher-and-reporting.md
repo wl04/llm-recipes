@@ -59,13 +59,13 @@ Installation also performs two renames without rollback, and every invocation sh
 `app.new` staging path. A second install can delete another install's staging tree. Tests cover
 installation with dependencies skipped, not creation and activation of a real venv.
 
-- [ ] Give the venv a stable location, such as under the runtime prefix, and keep code staging
+- [x] Give the venv a stable location, such as under the runtime prefix, and keep code staging
       separate. Use the smallest design compatible with the current small dependency set.
-- [ ] Serialize installs with a prefix-level lock. Preserve the usable snapshot and restore it
+- [x] Serialize installs with a prefix-level lock. Preserve the usable snapshot and restore it
       if activation fails; do not describe two separate renames as one atomic transaction.
-- [ ] Validate shim destinations before swapping; refuse to replace an unrelated regular file
+- [x] Validate shim destinations before swapping; refuse to replace an unrelated regular file
       in `~/.local/bin` silently. Ensure prefix paths are quoted safely in generated shell shims.
-- [ ] Add CPU tests for real venv entry points after installation, failed activation, concurrent
+- [x] Add CPU tests for real venv entry points after installation, failed activation, concurrent
       installation, and an unrelated existing executable. No GPU or model downloads are needed.
 
 Reference: [Python venv portability](https://docs.python.org/3/library/venv.html#how-venvs-work).

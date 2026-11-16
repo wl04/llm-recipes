@@ -4,10 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
+import hashlib
 import json
+import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -15,6 +19,7 @@ import paths
 
 RUNTIME_INCLUDES = ("scripts", "recipes", "runtimes", "assets", "templates")
 RUNTIME_REQUIREMENTS = ("PyYAML==6.0.3",)
+COMMANDS = {"llm-recipes": "launch.py", "llm-recipes-baseline": "run_baseline.py"}
 IGNORED_DIRECTORIES = shutil.ignore_patterns("__pycache__", "*.pyc", ".venv")
 
 
@@ -56,7 +61,7 @@ def repository_commit(root: Path) -> str | None:
     return revision.stdout.strip() if revision.returncode == 0 else None
 
 
-def build_snapshot(root: Path, destination: Path, *, with_dependencies: bool) -> None:
+def build_snapshot(root: Path, destination: Path) -> None:
     """Copy the runtime trees and stamp the snapshot into ``destination``."""
     destination.mkdir(parents=True)
     for name in RUNTIME_INCLUDES:
@@ -69,8 +74,6 @@ def build_snapshot(root: Path, destination: Path, *, with_dependencies: bool) ->
         "version": "1",
     }
     (destination / "VERSION").write_text(json.dumps(stamp, indent=2) + "\n")
-    if with_dependencies:
-        create_venv(destination / ".venv", sys.executable)
 
 
 def create_venv(venv: Path, base_python: str) -> None:
@@ -102,50 +105,124 @@ def create_venv(venv: Path, base_python: str) -> None:
         raise RuntimeError(f"runtime dependency install failed: {installed.stderr.strip()}")
 
 
+def runtime_environment(prefix: Path) -> Path:
+    """Reuse an environment at its permanent path for this Python and dependency set."""
+    identity = json.dumps([sys.executable, sys.version, RUNTIME_REQUIREMENTS])
+    key = hashlib.sha256(identity.encode()).hexdigest()[:16]
+    environment = prefix / "environments" / key
+    ready = environment / ".ready"
+    if not ready.is_file():
+        if environment.exists():
+            shutil.rmtree(environment)
+        environment.parent.mkdir(parents=True, exist_ok=True)
+        create_venv(environment, sys.executable)
+        ready.touch()
+    return environment
+
+
+def validate_shims(prefix: Path) -> None:
+    """Refuse to replace commands owned by another installation or tool."""
+    for name in COMMANDS:
+        shim = prefix / "bin" / name
+        if shim.is_symlink() or (shim.exists() and not shim.is_file()):
+            raise RuntimeError(f"refusing to overwrite non-file shim: {shim}")
+        link = Path.home() / ".local/bin" / name
+        if link.is_symlink():
+            if link.readlink() != prefix / "bin" / name:
+                raise RuntimeError(f"refusing to replace unrelated command: {link}")
+        elif link.exists():
+            raise RuntimeError(f"refusing to replace unrelated command: {link}")
+
+
 def write_shims(prefix: Path) -> None:
-    """Command shims that run the installed snapshot with its own venv."""
+    """Write quoted command shims and link them into the user's PATH."""
+    validate_shims(prefix)
     bin_dir = prefix / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
     runtime_python = prefix / "app/.venv/bin/python"
-    commands = {
-        "llm-recipes": "launch.py",
-        "llm-recipes-baseline": "run_baseline.py",
-    }
-    for shim, script in commands.items():
+    for shim, script in COMMANDS.items():
         path = bin_dir / shim
-        path.write_text(
-            f'#!/bin/sh\nexec "{runtime_python}" "{prefix / "app/scripts" / script}" "$@"\n'
-        )
+        command = shlex.join([str(runtime_python), str(prefix / "app/scripts" / script)])
+        path.write_text(f'#!/bin/sh\nexec {command} "$@"\n')
         path.chmod(0o755)
     user_bin = Path.home() / ".local/bin"
     user_bin.mkdir(parents=True, exist_ok=True)
-    for shim in commands:
+    for shim in COMMANDS:
         link = user_bin / shim
-        if link.is_symlink() or link.exists():
+        if link.is_symlink():
             link.unlink()
         link.symlink_to(bin_dir / shim)
 
 
+def activate_snapshot(prefix: Path) -> None:
+    """Publish staged code and shims, restoring the active installation on failure."""
+    app, previous = prefix / "app", prefix / "app.prev"
+    bin_dir = prefix / "bin"
+    links = {
+        Path.home() / ".local/bin" / name: (prefix / "bin" / name)
+        for name in COMMANDS
+        if (Path.home() / ".local/bin" / name).is_symlink()
+    }
+    with tempfile.TemporaryDirectory(prefix=".shims-", dir=prefix) as temporary:
+        backup = Path(temporary) / "bin"
+        if bin_dir.exists():
+            shutil.copytree(bin_dir, backup, symlinks=True)
+        had_app = app.exists()
+        if had_app:
+            if previous.exists():
+                shutil.rmtree(previous)
+            app.rename(previous)
+        try:
+            (prefix / "app.new").rename(app)
+            write_shims(prefix)
+        except BaseException:  # Roll back interruptions as well as errors, then re-raise.
+            if app.exists():
+                shutil.rmtree(app)
+            if had_app:
+                previous.rename(app)
+            if bin_dir.exists():
+                shutil.rmtree(bin_dir)
+            if backup.exists():
+                shutil.copytree(backup, bin_dir, symlinks=True)
+            for name in COMMANDS:
+                link = Path.home() / ".local/bin" / name
+                if link.is_symlink():
+                    link.unlink()
+                if link in links:
+                    link.symlink_to(links[link])
+            raise
+
+
 def install(root: Path, prefix: Path, *, force: bool, with_dependencies: bool) -> int:
-    """Build ``app.new``, swap it in atomically, and refresh the shims."""
-    if not force and running_instances():
-        log("refusing to swap while launcher instances run; stop them or pass --force")
-        return 1
-    staging = prefix / "app.new"
-    if staging.exists():
-        shutil.rmtree(staging)
-    build_snapshot(root, staging, with_dependencies=with_dependencies)
-    app = prefix / "app"
-    previous = prefix / "app.prev"
-    if app.exists():
-        if previous.exists():
-            shutil.rmtree(previous)
-        app.rename(previous)
-    staging.rename(app)
-    write_shims(prefix)
-    stamp = json.loads((app / "VERSION").read_text())
-    log(f"installed snapshot of {stamp['repo_commit'] or 'unknown commit'} into {app}")
-    return 0
+    """Serialize snapshot preparation and activate it with rollback on failure."""
+    prefix = prefix.expanduser().resolve()
+    prefix.mkdir(parents=True, exist_ok=True)
+    with (prefix / ".install.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            raise RuntimeError("another installation is in progress") from error
+        validate_shims(prefix)
+        if not force and running_instances():
+            log("refusing to swap while launcher instances run; stop them or pass --force")
+            return 1
+        staging = prefix / "app.new"
+        if staging.exists():
+            shutil.rmtree(staging)
+        try:
+            build_snapshot(root, staging)
+            if with_dependencies:
+                (staging / ".venv").symlink_to(
+                    runtime_environment(prefix), target_is_directory=True
+                )
+            stamp = json.loads((staging / "VERSION").read_text())
+            activate_snapshot(prefix)
+        finally:
+            if staging.exists():
+                shutil.rmtree(staging)
+        revision = stamp["repo_commit"] or "unknown commit"
+        log(f"installed snapshot of {revision} into {prefix / 'app'}")
+        return 0
 
 
 def main(argv: list[str] | None = None) -> int:

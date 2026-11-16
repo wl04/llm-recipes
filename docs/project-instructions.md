@@ -47,6 +47,8 @@ After editing profiles or adding results, follow [generation instructions](autho
 
 Serving runs from the installed snapshot `~/.llm-recipes/app` (`LLM_RECIPES_RUNTIME` prefix; its own venv and `llm-recipes` / `llm-recipes-baseline` shims symlinked into `~/.local/bin`), never from the development checkout; `python3 scripts/install.py install` refreshes it. Keep `~/.local/bin` on `PATH` so the shims resolve. The data root is `~/llm-recipes` (`LLM_RECIPES_HOME`): `recipes/<recipe-id>/` model data, `.cache/`, `baselines/`, `logs/<instance>/` with each instance's `facts.json`.
 
+The installer serializes updates with a prefix-level lock. Code is staged in `app.new`; activation keeps the previous snapshot in `app.prev` and restores the active snapshot and shims if activation fails. Virtual environments stay at `environments/<key>` under the runtime prefix, keyed by Python and pinned dependencies; `app/.venv` links to the matching environment. Matching environments are reused. Unrelated executables or symlinks in the command destinations are preserved and reported as conflicts.
+
 ## Workstation validation
 
 Run GPU/Docker checks only when explicitly invoked on the target workstation: image builds, `check_image.py`, server startup, and generation checks. Follow the recipe's `setup.md`. Report CPU validation separately from GPU behavior verified on the workstation.
