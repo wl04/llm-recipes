@@ -2,15 +2,23 @@
 
 Review date: 2026-11-16. Code reviewed: `b17aa9f`.
 
+## Completion status
+
+- [x] 1. Imported configuration snapshots
+- [x] 2. Reliable snapshot installation
+- [x] 3. Installer authentication and error reporting
+- [x] 4. Machine-readable status failures
+- [x] 5. TUI integration and lifecycle correctness
+- [ ] 6. Generated coding-session summaries in CI — next
+- [ ] 7. Transactional report creation
+- [ ] 8. Documentation and small contracts — partially complete; see checklist below
+
+Implementation and CPU validation for items 1–5 are complete. Target-machine validation
+is listed separately under [Delivery and validation](#delivery-and-validation).
+
 ## Implementation order
 
-Implement this plan first. Complete items 1–4, then item 5 together with the
-[TUI installation and command integration checklist](tui-dashboard.md#installation-and-command-integration),
-then items 6–7. Address item 8 alongside the related fixes.
-
-Item 5 delivers the existing dashboard through `llm-recipes tui`; it does not require the
-TUI plan's future baseline-launcher or recent-runs screens. Build those features after this
-plan's correctness fixes and validation are complete.
+Complete items 6–7 next. Address the remaining item 8 tasks alongside related fixes.
 
 ## Assessment
 
@@ -99,8 +107,7 @@ test covers a missing instance only.
 ## 5. Bring TUI operations into parity with CLI behavior — medium priority
 
 Delivery contract: one `python3 scripts/install.py install` installs both interfaces, including
-pinned Textual. `llm-recipes tui` opens the dashboard from the installed snapshot. The detailed
-integration checklist is in the [TUI plan](tui-dashboard.md#installation-and-command-integration).
+pinned Textual. `llm-recipes tui` opens the dashboard from the installed snapshot.
 
 **Evidence:** `scripts/tui.py::start_instance` calls `prepare_start` and executes Docker without
 `record_start_facts`. CLI and baseline starts do record facts, which session import relies on.
@@ -114,7 +121,7 @@ thread cancellation is cooperative, not a mechanism that interrupts a blocking p
       reap it so a quiet log stream cannot strand a worker. Bound termination waits.
 - [x] Add a headless UI lifecycle test with a quiet fake log process and a start test verifying
       facts are recorded.
-- [x] Complete the TUI plan's installation and command integration, including installed-command
+- [x] Complete dashboard installation and command integration, including installed-command
       smoke coverage and documentation updates. Keep dashboard imports lazy so ordinary CLI
       commands do not initialize Textual.
 
