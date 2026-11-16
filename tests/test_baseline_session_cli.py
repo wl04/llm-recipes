@@ -141,12 +141,16 @@ def test_session_cli_keeps_existing_profile_and_replaces_block(
     monkeypatch.setattr(importer, "_repository_url", lambda _root: None)
     log_dir = _log_dir(tmp_path, _facts(), ("tabbyapi.log", TABBY_LOG))
     experiment = _experiment(root)
-    (experiment / "profile.yaml").write_text("id: keep me\n")
+    (experiment / "profile.yaml").write_text(
+        "id: Qwen3.8-27B / EXL3 / RX 9070 XT / 16 GB VRAM\n# keep me\n"
+    )
 
     code = cli.main(["session", "--logs", str(log_dir), "--experiment", str(experiment)], root=root)
 
     assert code == 0
-    assert (experiment / "profile.yaml").read_text() == "id: keep me\n"
+    assert (
+        experiment / "profile.yaml"
+    ).read_text() == "id: Qwen3.8-27B / EXL3 / RX 9070 XT / 16 GB VRAM\n# keep me\n"
     assert (experiment / "summary.md").read_text().count(report.SESSION_START) == 1
 
 
@@ -311,3 +315,83 @@ def test_session_create_rejects_an_unknown_recipe(
     assert code != 0
     assert "no-such-recipe" in capsys.readouterr().err
     assert not (root / "recipes" / "no-such-recipe").exists()
+
+
+def test_session_preserves_existing_files_when_facts_missing(tmp_path: Path) -> None:
+    root = runfixtures._make_repo(tmp_path)
+    experiment = _experiment(root)
+    logs = _log_dir(tmp_path, None, ("tabbyapi.log", TABBY_LOG))
+    before = {p.name: p.read_bytes() for p in experiment.iterdir()}
+
+    with pytest.raises(ValueError, match=r"facts\.json"):
+        cli.session_run(logs, root, experiment=experiment)
+    assert {p.name: p.read_bytes() for p in experiment.iterdir()} == before
+
+
+def test_session_create_leaves_no_folder_when_logs_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = runfixtures._make_repo(tmp_path)
+    monkeypatch.setenv("LLM_RECIPES_HOME", str(tmp_path / "data"))
+    recipe = root / "recipes" / runfixtures.RECIPE
+    before = set(recipe.iterdir())
+
+    assert cli.main(["session", runfixtures.RECIPE, "--create", "coding"], root=root) != 0
+    assert set(recipe.iterdir()) == before
+
+
+@pytest.mark.parametrize("failure", ["profile", "renderer", "markers"])
+def test_session_validates_all_replacements_before_writing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    root = runfixtures._make_repo(tmp_path)
+    experiment = _experiment(root)
+    logs = _log_dir(tmp_path, _facts(), ("tabbyapi.log", TABBY_LOG))
+    if failure == "profile":
+        (experiment / "profile.yaml").write_text("id: invalid\n")
+    elif failure == "markers":
+        (experiment / "summary.md").write_text(report.SESSION_START)
+    else:
+
+        def fail(*args: object) -> str:
+            raise ValueError("renderer failed")
+
+        monkeypatch.setattr(report, "render_session", fail)
+    before = {p.name: p.read_bytes() for p in experiment.iterdir()}
+
+    with pytest.raises(ValueError, match=r"Profile id|renderer failed|session block"):
+        cli.session_run(logs, root, experiment=experiment)
+    assert {p.name: p.read_bytes() for p in experiment.iterdir()} == before
+    assert not list(experiment.parent.glob(".report-*"))
+
+
+def test_session_rejects_experiment_outside_repository(tmp_path: Path) -> None:
+    root = runfixtures._make_repo(tmp_path)
+    outside = tmp_path / runfixtures.RECIPE / "001-2026-11-15-coding"
+    outside.mkdir(parents=True)
+    (outside / "summary.md").write_text("keep")
+    logs = _log_dir(tmp_path, _facts(), ("tabbyapi.log", TABBY_LOG))
+
+    with pytest.raises(ValueError, match="not a repository experiment"):
+        cli.session_run(logs, root, experiment=outside)
+    assert (outside / "summary.md").read_text() == "keep"
+
+
+@pytest.mark.parametrize("failure", ["facts", "renderer"])
+def test_session_create_cleans_staging_when_preparation_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    root = runfixtures._make_repo(tmp_path)
+    recipe = root / "recipes" / runfixtures.RECIPE
+    logs = _log_dir(tmp_path, None if failure == "facts" else _facts(), ("tabbyapi.log", TABBY_LOG))
+    if failure == "renderer":
+
+        def fail(*args: object) -> str:
+            raise ValueError("renderer failed")
+
+        monkeypatch.setattr(report, "render_session", fail)
+    before = set(recipe.iterdir())
+
+    with pytest.raises(ValueError, match=r"facts\.json|renderer failed"):
+        cli.create_session_report(root, runfixtures.RECIPE, "coding", logs)
+    assert set(recipe.iterdir()) == before

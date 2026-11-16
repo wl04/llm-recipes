@@ -476,3 +476,78 @@ def test_build_profile_prefers_embedded_facts_over_run_local(tmp_path: Path) -> 
         tmp_path, _results(), _meta(launch_facts=FACTS), root / "recipes" / RECIPE
     )
     assert profile["hardware"]["cpu"] == SYSTEM["cpu"]["model"]
+
+
+@pytest.mark.parametrize("recipe", ["../outside", "/tmp/outside", "nested/recipe", ".."])
+def test_import_rejects_unsafe_recipe_identifier(tmp_path: Path, recipe: str) -> None:
+    root = _make_repo(tmp_path)
+    document = _results()
+    document["recipe"] = recipe
+    run_dir = _make_run(tmp_path, results=document)
+    with pytest.raises(ValueError, match="recipe identifier"):
+        importer.import_run(run_dir, root)
+
+
+def test_import_leaves_no_experiment_when_rendering_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _make_repo(tmp_path)
+    run_dir = _make_run(tmp_path)
+    before = {p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+
+    def fail(*args: object, **kwargs: object) -> None:
+        raise ValueError("renderer failed")
+
+    monkeypatch.setattr(gen, "update_summary", fail)
+    with pytest.raises(ValueError, match="renderer failed"):
+        importer.import_run(run_dir, root)
+    assert {p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()} == before
+    assert not list((root / "recipes" / RECIPE).glob("[0-9]*"))
+
+
+def test_import_preserves_existing_destination(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _make_repo(tmp_path)
+    run_dir = _make_run(tmp_path)
+    folder = root / "recipes" / RECIPE / "001-2026-11-15-baseline"
+    folder.mkdir()
+    (folder / "note.txt").write_text("keep")
+    monkeypatch.setattr(importer, "experiment_name", lambda *args: folder.name)
+
+    with pytest.raises(ValueError, match="already exists"):
+        importer.import_run(run_dir, root)
+    assert list(folder.iterdir()) == [folder / "note.txt"]
+    assert (folder / "note.txt").read_text() == "keep"
+
+
+def test_import_cleans_new_folder_when_index_write_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _make_repo(tmp_path)
+    run_dir = _make_run(tmp_path)
+    recipe = root / "recipes" / RECIPE
+    before = set(recipe.iterdir())
+    index = (recipe / "recipe.md").read_text()
+    write = gen.write_atomic
+
+    def fail_index(path: Path, content: str) -> None:
+        if path.name == "recipe.md":
+            raise OSError("index unwritable")
+        write(path, content)
+
+    monkeypatch.setattr(gen, "write_atomic", fail_index)
+    with pytest.raises(OSError, match="index unwritable"):
+        importer.import_run(run_dir, root)
+    assert set(recipe.iterdir()) == before
+    assert (recipe / "recipe.md").read_text() == index
+
+
+def test_import_rejects_recipe_symlink_outside_repository(tmp_path: Path) -> None:
+    root = _make_repo(tmp_path)
+    recipe = root / "recipes" / RECIPE
+    outside = tmp_path / "outside"
+    recipe.rename(outside)
+    recipe.symlink_to(outside, target_is_directory=True)
+    with pytest.raises(ValueError, match="escapes"):
+        importer.import_run(_make_run(tmp_path), root)

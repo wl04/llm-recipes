@@ -41,6 +41,8 @@ Add a completed run to the repository in four steps, from the development checko
 
 4. **Verify and commit**: `scripts/check.sh`, then commit the new experiment folder.
 
+New baseline and session experiments are staged and rendered before publication. Validation failures leave no experiment folder; existing destinations are preserved.
+
 See the [authoring guide](authoring.md) for folder naming.
 
 Imports prefer embedded launch facts, then the run’s `server-logs/facts.json`, then the instance log directory. Recorded recipe identity and configuration hashes are checked before profile creation. A mismatch names the files to review; use the matching recipe/runtime files to import. Runs without recorded hashes use current configuration as a fallback. Context, cache capacity, drafting, and vision rows reflect recorded launch overrides.
@@ -61,7 +63,7 @@ The session command aggregates one instance's coding activity from the engine's 
 
 3. **Write the narrative** in `summary.md` — Workload and Observations outside the generated markers — then `scripts/check.sh` and commit.
 
-To read the numbers without creating anything, run the same command without `--create`; it prints the document to stdout. To update an existing experiment instead of creating one, use `--experiment <folder>` — an existing `profile.yaml` is never overwritten, and a missing `summary.md` in that folder is an error (the command updates, never creates files).
+To read the numbers without creating anything, run the same command without `--create`; it prints the document to stdout. To update an existing experiment instead of creating one, use `--experiment <folder>` — an existing `profile.yaml` is never overwritten, and a missing `summary.md` in that folder is an error. All replacements are validated before updating existing files.
 
 ```bash
 python3 scripts/run_baseline.py session <instance>          # print to stdout

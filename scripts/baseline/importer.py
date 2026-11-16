@@ -13,7 +13,9 @@ import re
 import shlex
 import shutil
 import subprocess
-from collections.abc import Callable, Mapping
+import tempfile
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -704,6 +706,37 @@ def session_profile(
     }
 
 
+def recipe_directory(recipes: Path, name: str) -> Path:
+    """Resolve one recipe identifier without escaping the recipes directory."""
+    if not re.fullmatch(r"[a-z0-9][a-z0-9.]*(?:-[a-z0-9.]+)*", name):
+        raise ValueError(f"{name!r}: invalid recipe identifier")
+    directory = recipes / name
+    if directory.resolve().parent != recipes.resolve() or directory.is_symlink():
+        raise ValueError(f"{name!r}: recipe identifier escapes the recipes directory")
+    if not directory.is_dir():
+        raise ValueError(f"recipe {name} has no folder under {recipes}")
+    return directory
+
+
+@contextmanager
+def staged_experiment(destination: Path) -> Iterator[Path]:
+    """Stage on the destination filesystem while preserving generator path identities."""
+    with tempfile.TemporaryDirectory(prefix=".report-", dir=destination.parent) as temporary:
+        recipe = Path(temporary) / destination.parent.name
+        staged = recipe / destination.name
+        staged.mkdir(parents=True)
+        if (destination.parent / "setup.md").is_file():
+            (recipe / "setup.md").touch()
+        yield staged
+
+
+def publish_experiment(staged: Path, destination: Path) -> None:
+    """Publish a complete new experiment without replacing an existing destination."""
+    if destination.exists() or destination.is_symlink():
+        raise ValueError(f"{destination}: experiment already exists")
+    staged.rename(destination)
+
+
 def import_run(
     run_dir: Path,
     root: Path,
@@ -729,29 +762,32 @@ def import_run(
     if not isinstance(recipe, str) or not recipe:
         raise ValueError(f"{run_dir / RESULTS_NAME}: recipe name is missing")
     recipes_dir = recipes or root / "recipes"
-    recipe_dir = recipes_dir / recipe
-    if not recipe_dir.is_dir():
-        raise ValueError(f"recipe {recipe} has no folder under {recipes_dir}")
+    recipe_dir = recipe_directory(recipes_dir, recipe)
     date = _run_date(run_dir)
     name = experiment_name(recipes_dir, recipe, date, suffix)
     destination = recipe_dir / name
     profile = build_profile(run_dir, results, meta, recipe_dir)
     generator.profile_identity(profile)
 
-    destination.mkdir()
-    shutil.copyfile(run_dir / RESULTS_NAME, destination / RESULTS_NAME)
-    shutil.copyfile(root / "templates/recipe/baseline-summary.md", destination / "summary.md")
-    shutil.copyfile(
-        root / "templates/recipe/NNN-YYYY-MM-DD-description/configuration.md",
-        destination / "configuration.md",
-    )
-    (destination / "profile.yaml").write_text(
-        yaml.safe_dump(profile, sort_keys=False, allow_unicode=True)
-    )
-
-    changes = [generator.update(destination), generator.update_summary(destination)]
-    summaries = {path: new for path, _, new in changes if path.name == "summary.md"}
-    changes.append(generator.update_index(recipe_dir, summaries))
-    for path, _, new in changes:
-        generator.write_atomic(path, new)
+    with staged_experiment(destination) as staged:
+        shutil.copyfile(run_dir / RESULTS_NAME, staged / RESULTS_NAME)
+        shutil.copyfile(root / "templates/recipe/baseline-summary.md", staged / "summary.md")
+        shutil.copyfile(
+            root / "templates/recipe/NNN-YYYY-MM-DD-description/configuration.md",
+            staged / "configuration.md",
+        )
+        (staged / "profile.yaml").write_text(
+            yaml.safe_dump(profile, sort_keys=False, allow_unicode=True)
+        )
+        changes = [generator.update(staged), generator.update_summary(staged)]
+        summaries = {path: new for path, _, new in changes if path.name == "summary.md"}
+        index, _, rendered_index = generator.update_index(recipe_dir, summaries, additional=staged)
+        for path, _, new in changes:
+            generator.write_atomic(path, new)
+        publish_experiment(staged, destination)
+        try:
+            generator.write_atomic(index, rendered_index)
+        except OSError:
+            shutil.rmtree(destination)
+            raise
     return destination

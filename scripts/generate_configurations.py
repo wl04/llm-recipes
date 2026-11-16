@@ -642,7 +642,7 @@ def update_summary(result: Path) -> tuple[Path, str, str]:
 
 
 def update_index(
-    recipe: Path, summaries: Mapping[Path, str] | None = None
+    recipe: Path, summaries: Mapping[Path, str] | None = None, *, additional: Path | None = None
 ) -> tuple[Path, str, str]:
     """Rebuild the experiment table; ``summaries`` holds not-yet-written summary texts."""
     path = recipe / "recipe.md"
@@ -650,7 +650,10 @@ def update_index(
     if original.count(INDEX_START) != 1 or original.count(INDEX_END) != 1:
         raise ValueError(f"{path}: expected exactly one pair of experiment markers")
     lines = ["## Experiments", "", "| Experiment | Configuration | Results |", "|---|---|---|"]
-    for profile in sorted(recipe.glob("*/profile.yaml"), reverse=True):
+    profiles = list(recipe.glob("*/profile.yaml"))
+    if additional is not None:
+        profiles.append(additional / "profile.yaml")
+    for profile in sorted(profiles, key=lambda p: p.parent.name, reverse=True):
         result = profile.parent
         summary = result / "summary.md"
         text = (summaries or {}).get(summary)

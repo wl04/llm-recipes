@@ -149,32 +149,20 @@ def render_run(directory: Path, root: Path = ROOT) -> Path:
     return directory / "results.json"
 
 
-def create_session_folder(
+def session_destination(
     root: Path, recipe: str, description: str, log_dir: Path, now: datetime | None = None
 ) -> Path:
-    """Create a session experiment folder from the recipe templates; return its path.
-
-    The folder is the recipe's next free ``NNN-date-description``; the date comes
-    from the instance's ``facts.json`` when readable, else from ``now``. ``summary.md``
-    is the session scaffold with its title line already set, and ``configuration.md``
-    is the generic template; ``profile.yaml`` is deliberately left uncreated so that
-    the session command seeds it from the run.
-
-    Raises:
-        ValueError: the description is not a lowercase-hyphen slug, or the recipe
-            folder does not exist in the repository.
-    """
+    """Choose the next session destination without creating it."""
     if not importer.SUFFIX_RULE.fullmatch(description):
         raise ValueError(f"{description}: use a lowercase-hyphen slug, like coding-session")
-    recipe_dir = root / "recipes" / recipe
-    if not recipe_dir.is_dir():
-        raise ValueError(f"{recipe}: not a recipe folder under {root / 'recipes'}")
+    recipe_dir = importer.recipe_directory(root / "recipes", recipe)
     facts_path = log_dir / "facts.json"
     date = ""
     if facts_path.is_file():
         started = importer.read_json(facts_path).get("started_at")
         date = started[:10] if isinstance(started, str) else ""
     date = date or (now or datetime.now()).strftime("%Y-%m-%d")
+    datetime.strptime(date, "%Y-%m-%d")
     numbers = [
         int(match[1])
         for child in recipe_dir.iterdir()
@@ -183,38 +171,19 @@ def create_session_folder(
     number = max(numbers) + 1 if numbers else 1
     while (experiment := recipe_dir / f"{number:03d}-{date}-{description}").exists():
         number += 1
-    template = root / "templates/recipe"
-    experiment.mkdir()
-    summary_lines = (template / "session-summary.md").read_text().splitlines()
-    summary_lines[0] = generator.expected_title(experiment, {})
-    (experiment / "summary.md").write_text("\n".join(summary_lines) + "\n")
-    shutil.copyfile(
-        template / "NNN-YYYY-MM-DD-description/configuration.md",
-        experiment / "configuration.md",
-    )
     return experiment
 
 
-def session_run(
+def _session_run(
     log_dir: Path,
     root: Path,
     *,
     since: str | None = None,
     until: str | None = None,
     experiment: Path | None = None,
+    recipe_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Build and optionally persist a session report; return the results document.
-
-    With ``--experiment``: writes ``session-results.json``, replaces the generated
-    session block in ``summary.md``, and seeds ``profile.yaml`` from the instance
-    ``facts.json`` plus the log's sampler echo when the experiment has none; an LM
-    Studio log has no ``facts.json``, so its profile is seeded from the recipe name
-    and the log alone. An existing profile is never overwritten.
-
-    Raises:
-        ValueError: logs are unreadable, filters are unusable, or the experiment path
-            is not a repository experiment folder.
-    """
+    """Aggregate logs and populate staging files, preserving an existing profile."""
     facts_path = log_dir / "facts.json"
     facts = importer.read_json(facts_path) if facts_path.is_file() else {}
     engine_hint = facts.get("adapter") if isinstance(facts.get("adapter"), str) else None
@@ -235,7 +204,7 @@ def session_run(
     schema.validate_session(document)
     if experiment is None:
         return document
-    recipe_dir = experiment.parent
+    recipe_dir = recipe_dir or experiment.parent
     summary = experiment / "summary.md"
     if not summary.is_file():
         raise ValueError(f"{experiment} has no summary.md to update")
@@ -254,10 +223,79 @@ def session_run(
                 allow_unicode=True,
             )
         )
-        if (experiment / "configuration.md").is_file():
-            path, _, rendered = generator.update(experiment)
-            generator.write_atomic(path, rendered)
     return document
+
+
+def session_run(
+    log_dir: Path,
+    root: Path,
+    *,
+    since: str | None = None,
+    until: str | None = None,
+    experiment: Path | None = None,
+) -> dict[str, Any]:
+    """Validate all report replacements in staging before updating an existing experiment."""
+    if experiment is None:
+        return _session_run(log_dir, root, since=since, until=until)
+    experiment = experiment.absolute()
+    recipe = importer.recipe_directory(root / "recipes", experiment.parent.name)
+    if experiment.is_symlink() or experiment.resolve().parent != recipe.resolve():
+        raise ValueError(f"{experiment}: not a repository experiment folder")
+    if (experiment / "results.json").exists():
+        raise ValueError(f"{experiment}: cannot contain both results.json and session-results.json")
+    with importer.staged_experiment(experiment) as staged:
+        for name in ("summary.md", "profile.yaml", "configuration.md"):
+            source = experiment / name
+            if source.is_symlink():
+                raise ValueError(f"{source}: report files must not be symlinks")
+            if source.is_file():
+                shutil.copyfile(source, staged / name)
+        document = _session_run(
+            log_dir, root, since=since, until=until, experiment=staged, recipe_dir=recipe
+        )
+        if (staged / "configuration.md").is_file():
+            path, _, rendered = generator.update(staged)
+            generator.write_atomic(path, rendered)
+        else:
+            generator.render(staged)
+        for source in staged.iterdir():
+            destination = experiment / source.name
+            content = source.read_text()
+            if not destination.is_file() or destination.read_text() != content:
+                generator.write_atomic(destination, content)
+    return document
+
+
+def create_session_report(
+    root: Path,
+    recipe: str,
+    description: str,
+    log_dir: Path,
+    *,
+    since: str | None = None,
+    until: str | None = None,
+) -> tuple[Path, dict[str, Any]]:
+    """Publish a new session experiment only after its complete report renders."""
+    destination = session_destination(root, recipe, description, log_dir)
+    with importer.staged_experiment(destination) as staged:
+        template = root / "templates/recipe"
+        shutil.copyfile(template / "session-summary.md", staged / "summary.md")
+        shutil.copyfile(
+            template / "NNN-YYYY-MM-DD-description/configuration.md",
+            staged / "configuration.md",
+        )
+        document = _session_run(
+            log_dir,
+            root,
+            since=since,
+            until=until,
+            experiment=staged,
+            recipe_dir=destination.parent,
+        )
+        for path, _, rendered in (generator.update(staged), generator.update_summary(staged)):
+            generator.write_atomic(path, rendered)
+        importer.publish_experiment(staged, destination)
+    return destination, document
 
 
 def models_dir(models: Path | None) -> Path:
@@ -631,26 +669,21 @@ def main(
             else paths.logs_dir(paths.data_home(), args.instance)
         )
         experiment = args.experiment
-        if args.create:
-            if args.logs is not None or args.instance is None:
-                print(
-                    "session --create needs the instance name; it also selects the recipe",
-                    file=sys.stderr,
-                )
-                return ExitCode.USAGE
-            try:
-                experiment = create_session_folder(root, args.instance, args.create, log_dir)
-            except (OSError, ValueError) as error:
-                print(f"Cannot create session experiment: {error}", file=sys.stderr)
-                return ExitCode.USAGE
-        try:
-            document = session_run(
-                log_dir,
-                root,
-                since=args.since,
-                until=args.until,
-                experiment=experiment,
+        if args.create and (args.logs is not None or args.instance is None):
+            print(
+                "session --create needs the instance name; it also selects the recipe",
+                file=sys.stderr,
             )
+            return ExitCode.USAGE
+        try:
+            if args.create:
+                experiment, document = create_session_report(
+                    root, args.instance, args.create, log_dir, since=args.since, until=args.until
+                )
+            else:
+                document = session_run(
+                    log_dir, root, since=args.since, until=args.until, experiment=experiment
+                )
         except (OSError, ValueError, yaml.YAMLError) as error:
             print(f"Cannot report session in {log_dir}: {error}", file=sys.stderr)
             return ExitCode.USAGE

@@ -10,15 +10,15 @@ Review date: 2026-11-16. Code reviewed: `b17aa9f`.
 - [x] 4. Machine-readable status failures
 - [x] 5. TUI integration and lifecycle correctness
 - [x] 6. Generated coding-session summaries in CI
-- [ ] 7. Transactional report creation — next
+- [x] 7. Transactional report creation
 - [ ] 8. Documentation and small contracts — partially complete; see checklist below
 
-Implementation and CPU validation for items 1–6 are complete. Target-machine validation
+Implementation and CPU validation for items 1–7 are complete. Target-machine validation
 is listed separately under [Delivery and validation](#delivery-and-validation).
 
 ## Implementation order
 
-Complete item 7 next. Address the remaining item 8 tasks alongside related fixes.
+Address the remaining item 8 tasks next.
 
 ## Assessment
 
@@ -138,16 +138,11 @@ Reference: [Textual thread workers](https://textual.textualize.io/guide/workers/
 
 ## 7. Make report creation fail cleanly — medium priority
 
-**Evidence:** `import_run` creates a destination and copies files before all rendering succeeds.
-The session command writes data and summary before checking whether facts are available to seed
-a missing profile. A reported failure can leave a partial experiment. Baseline recipe names are
-checked as nonempty strings, then used directly in a filesystem path.
-
-- [ ] Validate required input, destination containment, and profile/renderability before writing.
+- [x] Validate required input, destination containment, and profile/renderability before writing.
       Reject absolute or parent-traversing recipe identifiers at the import boundary.
-- [ ] Stage new experiments in a temporary sibling and publish after rendering succeeds; clean
+- [x] Stage new experiments in a temporary sibling and publish after rendering succeeds; clean
       up staging on failure. For existing session updates, validate all replacements first.
-- [ ] Test missing facts, renderer failure, invalid recipe paths, and existing destinations.
+- [x] Test missing facts, renderer failure, invalid recipe paths, and existing destinations.
 
 ## 8. Tighten documentation ownership and small contracts — lower priority
 
