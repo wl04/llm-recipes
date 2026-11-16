@@ -10,12 +10,9 @@ that have to change.
       collaborator when an upcoming change makes the boundary worth having; the split moves state
       (`self._phases`, `self._cases`, `self._warnings`) between the pieces, so it needs a design
       step rather than a mechanical move.
-- [ ] `scripts/doctor.py:check_prepared` and `check_configuration` (16 branches each) — report one
-      group of problems per function: model preparation, then container and GPU configuration.
-      `check_model` already shows the shape.
-- [ ] `scripts/baseline/aggregate.py:build_results` (80 lines, 13 branches) and `_resource_metrics`
-      (84 lines) — build each `results.json` section in its own function; `schema.validate_results`
-      is already one check per section, and the two files should mirror each other.
+- [ ] `scripts/baseline/aggregate.py:build_results` (80 lines, 13 branches) — build each
+      `results.json` section in its own function; `schema.validate_results` is already one check per
+      section, and the two files should mirror each other.
 
 ## Decide on `shfmt`
 
