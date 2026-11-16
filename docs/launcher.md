@@ -1,6 +1,6 @@
 # Launcher guide
 
-Serving normally runs through the installed `llm-recipes` command (the `~/.llm-recipes` snapshot; see [machine roots](project-instructions.md#machine-roots-and-cutover)). From the development checkout, run the equivalent `python3 scripts/launch.py` commands below from the repository root using host Python 3 and `sudo docker`. Build the image and prepare models following the selected recipe's `setup.md`.
+Serving normally runs through the installed `llm-recipes` command (the `~/.llm-recipes` snapshot; see [machine roots](project-instructions.md#machine-roots)). From the development checkout, run the equivalent `python3 scripts/launch.py` commands below from the repository root using host Python 3 and `sudo docker`. Build the image and prepare models following the selected recipe's `setup.md`.
 
 ## Recipes and instances
 

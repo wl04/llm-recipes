@@ -40,7 +40,7 @@ Serving needs an AMD Radeon GPU with ROCm support, Docker, Python 3.12 or later,
 
 4. Measure a baseline from the checkout: `sudo -v && python3 scripts/run_baseline.py run <recipe-id>`. For a recipe served by a desktop app, start the app and its API server first — the same command opens a guided interview instead. Published measurements live in each recipe's dated experiment folders.
 
-More detail: [launcher guide](docs/launcher.md) · [machine roots](docs/project-instructions.md#machine-roots-and-cutover) · [baseline contract](docs/baseline.md)
+More detail: [launcher guide](docs/launcher.md) · [machine roots](docs/project-instructions.md#machine-roots) · [baseline contract](docs/baseline.md)
 
 ## Recipes
 
