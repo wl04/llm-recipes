@@ -48,11 +48,14 @@ def version_stamp(root: Path) -> dict[str, object] | None:
     """``VERSION`` stamp of an installed snapshot: revision without a git checkout.
 
     Returns the installer's ``{repo_commit, installed_at, version}`` document as
-    ``{commit, dirty, source}``, or ``None`` when the stamp is absent or unreadable.
+    ``{commit, dirty, source}``, or ``None`` when the stamp is missing, unreadable,
+    or not a JSON object.
     """
     try:
         stamp = json.loads((root / "VERSION").read_text())
     except (OSError, ValueError):
+        return None
+    if not isinstance(stamp, dict):
         return None
     commit = stamp.get("repo_commit")
     if not isinstance(commit, str) or not commit.strip():
