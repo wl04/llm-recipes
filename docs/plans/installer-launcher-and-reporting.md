@@ -11,14 +11,14 @@ Review date: 2026-11-16. Code reviewed: `b17aa9f`.
 - [x] 5. TUI integration and lifecycle correctness
 - [x] 6. Generated coding-session summaries in CI
 - [x] 7. Transactional report creation
-- [ ] 8. Documentation and small contracts — partially complete; see checklist below
+- [x] 8. Documentation and small contracts
 
-Implementation and CPU validation for items 1–7 are complete. Target-machine validation
+Implementation and CPU validation for all eight items are complete. Target-machine validation
 is listed separately under [Delivery and validation](#delivery-and-validation).
 
 ## Implementation order
 
-Address the remaining item 8 tasks next.
+All implementation tasks are complete; the outstanding work is target-machine validation.
 
 ## Assessment
 
@@ -152,13 +152,14 @@ Reference: [Textual thread workers](https://textual.textualize.io/guide/workers/
       and measurement behavior, matching the code.
 - [x] Correct `record_start_facts`' claim that a start cannot proceed without its record; the CLI
       intentionally warns and proceeds. Keep one documented policy shared by interfaces.
-- [ ] Validate `VERSION` as a JSON object in `paths.version_stamp`; valid JSON such as `[]` or
-      `null` currently reaches `.get` and raises despite the documented fallback behavior.
-- [ ] Add a small documentation-link check if maintained: ignore code examples and template
-      placeholders. The review's simple relative-link scan found only inline example links in
-      the authoring guide, not confirmed broken navigation links.
-- [ ] Defer splitting `Runner` or `aggregate.build_results` until a concrete feature or fix
-      benefits; extract pure settings/import helpers first. Avoid replacing the current
+- [x] Validate `VERSION` as a JSON object in `paths.version_stamp`; a stamp holding other valid
+      JSON, such as `[]` or `null`, yields `None` like an unreadable stamp does.
+- [x] `tests/test_documentation_links.py` checks relative file targets and heading anchors in
+      every shipped Markdown document, skipping fenced code, inline code, and template
+      placeholders. The review's relative-link scan found only inline example links in the
+      authoring guide, and those are excluded by that check.
+- Deferred: splitting `Runner` or `aggregate.build_results` waits for a concrete feature or fix
+      that benefits; extract pure settings/import helpers first. Avoid replacing the current
       architecture or adding another benchmark framework.
 
 ## Delivery and validation
