@@ -65,7 +65,7 @@ STRATA_DRAFT_FILES = ("experts.bin", "dense.bin", "dense.txt", "draft_vocab.bin"
 
 def _strata_required_files(draft: bool) -> list[str]:
     """Artifact paths a prepared strata recipe must contain."""
-    files = list(STRATA_PACK_FILES)
+    files: list[str] = list(STRATA_PACK_FILES)
     if draft:
         files.extend(f"mtp/rt/{name}" for name in STRATA_DRAFT_FILES)
     return files
