@@ -1,11 +1,11 @@
 # Plan: diagnostics triage and static analysis policy
 
-Review date: 2026-11-16. Code reviewed: `950d2fd`. Checkers: mypy `2.4.1` in
+Review date: 2026-11-16. Code reviewed: `06e45e5`. Checkers: mypy `2.4.1` in
 `scripts/check.sh`; basedpyright over LSP through pi-lens 4.5.1.
 
 ## Completion status
 
-- [ ] 1. Reproducible baseline separated by producing checker
+- [x] 1. Reproducible baseline separated by producing checker
 - [ ] 2. Classify the unclassified blocking findings
 - [ ] 3. Constrain outbound model and source fetches
 - [ ] 4. Make the module search path config-relative and prove which config file each checker reads
@@ -27,22 +27,23 @@ closes the plan.
 
 ## Assessment
 
-The editor counter and a full sweep measure different populations. A full workspace sweep with
-`severity=all` reports `52 blocking errors, 87 warnings, 4 hint/info` across 51 diagnosed files;
-the status line shows the session subset (`25E 58W`). That sweep also states
-`ast-grep did not answer for 64 file(s)` and leaves three files unconfirmed
-(`runtimes/exllamav3-tabbyapi/container/Dockerfile`, `runtimes/strata/container/Dockerfile`,
-`runtimes/strata/container/check_hip.cpp`), so neither total is a queue of defects.
+The editor counter and a workspace sweep measure different populations. A sweep at
+`severity=error` over 86 scanned files reports **18 blocking findings across 8 files**: 12
+unresolved-import errors from the primary checker and 6 from auxiliary lanes. Warnings and hints
+form separate populations, and the status line shows the session subset rather than the workspace
+total. Auxiliary lanes answer per file, so a file whose lane did not answer is not confirmed clean;
+counts are therefore read per rule id, and an unconfirmed lane is stated rather than folded into a
+total.
 
 What matters first is which tool produced each finding, because the fix belongs to that tool:
 
 | Producer | Findings in scope | Owner of the fix |
 | --- | --- | --- |
 | mypy (`check.sh`) | none outstanding | already the build gate |
-| `Pyright:reportMissingImports` — `torch` ×3, `huggingface_hub`, `exllamav3`, `serve.server` | ~6 | pyright config, by path scope |
-| `ast-grep:unchecked-throwing-call-python` — `install.py:119,176,214`, `doctor.py` ×3, `scripts/serve.py` ×8 | ~14 | no mypy or pyright equivalent exists |
-| `opengrep` audits — `dynamic-urllib-use-detected` ×3, `tarfile-extractall-traversal` ×2 | 5 | code, then per-line rule disposition |
-| `python-path-traversal`, `jscpd`, `typos`, `dead-code`, `madge` | remainder | per lane, see items 9–10 |
+| `Pyright:reportMissingImports` — `torch` ×3, `exllamav3` ×3, `exllamav3_ext`, `common.config_models` ×2, `common.sampling`, `huggingface_hub`, `serve.server` | 12 | pyright configuration, by path scope |
+| `ast-grep:unchecked-throwing-call-python` — `doctor.py:26`, `install.py:119,176,214` | 4 | no mypy or pyright equivalent exists |
+| `tarfile-extractall-traversal` (both `container/fetch_sources.py`) | 2 | already mitigated; per-line rule disposition |
+| Below the error threshold at `severity=all` — `dynamic-urllib-use-detected`, `python-path-traversal`, `jscpd`, `typos` | remainder | per lane, see items 3, 9, 10 |
 
 `bash scripts/check.sh` reports the Python sources clean, so every blocking finding in the table
 except the import class comes from a checker that CI never runs. That distinction decides the
@@ -66,32 +67,59 @@ Reference: [pyright configuration](https://github.com/microsoft/pyright/blob/mai
 
 ## 1. Reproducible baseline separated by producing checker
 
-**Evidence:** the two counts above differ by scope and by scanner coverage, so no later item can
-demonstrate an effect without a fixed procedure.
+**Evidence:** the procedure and the baseline it produced are what every later item measures against.
 
-- [ ] Record the exact procedure: `lens_diagnostics` with `source=lsp`, `mode=full`,
-      `severity=all` over the workspace, repeated until `Auxiliary coverage incomplete` names no
-      scanner lane.
-- [ ] Tabulate per producing checker and per rule id, not a raw total. Family counts stay
-      meaningful when coverage changes; totals do not.
-- [ ] Confirm no prior triage exists in the baseline: `~/.pi-lens/dispositions.log` holds no
-      entries, so every finding below is unjudged.
+- [x] Procedure: `lens_diagnostics` with `source=lsp`, `mode=full`, `scope=workspace`,
+      `severity=error`, `waitMs` of at least 6000, `concurrency=8`. Repeat until no
+      `Auxiliary coverage INCOMPLETE` line names a scanner lane: a lane that did not answer for a
+      file leaves that file unconfirmed rather than clean.
+- [x] Baseline (86 files scanned, 8 with errors): 18 blocking findings, being 12
+      `Pyright:reportMissingImports`, 2 `tarfile-extractall-traversal`, and 4
+      `unchecked-throwing-call-python`. Count per rule id rather than by total, since totals move
+      with scanner coverage while rule rows stay comparable.
+- [x] `~/.pi-lens/dispositions.log` holds no entries, so every finding in the table is unjudged.
+- [ ] Re-run until the throwing-call lane is confirmed for `runtimes/`: it answered for `scripts/`
+      and reported nothing under `runtimes/`, which is an unanswered lane until a run names it.
 
 ## 2. Classify the unclassified blocking findings
 
-**Evidence:** `runtimes/exllamav3-tabbyapi/scripts/serve.py` carries 8 blocking findings and
-`runtimes/strata/container/Dockerfile` carries 1; no source was read for either. `python-path-traversal`
-fires at five sites, one of which the sweep extract did not attribute to a file, while report
-import already rejects absolute and parent-traversing recipe identifiers.
+**Evidence:** every blocking site was read against its callers.
 
-- [ ] Read each `serve.py` blocking site and record whether it is a real defect, a call handled by
-      its caller, or a rule misfire. A serving entry point validates per request, which no lexical
-      rule can see.
-- [ ] Read the strata `Dockerfile` finding and `check_hip.cpp`, where no language server confirmed
-      the file; fix it or record why the missing server is acceptable.
-- [ ] For every `python-path-traversal` site, compare against the containment checks that exist and
-      either close a gap or record the existing guard as the reason.
-- [ ] Write the one-line verdict per site here before any disposition in items 7–10.
+- `scripts/doctor.py:26` loads `json.loads(path.read_text())` inside `read_json`. Every caller
+  catches `(OSError, ValueError, KeyError, TypeError, IndexError)` and returns a `FAIL` finding
+  (lines 34 to 45, 76 to 85, 150 to 173, 259 to 268). Verdict: caller-level handling by design, so a
+  wrapper here would duplicate existing handling.
+- `scripts/install.py:119,176,214` remove the stale environment, the previous snapshot, and the
+  staging directory with `shutil.rmtree`; all three propagate to `main`'s
+  `except (OSError, RuntimeError, subprocess.SubprocessError)` at line 256. At `:119` a swallowed
+  failure would leave a half-removed environment, and line 122 would then write the `.ready` marker,
+  turning one failure into a success that survives every later run. Verdict: correct as written, and
+  swallowing is the one unsafe edit among the three options.
+- `runtimes/exllamav3-tabbyapi/scripts/serve.py` holds two blocking findings, both unresolved
+  container imports (`common.config_models` at `:35`, `common.sampling` at `:42`) reached after
+  `sys.path.insert(0, "/opt/src/tabbyAPI")` inside `validate_sections`; neither is fixable outside the
+  image. The file carries no throwing-call finding. Of its six `json.loads` calls, `:54` is guarded by
+  `check_manifest_file` with path context, and `:100`, `:101`, `:102`, `:170` are container-startup
+  reads that fail fast naming the file, which is what an entry point should do. `:152` differs:
+  `json.loads((recipe / "config/launch.json").read_text())["runtime"]` raises before the intended
+  `parser.error`, so a wrong `--recipe` path or a missing mount produces a traceback instead of the
+  CLI's exit-2 message. Verdict: one real defect, at `:152`.
+- `runtimes/strata/container/Dockerfile` reports clean, and the Docker language server answers for
+  it, so the file is confirmed rather than unconfirmed.
+- One behaviour of the throwing-call rule is worth recording: it flags
+  `json.loads(path.read_text())` at `doctor.py:26` and stays silent on the parenthesised argument at
+  `serve.py:100`. Same call, same raisability, different output. Its counts therefore track pattern
+  shape, not defects.
+
+- [x] Read every blocking site and record the verdict above.
+- [x] Confirm the strata `Dockerfile` finding: no finding under the Docker server.
+- [ ] Reproduce `python-path-traversal` at `severity=all` and compare each site against the
+      containment checks that exist; close a gap or record the guard as the reason.
+- [ ] Fix `serve.py:152` so an unreadable or keyless `launch.json` reaches `parser.error`, test-first
+      in `tests/test_serve_validation.py`, which imports the module directly and exercises no `main`
+      path today.
+- [ ] Decide `check_hip.cpp` and the two Dockerfiles under item 10: `clangd` is absent, so those files
+      sit in the unconfirmed lane.
 
 ## 3. Constrain outbound model and source fetches
 
@@ -142,12 +170,15 @@ files the running server reads has not been demonstrated in this repository.
 
 ## 5. Scope container-only imports with execution environments
 
-**Evidence:** `torch`, `huggingface_hub`, `exllamav3`, and `serve.server` are installed in the
-container image and not in the workstation venv, so pyright cannot resolve them there; mypy accepts
-them through per-module overrides on the imported name. Pyright's equivalent is a path-scoped
-execution environment, which the documentation confirms accepts diagnostic overrides. Its own
-guidance for unresolved imports orders the fixes: install the package, select the correct
-environment, and use a `# pyright: ignore[reportMissingImports]` comment for optional or
+**Evidence:** the 12 unresolved-import errors name `torch`, `exllamav3`, `exllamav3_ext`,
+`huggingface_hub`, `serve.server`, `common.config_models`, `common.sampling`, and
+`exllamav3.conversion.convert_model`. Each is installed in the container image and not in the
+workstation venv, so pyright cannot resolve them there: `common.*` is reached through
+`sys.path.insert(0, "/opt/src/tabbyAPI")` inside `validate_sections`, and `serve.server` through the
+image's own search path. mypy accepts them through per-module overrides on the imported name.
+Pyright's equivalent is a path-scoped execution environment, which the documentation confirms accepts
+diagnostic overrides. Its own guidance for unresolved imports orders the fixes: install the package,
+select the correct
 platform-specific imports — the comment is the last resort.
 
 - [ ] Add an execution environment per container tree, with `extraPaths` mirroring the `sys.path`
@@ -203,7 +234,9 @@ matches the call shape regardless of arguments.
 **Evidence:** the bundled rule is `any(open, json.loads, json.load, os.stat, os.remove, os.rename,
 os.mkdir, os.makedirs, os.rmdir, os.listdir, os.access, shutil.copy, shutil.move, shutil.rmtree)`
 with one exclusion, `not: inside try_statement`; its fixtures treat a `try`-wrapped call as valid,
-which is the full extent of its context awareness. This repository handles those exceptions one
+which is the full extent of its context awareness. Its counts also track argument shape rather than
+raisability: the identical load is reported at `doctor.py:26` and missed at `serve.py:100`, where the
+argument is parenthesised (item 2). This repository handles those exceptions one
 level up, which is the documented contract: `scripts/install.py::main` catches `OSError` and exits
 1 with `install: <error>`, `scripts/doctor.py::check_configuration` catches
 `(OSError, ValueError, KeyError, TypeError, IndexError)` and returns a `FAIL` finding,
