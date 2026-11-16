@@ -91,10 +91,10 @@ filesystem failures, and `TimeoutExpired` can escape as tracebacks.
 mocked-daemon-failure probe returned `{"status":"not-found"}` with exit code 0. The existing
 test covers a missing instance only.
 
-- [ ] Distinguish an absent container from daemon/permission/inspection failures.
-- [ ] Keep `not-found` for a genuinely absent instance; return nonzero with an explicit error
+- [x] Distinguish an absent container from daemon/permission/inspection failures.
+- [x] Keep `not-found` for a genuinely absent instance; return nonzero with an explicit error
       for infrastructure failures. Document the JSON/exit-status contract.
-- [ ] Cover absent, running, permission-denied, and daemon-unavailable cases.
+- [x] Cover absent, running, permission-denied, and daemon-unavailable cases.
 
 ## 5. Bring TUI operations into parity with CLI behavior — medium priority
 

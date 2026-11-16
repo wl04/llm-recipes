@@ -19,6 +19,11 @@ Replace `<recipe>` with a directory identifier from `list`. Without `--name`, th
 
 `ps` discovers running instances through Docker labels. `status` reports container state; use the recipe's readiness endpoint or status page to confirm the model has loaded. `status`, `logs`, and `stop` select an instance independently of recipe discovery.
 
+`status <instance> --json` returns `{"instance": "...", "status": "<container-state>"}`.
+A successful query with no matching container returns `"status": "not-found"`; both cases
+exit with code 0. Docker or authentication failures return `"status": "error"` with an
+`error` message and exit code 1. Invalid command arguments exit with code 2.
+
 ## Diagnose a recipe
 
 ```bash

@@ -213,12 +213,87 @@ def test_ps_json_parses_instance_listing(
 def test_status_json_reports_missing_instances_as_not_found(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    inspection = subprocess.CompletedProcess(
-        launcher.lifecycle_command("status", "gone"), 1, "", "Error: No such object"
-    )
+    inspection = subprocess.CompletedProcess(launcher.status_query_command("gone"), 0, "", "")
     monkeypatch.setattr(launch, "capture", lambda _: inspection)
     monkeypatch.setattr(launch, "refresh_sudo_ticket", lambda: None)
 
     assert launch.main(["status", "gone", "--json"]) == 0
 
     assert json.loads(capsys.readouterr().out) == {"instance": "gone", "status": "not-found"}
+
+
+@pytest.mark.parametrize(
+    "detail",
+    [
+        "Cannot connect to the Docker daemon",
+        "permission denied while trying to connect to the Docker daemon socket",
+    ],
+)
+def test_status_json_reports_error_when_docker_query_fails(
+    detail: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(launch, "refresh_sudo_ticket", lambda: None)
+    monkeypatch.setattr(
+        launch, "capture", lambda command: subprocess.CompletedProcess(command, 1, "", detail)
+    )
+    assert launch.main(["status", "coding", "--json"]) == 1
+    assert json.loads(capsys.readouterr().out) == {
+        "instance": "coding",
+        "status": "error",
+        "error": detail,
+    }
+
+
+def test_status_json_reports_running_container(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(launch, "refresh_sudo_ticket", lambda: None)
+    monkeypatch.setattr(
+        launch, "capture", lambda command: subprocess.CompletedProcess(command, 0, "running\n", "")
+    )
+    assert launch.main(["status", "coding", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out) == {"instance": "coding", "status": "running"}
+
+
+def test_status_json_reports_authentication_failure(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def reject() -> None:
+        raise ValueError("sudo credentials were not accepted")
+
+    monkeypatch.setattr(launch, "refresh_sudo_ticket", reject)
+    assert launch.main(["status", "coding", "--json"]) == 1
+    assert json.loads(capsys.readouterr().out)["status"] == "error"
+
+
+def test_status_query_matches_literal_instance_name_with_dots() -> None:
+    import re
+
+    command = launcher.status_query_command("coding.v1")
+    expression = command[command.index("--filter") + 1].removeprefix("name=")
+    assert "--all" in command
+    assert re.search(expression, "/llm-recipes-coding.v1")
+    assert not re.search(expression, "/llm-recipes-codingXv1")
+    assert not re.search(expression, "/llm-recipes-coding.v1-other")
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        OSError(),
+        FileNotFoundError(2, "No such file or directory", "docker"),
+        subprocess.TimeoutExpired(["docker"], 15),
+    ],
+)
+def test_status_json_reports_error_when_query_cannot_complete(
+    failure: Exception, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def fail(command: list[str]) -> subprocess.CompletedProcess[str]:
+        raise failure
+
+    monkeypatch.setattr(launch, "refresh_sudo_ticket", lambda: None)
+    monkeypatch.setattr(launch, "capture", fail)
+    assert launch.main(["status", "coding", "--json"]) == 1
+    result = json.loads(capsys.readouterr().out)
+    assert result["status"] == "error"
+    assert result["error"]

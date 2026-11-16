@@ -26,6 +26,7 @@ from launcher import (
     run_command,
     running_command,
     start_command,
+    status_query_command,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -88,11 +89,34 @@ def _ps(args: argparse.Namespace) -> int:
 
 def _status(args: argparse.Namespace) -> int:
     """Report one instance as JSON without a Docker table."""
-    refresh_sudo_ticket()
-    inspection = capture(lifecycle_command("status", args.instance))
-    status = inspection.stdout.strip() or "not-found"
-    print(json.dumps({"instance": args.instance, "status": status}, indent=2))
-    return 0
+    command = status_query_command(args.instance)
+    error = None
+    status = "error"
+    try:
+        refresh_sudo_ticket()
+        inspection = capture(command)
+        if inspection.returncode:
+            error = inspection.stderr.strip() or "Docker status query failed"
+        else:
+            status = inspection.stdout.strip() or "not-found"
+            if status not in {
+                "not-found",
+                "created",
+                "running",
+                "paused",
+                "restarting",
+                "removing",
+                "exited",
+                "dead",
+            }:
+                error = f"Unexpected Docker container state: {status!r}"
+    except (OSError, ValueError, subprocess.SubprocessError) as failure:
+        error = str(failure) or type(failure).__name__
+    result = {"instance": args.instance, "status": "error" if error else status}
+    if error:
+        result["error"] = error
+    print(json.dumps(result, indent=2))
+    return 1 if error else 0
 
 
 def _lifecycle(args: argparse.Namespace) -> int:

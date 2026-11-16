@@ -279,6 +279,22 @@ def lifecycle_command(action: str, name: str, follow: bool = False) -> list[str]
     raise ValueError(f"Unsupported lifecycle operation: {action}")
 
 
+def status_query_command(name: str) -> list[str]:
+    """Query one exact container name; a successful empty listing means absence."""
+    container = "llm-recipes-" + instance_name(name)
+    return [
+        "sudo",
+        "docker",
+        "container",
+        "ls",
+        "--all",
+        "--filter",
+        f"name=^/{re.escape(container)}$",
+        "--format",
+        "{{.State}}",
+    ]
+
+
 def running_command() -> list[str]:
     """List running instances using Docker labels rather than local state files."""
     return [
