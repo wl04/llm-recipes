@@ -328,3 +328,76 @@ def test_install_preserves_unrelated_symlink(roots: dict[str, Path], tmp_path: P
     with pytest.raises(RuntimeError, match="unrelated"):
         install(checkout, roots["runtime"], force=True, with_dependencies=False)
     assert link.readlink() == Path("/another/install")
+
+
+def test_main_refreshes_credentials_before_inspecting_containers(
+    roots: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    checkout = tmp_path / "checkout"
+    make_checkout(checkout)
+    monkeypatch.setattr(install_module, "repo_root", lambda: checkout)
+    authenticated = False
+
+    def authenticate() -> None:
+        nonlocal authenticated
+        authenticated = True
+
+    def running() -> list[str]:
+        assert authenticated, "Docker inspection needs refreshed credentials"
+        return []
+
+    monkeypatch.setattr(install_module, "refresh_sudo_ticket", authenticate, raising=False)
+    monkeypatch.setattr(install_module, "running_instances", running)
+    assert install_module.main(["install", "--skip-deps"]) == 0
+
+
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (FileNotFoundError(2, "No such file or directory", "sudo"), "sudo"),
+        (subprocess.TimeoutExpired(["docker", "ps"], 120), "timed out"),
+        (PermissionError(13, "Permission denied", "/protected/prefix"), "/protected/prefix"),
+    ],
+)
+def test_main_reports_expected_failure_without_traceback(
+    error: Exception,
+    message: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def fail(*args: object, **kwargs: object) -> int:
+        raise error
+
+    monkeypatch.setattr(install_module, "install", fail)
+    assert install_module.main(["install", "--force"]) == 1
+    output = capsys.readouterr()
+    assert message in output.err
+    assert "Traceback" not in output.err
+    assert output.out == ""
+
+
+def test_main_stops_before_install_when_credentials_rejected(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def reject() -> None:
+        raise ValueError("sudo credentials were not accepted")
+
+    def unexpected(*args: object, **kwargs: object) -> int:
+        pytest.fail("installation must not begin after rejected credentials")
+
+    monkeypatch.setattr(install_module, "refresh_sudo_ticket", reject, raising=False)
+    monkeypatch.setattr(install_module, "install", unexpected)
+    assert install_module.main(["install"]) == 1
+    assert "sudo credentials" in capsys.readouterr().err
+
+
+def test_running_instances_reports_missing_docker(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        install_module,
+        "run_process",
+        lambda command: subprocess.CompletedProcess(
+            command, 1, "", "sudo: docker: command not found"
+        ),
+    )
+    with pytest.raises(RuntimeError, match="docker: command not found"):
+        install_module.running_instances()

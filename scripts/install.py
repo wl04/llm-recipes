@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import paths
+from launcher import refresh_sudo_ticket
 
 RUNTIME_INCLUDES = ("scripts", "recipes", "runtimes", "assets", "templates")
 RUNTIME_REQUIREMENTS = ("PyYAML==6.0.3",)
@@ -51,7 +52,9 @@ def running_instances() -> list[str]:
     )
     if probe.returncode:
         detail = probe.stderr.strip() or "docker inspection failed"
-        raise RuntimeError(f"cannot check running instances ({detail}); stop them and retry")
+        raise RuntimeError(
+            f"cannot check running instances ({detail}); check Docker availability and sudo access"
+        )
     return [name for name in probe.stdout.splitlines() if name.strip()]
 
 
@@ -236,9 +239,22 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     prefix = paths.runtime_prefix()
     try:
+        if not args.force:
+            try:
+                refresh_sudo_ticket()
+            except ValueError as error:
+                raise RuntimeError(str(error)) from error
         return install(repo_root(), prefix, force=args.force, with_dependencies=not args.skip_deps)
-    except RuntimeError as error:
-        log(f"error: {error}")
+    except subprocess.TimeoutExpired as error:
+        command = shlex.join(error.cmd) if isinstance(error.cmd, list) else str(error.cmd)
+        print(
+            f"install: command timed out after {error.timeout}s: {command}; "
+            "check the command's availability or network access and retry",
+            file=sys.stderr,
+        )
+        return 1
+    except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+        print(f"install: {error}", file=sys.stderr)
         return 1
 
 

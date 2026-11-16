@@ -77,12 +77,12 @@ without first obtaining credentials. A fresh sudo session therefore fails instea
 the documented first-install flow. `main` catches only `RuntimeError`; missing executables,
 filesystem failures, and `TimeoutExpired` can escape as tracebacks.
 
-- [ ] Choose one explicit authentication contract: obtain credentials once in the installer
+- [x] Choose one explicit authentication contract: obtain credentials once in the installer
       CLI, or document `sudo -v` immediately before installation. Keep the library noninteractive.
-- [ ] Convert expected subprocess/filesystem failures into concise actionable errors and
+- [x] Convert expected subprocess/filesystem failures into concise actionable errors and
       nonzero exit codes. Preserve unexpected programming errors for diagnosis.
-- [ ] Test expired sudo credentials, missing Docker/sudo, timeout, and unwritable prefix.
-- [ ] Align the README and launcher guide. The guide currently says Docker commands prompt at
+- [x] Test expired sudo credentials, missing Docker/sudo, timeout, and unwritable prefix.
+- [x] Align the README and launcher guide. The guide currently says Docker commands prompt at
       startup, while `doctor` deliberately uses noninteractive inspection.
 
 ## 4. Preserve failures in machine-readable status — medium priority
