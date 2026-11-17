@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from baseline import engine_log, schema, session
 
-REQUEST = {
+REQUEST: dict[str, Any] = {
     "prompt_tokens": 1000,
     "reused_tokens": 400,
     "read_tokens": 600,
@@ -20,7 +20,7 @@ REQUEST = {
 
 def entry(**overrides: object) -> engine_log.EngineRequest:
     values = {**REQUEST, **overrides}
-    return engine_log.EngineRequest(**values)  # type: ignore[arg-type]
+    return engine_log.EngineRequest(**values)
 
 
 def entries() -> list[engine_log.EngineRequest]:
