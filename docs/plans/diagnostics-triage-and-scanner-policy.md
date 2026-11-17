@@ -1,119 +1,124 @@
-# Plan: validate diagnostics policy on the Pi workstation
+# Plan: portable diagnostics policy
 
-## Goal and current state
+## Current state
 
-Make the tracked scanner policy understandable and reproducible while retaining useful
-coverage. The [diagnostics inventory](../diagnostics-inventory.md) holds the evidence,
-rule-level verdicts, limitations, and corrections. Use it as the handoff reference.
+The repository's diagnostic contract is reproducible from a fresh clone using only the checkers
+the repository defines:
 
-- [x] Validate landed production fixes and the repository checks at `ea37cf7`.
-- [x] Independently reproduce Pyright 1.1.414: 86 files, zero diagnostics with the configured exceptions.
-- [x] Separate verified code behavior from reported workstation observations.
-- [x] Probe Pyright exception boundaries in a disposable checkout, including an unsuppressed
-      control and unrelated type errors; see the inventory’s verified boundary table.
-- [x] Validate both source extractors with CPU-only archive tests: checksum rejection,
-      traversal, escaping links, and cleanup without publishing rejected sources.
-- [x] Verify doctor JSON-read failures reach diagnostic findings and malformed nested
-      configuration does not abort independent checks (`tests/test_doctor.py`).
-- [ ] Confirm the actual Pi scanner processes, configurations, and local dispositions.
-- [ ] Verify tracked policy independently of machine-local dispositions.
-- [ ] Resolve unnecessarily broad or ineffective suppressions.
-- [ ] Record a concise current-state result in the inventory and project instructions.
+- `bash scripts/check.sh` gates Ruff lint and formatting, mypy for the default target and the
+  separate `runtimes/strata` invocation, CPU-only pytest, the generated-document check, and
+  ShellCheck when installed.
+- `pyrightconfig.json` governs editor analysis: Python 3.12 target, `scripts` and test search
+  paths, and `reportMissingImports` disabled in the three image-only roots. Pyright resolves this
+  file from the project root in any editor, with or without an assistant harness.
+- `.typos.toml` and `runtimes/strata/container/.clangd` are tool-native configuration for the
+  `typos` CLI and clangd, portable to any machine that runs those tools.
 
-No checker migration is planned. mypy owns strict CI validation; Pyright supplies editor
-feedback. The task is to align configuration and evidence, not force identical answers from
-both tools. No GPU access is needed for the host investigation; a HIP build is separate validation.
+Established properties:
 
-## 1. Establish the machine and checkout
+- `pyright --project pyrightconfig.json --pythonpath .venv/bin/python` reports no diagnostics for
+  the tracked Python files. The interpreter selection belongs to the measurement: the same run
+  without a working interpreter reports missing imports for the development dependencies. mypy is
+  the strict gate and covers the same files under a different type model. Both report unused
+  suppressions and can disagree about which ones are needed.
+- The missing-import exceptions in the three image-only roots are directory-bounded and recursive
+  and hide first-party import failures as well as image dependencies; unrelated type errors stay
+  visible inside those roots.
+- The repository carries no scanner-harness configuration file, and no repository gate depends on
+  one. A tracked exception belongs to a checker that some documented workflow actually runs;
+  configuration for a checker nobody runs is decoration rather than policy.
+- ROCm and the HIP headers exist only inside the Strata image, so a host clangd has no HIP headers
+  in its search path. Missing-header diagnostics and the symbol errors that follow from them in the
+  probe are that gap in the editor's view, not a defect in the probe.
+- Inline rule directives in `scripts/doctor.py`, `check_hip.cpp`, and the three download scripts
+  remain tracked. `scripts/check.sh` neither runs the scanners that read them nor honors them.
 
-Before changing configuration:
+No checker migration is planned. The aim is aligned configuration and evidence, not identical
+answers from both Python type checkers.
 
-- Record the repository commit, branch, and dirty status. Preserve local edits.
-- Identify whether this is the original Pi workstation or a fresh-machine reproduction.
-  A different machine cannot validate an unavailable original disposition store.
-- Record Pi and pi-lens versions, actual scanner executable paths and versions, the Python
-  interpreter, and which repository configuration each process loads. Inspect process or
-  startup information; `PATH` alone is not evidence of the launched executable.
-- Locate the effective pi-lens configuration layers and disposition store. Record the
-  relevant rule IDs, scope, and whether entries are machine-local. Do not copy the entire
-  user configuration, private paths, or unrelated diagnostic content into Git.
+## Remaining work
 
-Relevant tracked files: `pyproject.toml`, `pyrightconfig.json`, `.pi-lens.json`, `.typos.toml`,
-and `runtimes/strata/container/.clangd`. The inventory identifies current exceptions.
+- [ ] Account for every tracked suppression against a checker that runs: either add the checker to
+      `scripts/check.sh` or state it as an editor or command-line convention. `.typos.toml`
+      currently has no gate in `check.sh`.
+- [ ] Decide each inline rule directive in tracked sources, and remove it where the guarantee comes
+      from a portable check or a test instead.
+- [ ] Review the unused-ignore disagreements between mypy and Pyright one by one.
+- [ ] Confirm the editor loads `pyrightconfig.json` with the project interpreter.
+- [ ] Record HIP toolchain validation for the probe as container output, then narrow `.clangd`.
+- [ ] Decide whether archive streaming needs a byte limit or redirect restriction, based on an
+      explicit threat rather than a scanner message.
+- [ ] Keep durable policy in `docs/project-instructions.md` and detail in the
+      [diagnostics inventory](../diagnostics-inventory.md), without duplicating rule-by-rule
+      explanations across the two.
 
-## 2. Measure coverage and enforcement
+## 1. The tracked contract
 
-Use a fresh Pi session and the installed scanner's supported interface. The reported starting
-query is `lens_diagnostics(source=lsp, mode=full, scope=workspace, severity=all,
-waitMs=10000)`. Confirm those parameters against the available tool version.
+`pyproject.toml` defines the mypy targets and the image-only exemptions; the config-relative
+`mypy_path` pointing at `scripts` keeps a single-file mypy invocation able to resolve first-party
+modules, while runtime directories stay off the search path because each is checked in its own
+invocation. Keep the Python 3.12 target. Prefer a checker-specific suppression where only one
+checker needs it, naming the rule and the reason.
 
-- Capture per-rule findings and per-lane coverage, including timeouts, unavailable servers,
-  and demotion notices. Save raw output locally for comparison; summarize the relevant results
-  in the inventory. Record the commit, tool versions, and query with the summary.
-- Repeat once after initialization to investigate reported cold/warm differences. Do not
-  repeat indefinitely until a favorable total appears; unanswered lanes remain unconfirmed.
-- Separate findings suppressed by tracked policy from findings cleared by stored dispositions.
-  If supported, use an isolated session/configuration to test without the store. Preserve the
-  user's active store. Otherwise state that fresh-clone enforcement remains unverified.
-- Check `.typos.toml` and `.clangd` after a fresh server start. A missing finding counts only
-  when the responsible lane confirms coverage.
-- Recover the exact opengrep path-traversal and deserialization findings, including file,
-  rule ID and message. Compare the cited operation with its actual input trust boundary.
+The missing-import exceptions in the three image-only roots hide both external and first-party
+import errors recursively within those roots while leaving unrelated type errors visible. Narrow
+them where the tooling supports a maintainable alternative. Installing the GPU stack to satisfy a
+host editor is not an option.
 
-Do not compare the reported 18-, 99-, and 115-finding totals as if they share the same coverage.
-Use matching rule IDs and scanned paths. Differences in Python environments also affect import results.
+Directives that only a specific harness reads are outside the contract. Where one appears to have
+no effect, compare its rule id with the id the scanner reports before crediting or widening it; a
+mismatched id suppresses nothing.
 
-## 3. Resolve policy gaps from evidence
+## 2. Workstation observations
 
-### Typing
+Analysis tooling that exists only on one workstation - an assistant harness, the scanner
+executables it bundles, and their disposition stores - produces observations and nothing else.
 
-Keep the verified config-relative mypy search path and Python 3.12 target. Confirm the editor
-uses `pyrightconfig.json` and the project interpreter. Review unused-ignore disagreements
-individually; “unused in Pyright” does not imply “unused in mypy”.
+- Record a measurement with the commit, the executable and version, the interpreter, the query or
+  command, and its coverage limits. Keep raw output outside the repository.
+- Report coverage beside counts: files scanned, lanes that answered, timeouts, unavailable
+  servers, demotion notices. An unanswered lane leaves its files unconfirmed. Match rule ids and
+  scanned paths when comparing two runs, since lane coverage and the Python environment both move
+  the totals; files and lanes are different units and cannot be summed.
+- Auxiliary lanes can replay cached results while reporting a live timeout, so take freshness from
+  cache timestamps rather than from a reported total. Configuration read only at startup needs a
+  server restart to take effect.
+- Machine-local dispositions do not travel with a clone, so a fresh checkout shows those findings
+  again. That is the expected state. Never edit tracked sources or configuration to make such a
+  finding disappear, and never delete or rewrite a local store to obtain a convenient baseline.
+- Probe suppression behavior in a disposable copy of the checkout, pairing a known finding with
+  its intended suppression, and confirm that the intended finding clears while an unrelated finding
+  still reports. Keep probe code, probe configuration, and editor-only settings out of the main
+  checkout.
 
-The disposable-checkout probe confirms that the three missing-import exceptions hide both
-external and first-party import errors recursively within their roots, while unrelated type
-errors remain visible. The inventory records the tested boundaries and control. Narrow them if the local tooling supports a practical, maintainable
-alternative; do not install the GPU stack solely to satisfy the host editor.
+## 3. Extraction and downloads
 
-### Rule dispositions
+Keep the SHA-256 checks and `filter="data"`; the shared regression coverage lives in
+`tests/test_source_extraction.py`. The initial authority in every downloader is a literal
+constant, lock values supply only path components, Python's default opener follows redirects, and
+the archive streams in `container/fetch_sources.py` have no byte cap. A size limit or redirect
+restriction needs a concrete threat and must keep legitimate Hugging Face redirects working;
+neither follows automatically from an audit warning.
 
-- Verify exact opengrep IDs and the documented suppression mechanism for the installed version.
-  The existing Strata `.pi-lens.json` entries are reported ineffective. Remove redundant entries
-  only after establishing which tracked mechanism works, or retain an explicit unresolved finding.
-- Verify enforcement of the doctor suppression; caller-level error handling is covered by
-  CPU tests. Keep runtime throwing-call exceptions limited to reviewed files and acknowledge
-  their future coverage gap.
-- Narrow clangd exceptions to the HIP probe where practical. Ensure a machine with a configured
-  HIP toolchain can receive ordinary missing-header/type/identifier diagnostics.
-- Confirm the fixture spelling exceptions without editing fixture data or excluding all tests.
-- Retain numeric-parse warnings as advisory. Reason from input contracts and callers rather
-  than treating `isdigit()`, record-prefix checks, or `max()` as universal parsing guarantees.
+## 4. HIP probe
 
-For an enforcement probe, use a disposable fixture or checkout with a known finding and its
-intended suppression. Verify both that the intended finding clears and that an unrelated
-finding still reports. Do not add intentionally broken probe code to the main checkout.
+Validate inside the image, where the toolchain exists:
 
-### Downloads and extraction
+- build the image, which compiles `check_hip.cpp` with `hipcc --offload-arch=gfx1201`;
+- run the resulting `check_hip` with `/dev/kfd` and `/dev/dri` passed through, and keep its JSON
+  line as evidence of a working build on the device;
+- run `clangd --check` on the probe inside the container, once with the tracked `.clangd` and once
+  with its `Suppress:` list removed in a disposable copy, and compare the diagnostics.
 
-Keep the confirmed SHA-256 checks and `filter="data"`. Shared regression coverage lives in
-`tests/test_source_extraction.py`. ShellCheck was unavailable for the CPU validation.
-Scanner suppression enforcement still needs the Pi checks above. The inventory's distinction
-between initial URLs, redirects, byte limits, and integrity is the review baseline. Decide separately
-whether source-archive byte limits or redirect restrictions have a concrete benefit; neither
-is an automatic requirement of an audit warning. Preserve legitimate Hugging Face redirects.
+Then narrow `Suppress:` toward the probe file where practical, so a machine with a configured HIP
+toolchain still receives ordinary missing-header, type, and identifier diagnostics elsewhere in the
+directory. Only the container run is a build result; a suppressed editor result is not.
 
-## 4. Finish and validate
+## 5. Definition of done
 
-- Update the inventory with confirmed, unresolved, and accepted-trade-off states. Remove
-  unsupported clean-state claims and obsolete counts; keep one current measurement summary.
-- Keep durable operating policy in `docs/project-instructions.md` and investigation detail in
-  the inventory. Avoid duplicating rule-by-rule explanations in both files.
-- For Python/configuration changes, run `bash scripts/check.sh`. Re-run the affected scanner
-  with its identified executable, version, interpreter, and configuration.
-- For documentation-only changes, check links, referenced symbols, and consistency with the
-  tracked configuration. Do not claim a scanner rerun when only prose changed.
-
-Completion means another developer can distinguish tracked behavior from workstation-local
-state, and each exception has a verified mechanism or an explicit unresolved status. Zero
-warnings is not the acceptance criterion.
+A fresh clone on a machine without the workstation's assistant tooling reproduces the same gate
+results. Every tracked exception maps to a checker that a documented workflow runs. Each remaining
+finding is either resolved by a portable check or recorded in the inventory as an advisory rule
+family with its limits, marked confirmed, unresolved, or an accepted trade-off, with one current
+measurement summary rather than several totals from different coverage. Zero warnings is not the
+acceptance criterion.

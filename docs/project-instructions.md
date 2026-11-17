@@ -48,15 +48,18 @@ editor feedback. Both report unused suppressions, but their type models differ: 
 checker disagreements rather than requiring identical diagnostics. Prefer a checker-specific
 suppression when only that checker needs it, and name the rule and reason.
 
-Other tracked advisory configuration lives in `.pi-lens.json`, `.typos.toml`, and the HIP
-probe directory's `.clangd`. Exceptions should use the narrowest practical scope and retain
-unrelated checks. A file-wide exception also suppresses future matching findings in that file.
-pi-lens stored dispositions are outside Git; their effect is not reproduced by cloning the repo.
+Other tracked advisory configuration lives in `.typos.toml` and the HIP probe directory's
+`.clangd`. Exceptions should use the narrowest practical scope and retain unrelated checks; a
+file-wide exception also suppresses future matching findings in that file. Each tracked
+exception belongs to a checker that a documented workflow runs - `scripts/check.sh`, the editor
+Pyright configuration, or the clangd and `typos` command lines. Findings from analysis tooling
+that exists only on one workstation stay advisory: they inform review, and neither their
+configuration nor their stored dispositions belong to this repository.
 
 Any check required to fail CI belongs in `scripts/check.sh`. An unanswered scanner lane is
-unconfirmed, not clean. The [diagnostics inventory](diagnostics-inventory.md) distinguishes
-verified code behavior, configured coverage gaps, and workstation observations; the
-[local validation plan](plans/diagnostics-triage-and-scanner-policy.md) lists remaining checks.
+unconfirmed, not clean. The [diagnostics inventory](diagnostics-inventory.md) records the enforced
+gates, the coverage the configuration trades away, and how advisory findings are read; the
+[validation plan](plans/diagnostics-triage-and-scanner-policy.md) holds the remaining work.
 
 After editing profiles or adding results, follow [generation instructions](authoring.md#generate-configuration-guides) and commit profiles with generated Markdown. Preserve generated-section markers. Update templates and the authoring guide when changing structure or conventions.
 
