@@ -225,7 +225,7 @@ def lmstudio_sampling_from_log(text: str) -> dict[str, object] | None:
     """Sampling parameters of the last echoed request body carrying any of them.
 
     LM Studio pretty-prints each request body as JSON; conversation content can make
-    a body unparseable, so parameters are read per line instead of by JSON structure.
+    the body invalid JSON, so parameters are read per line instead of by JSON structure.
     """
     last: dict[str, object] | None = None
     inside = False

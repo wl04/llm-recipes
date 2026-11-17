@@ -5,9 +5,9 @@
 The repository's diagnostic contract is reproducible from a fresh clone using only the checkers
 the repository defines:
 
-- `bash scripts/check.sh` gates Ruff lint and formatting, mypy for the default target and the
-  separate `runtimes/strata` invocation, CPU-only pytest, the generated-document check, and
-  ShellCheck when installed.
+- `bash scripts/check.sh` gates Ruff lint and formatting, the `typos` spell checker, mypy for the
+  default target and the separate `runtimes/strata` invocation, CPU-only pytest, the
+  generated-document check, and ShellCheck when installed.
 - `pyrightconfig.json` governs editor analysis: Python 3.12 target, `scripts` and test search
   paths, and `reportMissingImports` disabled in the three image-only roots. Pyright resolves this
   file from the project root in any editor, with or without an assistant harness.
@@ -38,9 +38,6 @@ answers from both Python type checkers.
 
 ## Remaining work
 
-- [ ] Account for every tracked suppression against a checker that runs: either add the checker to
-      `scripts/check.sh` or state it as an editor or command-line convention. `.typos.toml`
-      currently has no gate in `check.sh`.
 - [ ] Decide each inline rule directive in tracked sources, and remove it where the guarantee comes
       from a portable check or a test instead.
 - [ ] Review the unused-ignore disagreements between mypy and Pyright one by one.

@@ -37,7 +37,7 @@ Run the same CPU-only checks locally and in CI:
 bash scripts/check.sh
 ```
 
-The script runs Ruff lint and formatting checks, mypy, pytest, generated-document checks, and ShellCheck. Shell entry points are hand-formatted; ShellCheck is the only shell check. The workflow is `.github/workflows/check.yml`, which runs the script on the oldest interpreter the project claims to support and on the newest interpreter it is validated against; `requires-python` in `pyproject.toml` states the range. If ShellCheck is unavailable locally, the script skips shell checks with a warning; CI installs it.
+The script runs Ruff lint and formatting checks, the `typos` spell checker, mypy, pytest, generated-document checks, and ShellCheck. Shell entry points are hand-formatted; ShellCheck is the only shell check. The workflow is `.github/workflows/check.yml`, which runs the script on the oldest interpreter the project claims to support and on the newest interpreter it is validated against; `requires-python` in `pyproject.toml` states the range. If ShellCheck is unavailable locally, the script skips shell checks with a warning; CI installs it.
 
 `pyproject.toml` defines the exact mypy targets and external-import exceptions. Strict checking covers the generator, launcher modules, host reporting, the ExLlamaV3 runtime helpers, and tests. The two runtimes carry same-named helper modules that import siblings by name, so `check.sh` checks `runtimes/strata` in its own mypy invocation; run `bash scripts/check.sh` rather than a bare `mypy` to cover both. `mypy_path` points at `scripts` so a single-file `mypy` invocation resolves first-party modules; runtime directories stay off the search path because each is checked in its own invocation.
 
@@ -48,11 +48,13 @@ editor feedback. Both report unused suppressions, but their type models differ: 
 checker disagreements rather than requiring identical diagnostics. Prefer a checker-specific
 suppression when only that checker needs it, and name the rule and reason.
 
-Other tracked advisory configuration lives in `.typos.toml` and the HIP probe directory's
-`.clangd`. Exceptions should use the narrowest practical scope and retain unrelated checks; a
-file-wide exception also suppresses future matching findings in that file. Each tracked
-exception belongs to a checker that a documented workflow runs - `scripts/check.sh`, the editor
-Pyright configuration, or the clangd and `typos` command lines. Findings from analysis tooling
+`.typos.toml` holds the `typos` exclusions, and the HIP probe directory keeps clangd
+configuration in `.clangd`. Exceptions should use the narrowest practical scope and retain
+unrelated checks; a file-wide exception also suppresses future matching findings in that file. Each
+tracked
+exception belongs to a checker that a documented workflow runs: `scripts/check.sh` covers Ruff,
+typos, mypy, pytest, the generated-document check, and ShellCheck; the editor runs Pyright from
+`pyrightconfig.json`; clangd reads `.clangd` wherever it starts. Findings from analysis tooling
 that exists only on one workstation stay advisory: they inform review, and neither their
 configuration nor their stored dispositions belong to this repository.
 

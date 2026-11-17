@@ -6,17 +6,17 @@ actually provides, and how the remaining findings should be read. The
 
 ## Gates the repository enforces
 
-- `bash scripts/check.sh` runs Ruff lint and formatting checks, mypy for the default target and a
-  separate `runtimes/strata` invocation, CPU-only pytest, the generated-document check, and
-  ShellCheck when it is installed. CI runs the same script on the oldest supported interpreter and
-  the newest validated one.
+- `bash scripts/check.sh` runs Ruff lint and formatting checks, the `typos` spell checker, mypy
+  for the default target and a separate `runtimes/strata` invocation, CPU-only pytest, the
+  generated-document check, and ShellCheck when it is installed. CI runs the same script on the
+  oldest supported interpreter and the newest validated one.
 - [pyrightconfig.json](../pyrightconfig.json) governs editor analysis: Python 3.12, `scripts` on
   the search path, separate test search paths, and `reportMissingImports` disabled in three
   image-only roots. Any editor that loads the project resolves this file on its own; the
   assistant harness is not part of the contract.
-- [.typos.toml](../.typos.toml) configures the `typos` CLI, and
-  [.clangd](../runtimes/strata/container/.clangd) configures clangd. Each applies on any machine
-  that runs the corresponding tool.
+- [.typos.toml](../.typos.toml) narrows the `typos` run to prose by exempting fixture payload
+  tokens, and [.clangd](../runtimes/strata/container/.clangd) configures clangd. Both apply on any
+  machine that runs the corresponding tool.
 
 mypy is the strict CI checker; Pyright supplies editor feedback. Both report unused suppressions,
 and their answers can differ, because a suppression one checker needs can be redundant for the
@@ -89,7 +89,7 @@ prompts rather than verdicts:
 | `reportMissingImports` off in three roots | `pyrightconfig.json`, tracked | the editor's Pyright; `check.sh` does not run Pyright |
 | mypy exemptions for image-only modules | `pyproject.toml`, tracked | `check.sh` through mypy |
 | inline directives naming scanner rules | `scripts/doctor.py`, `runtimes/strata/container/check_hip.cpp`, `runtimes/exllamav3-tabbyapi/container/fetch_sources.py`, `runtimes/strata/container/fetch_sources.py`, and `runtimes/strata/scripts/prepare_models.py`; tracked | no repository gate; only a scanner that recognizes the directive |
-| word exclusions for fixture payloads | `.typos.toml`, tracked | the `typos` CLI; `check.sh` does not run it |
+| word exclusions for fixture payloads | `.typos.toml`, tracked | `check.sh` through typos |
 | suppressed clangd diagnostic codes | `runtimes/strata/container/.clangd`, tracked | clangd on any machine that runs it |
 | stored dispositions for individual findings | machine-local, outside Git | nothing portable |
 
@@ -177,9 +177,9 @@ build.
 - `...` is valid in the four `ServerControl` protocol methods. Protocols can also provide default
   implementations; stub bodies are not universally required.
 - `yield from rows(...)` is valid, because `rows` returns an annotated generator.
-- `.typos.toml` marks two fixture tokens as intentional. The exclusions apply globally to those
-  words, and no repository gate runs `typos`, so they take effect when the CLI is run. Preserve
-  the fixtures rather than skipping the tests that carry them.
+- `.typos.toml` marks two fixture tokens as intentional. `check.sh` runs `typos`, so a misspelling
+  in prose fails the gate, while those two tokens pass wherever they appear. Preserve the fixtures
+  rather than skipping the tests that carry them.
 - Configuration loading stays on safe loaders. `scripts/doctor.py` uses `yaml.safe_load`, and
   `runtimes/exllamav3-tabbyapi/scripts/serve.py` reads `config/tabby.yml` with `YAML(typ="safe")`
   and writes settings with a round-trip `YAML()` dump. Neither path enables arbitrary object

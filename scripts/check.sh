@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CPU-only checks: ruff (lint + format), mypy, pytest, and ShellCheck.
+# CPU-only checks: ruff (lint + format), typos, mypy, pytest, and ShellCheck.
 # Same command locally and in CI: bash scripts/check.sh
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
@@ -17,6 +17,7 @@ tool() {
 
 tool ruff check .
 tool ruff format --check .
+tool typos
 tool mypy
 # The Strata runtime is checked on its own: both runtimes carry same-named helpers.
 tool mypy runtimes/strata
