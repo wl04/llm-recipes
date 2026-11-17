@@ -36,7 +36,7 @@ Install the upstream packages into Pi's shared user configuration:
 ```bash
 pi install npm:pi-mcp-adapter
 pi install npm:pi-web-access
-pi install bpm:pi-lens
+pi install npm:pi-lens
 # pi-lens might need explicit approve for @ast-grep/cli
 npm --prefix ~/.pi/agent/npm install-scripts ls
 npm --prefix ~/.pi/agent/npm install-scripts approve @ast-grep/cli
