@@ -97,9 +97,16 @@ prompts rather than verdicts:
 | --- | --- | --- |
 | missing-import exemption on image-only import statements | inline `# pyright: ignore` in `runtimes/`, tracked | the editor's Pyright; `check.sh` does not run Pyright |
 | mypy exemptions for image-only modules | `pyproject.toml`, tracked | `check.sh` through mypy |
+| unused-import and module-level-import exemptions | inline `# noqa: F401` in the two `container/check_image.py` and inline `# noqa: E402` in `tests/`, tracked | `check.sh` through ruff, whose `RUF100` fails on a directive that became unnecessary |
+| argument and attribute exemptions at library boundaries | inline `# type: ignore[arg-type]` and `[attr-defined]` in `scripts/baseline/engine_log.py` and `tests/`, tracked | `check.sh` through mypy, whose `warn_unused_ignores` fails on a directive that became unnecessary |
 | word exclusions for fixture payloads | `.typos.toml`, tracked | `check.sh` through typos |
 | suppressed clangd diagnostic codes | `runtimes/strata/container/.clangd`, tracked | clangd on any machine that runs it |
 | stored dispositions for individual findings | machine-local, outside Git | nothing portable |
+
+Each directive a gate reads names a rule of that gate's checker, and that checker fails the run
+when the directive becomes unnecessary: ruff through `RUF100`, mypy through
+`warn_unused_ignores`, Pyright through `reportUnnecessaryTypeIgnoreComment`. That is what keeps a
+tracked exemption from outliving the code it exempts.
 
 No scanner-rule directive is tracked. A directive naming a rule id that differs from the id the
 scanner reports suppresses nothing, so a proposed one needs its id compared with the reported one
