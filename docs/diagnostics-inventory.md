@@ -139,6 +139,10 @@ reachable failure with normal kernel data. Do not classify all 48 findings as in
 
 Both source downloaders verify SHA-256 before extracting with `filter="data"`. That supports
 dismissing the reported tar traversal pattern, while retaining the rule for unguarded sites.
+CPU-only tests in `tests/test_source_extraction.py` exercise both downloaders with local
+archives: valid extraction, checksum rejection before opening the archive, traversal entries,
+and escaping symbolic and hard links. Rejection leaves the destination unpublished, preserves
+the outside file, and removes temporary extraction files.
 The filter is not a general resource-exhaustion defense.
 
 The initial source URLs use literal `https://codeload.github.com`; Strata model URLs use

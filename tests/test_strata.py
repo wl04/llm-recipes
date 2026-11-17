@@ -1,12 +1,9 @@
 """CPU-only checks for the Strata launch adapter and source verification."""
 
-import hashlib
 import importlib.util
-import io
 import json
 import os
 import sys
-import tarfile
 from pathlib import Path
 from types import ModuleType
 
@@ -34,7 +31,6 @@ def load_module(name: str, path: Path) -> ModuleType:
 sys.path.insert(0, str(RUNTIME / "scripts"))
 
 serve = load_module("strata_serve", RUNTIME / "scripts/serve.py")
-sources = load_module("strata_sources", RUNTIME / "container/fetch_sources.py")
 
 
 def test_configure_disables_optional_models_without_mutating_defaults() -> None:
@@ -104,30 +100,6 @@ def test_run_logged_preserves_output_and_failure(
     assert result == 7
     assert "API started" in capsys.readouterr().out
     assert log.read_text() == "API started\n"
-
-
-def test_extract_rejects_wrong_checksum_before_writing(tmp_path: Path) -> None:
-    archive = tmp_path / "source.tar.gz"
-    archive.write_bytes(b"untrusted")
-    destination = tmp_path / "source"
-
-    with pytest.raises(ValueError, match="checksum"):
-        sources.extract_verified(archive, destination, "0" * 64)
-
-    assert not destination.exists()
-
-
-def test_extract_unpacks_verified_single_root_archive(tmp_path: Path) -> None:
-    archive = tmp_path / "source.tar.gz"
-    with tarfile.open(archive, "w:gz") as output:
-        entry = tarfile.TarInfo("project/source.txt")
-        entry.size = 5
-        output.addfile(entry, io.BytesIO(b"hello"))
-    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
-
-    sources.extract_verified(archive, tmp_path / "source", digest)
-
-    assert (tmp_path / "source/source.txt").read_text() == "hello"
 
 
 def test_recipe_paths_keeps_model_data_separate() -> None:

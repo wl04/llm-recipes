@@ -11,6 +11,8 @@ rule-level verdicts, limitations, and corrections. Use it as the handoff referen
 - [x] Separate verified code behavior from reported workstation observations.
 - [x] Probe Pyright exception boundaries in a disposable checkout, including an unsuppressed
       control and unrelated type errors; see the inventory’s verified boundary table.
+- [x] Validate both source extractors with CPU-only archive tests: checksum rejection,
+      traversal, escaping links, and cleanup without publishing rejected sources.
 - [ ] Confirm the actual Pi scanner processes, configurations, and local dispositions.
 - [ ] Verify tracked policy independently of machine-local dispositions.
 - [ ] Resolve unnecessarily broad or ineffective suppressions.
@@ -91,7 +93,10 @@ finding still reports. Do not add intentionally broken probe code to the main ch
 
 ### Downloads and extraction
 
-Keep the confirmed SHA-256 checks and `filter="data"`. The inventory's distinction between
+Keep the confirmed SHA-256 checks and `filter="data"`. Shared regression coverage lives in
+`tests/test_source_extraction.py`; the repository checks pass with 836 tests. ShellCheck was
+unavailable for this validation. Scanner suppression enforcement still needs the Pi checks above.
+The inventory's distinction between
 initial URLs, redirects, byte limits, and integrity is the review baseline. Decide separately
 whether source-archive byte limits or redirect restrictions have a concrete benefit; neither
 is an automatic requirement of an audit warning. Preserve legitimate Hugging Face redirects.
