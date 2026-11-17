@@ -113,7 +113,12 @@ the comparison. This checks Pyright configuration, not Pi's choice of server or 
 
 ### Exceptions and numeric conversions
 
-`doctor.read_json` propagates failures to callers that turn them into diagnostic findings.
+`doctor.read_json` propagates failures to `check_configuration` and `check_prepared`, which
+turn them into diagnostic findings. `tests/test_doctor.py` covers missing files, denied reads,
+invalid JSON, non-object documents, and invalid UTF-8 through `diagnose`, confirming that
+both checks report failures without aborting collection. Invalid Pi `providers` and Strata
+`args`/`vision` container types also produce configuration findings. The inline read
+suppression matches this caller-level handling; its scanner enforcement remains unverified.
 Installer filesystem operations propagate to `install.main`, which catches
 `OSError`, `RuntimeError`, and `subprocess.SubprocessError`. There is no `install_and_run`
 wrapper in this checkout or the originally cited review commit.

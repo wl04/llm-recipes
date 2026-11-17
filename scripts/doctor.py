@@ -183,6 +183,8 @@ def _strata_endpoints(
     native = read_json(folder / "strata.json")
     port, model = native["port"], native["model_name"]
     args = native["args"]
+    if not isinstance(args, list):
+        raise ValueError("strata.json args must be a list")
     files = {str(root / "models" / item["path"]) for item in lock["files"]}
     for flag in ("--native", "--ple-gguf"):
         if args[args.index(flag) + 1] not in files:
@@ -192,8 +194,12 @@ def _strata_endpoints(
             raise ValueError(f"{flag} differs from the preparation directory")
     if native["tokenizer"] != str(root / "packs/iq3_xxs/tokenizer"):
         raise ValueError("Tokenizer differs from the preparation directory")
-    if recipe.vision == "cpu" and native.get("vision", {}).get("mmproj") not in files:
-        raise ValueError("Vision projector is not a locked model path")
+    if recipe.vision == "cpu":
+        vision = native.get("vision", {})
+        if not isinstance(vision, dict):
+            raise ValueError("strata.json vision must be an object")
+        if vision.get("mmproj") not in files:
+            raise ValueError("Vision projector is not a locked model path")
     return port, model
 
 
@@ -221,6 +227,8 @@ def _tabby_endpoints(
 def _pi_metadata(folder: Path, port: int, model: str, recipe: Recipe) -> Finding | None:
     """Require a Pi provider to serve that model on that port; warn when the context differs."""
     providers = read_json(folder / "pi.models.json")["providers"]
+    if not isinstance(providers, dict):
+        raise ValueError("pi.models.json providers must be an object")
     matching = [
         item
         for provider in providers.values()

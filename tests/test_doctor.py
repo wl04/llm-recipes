@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import doctor
+import pytest
 from launcher import discover_recipes
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -121,3 +122,70 @@ def test_cli_reports_failure_status_and_preserves_models(tmp_path: Path) -> None
 
     assert status == 1
     assert not models.exists()
+
+
+@pytest.mark.parametrize(
+    ("filename", "field", "value", "message"),
+    [
+        ("pi.models.json", "providers", None, "providers must be an object"),
+        ("strata.json", "args", None, "args must be a list"),
+        ("strata.json", "vision", None, "vision must be an object"),
+    ],
+)
+def test_diagnose_reports_invalid_nested_config_without_aborting(
+    tmp_path: Path, filename: str, field: str, value: object, message: str
+) -> None:
+    import shutil
+    from dataclasses import replace
+
+    shutil.copytree(STRATA.directory / "config", tmp_path / "config")
+    path = tmp_path / "config" / filename
+    data = json.loads(path.read_text())
+    data[field] = value
+    path.write_text(json.dumps(data))
+    recipe = replace(STRATA, directory=tmp_path)
+
+    with patch("doctor.subprocess.run", side_effect=FileNotFoundError("sudo missing")):
+        findings = doctor.diagnose(recipe, tmp_path / "models", devices=tmp_path / "dev")
+
+    configuration = next(item for item in findings if item.name == "Configuration")
+    assert configuration.status == "FAIL"
+    assert message in configuration.detail
+    assert findings[-1].name == "Prepared models"
+
+
+@pytest.mark.parametrize("payload", [b"{", b"[]", b"\xff", None])
+def test_diagnose_reports_unreadable_metadata_and_continues(
+    tmp_path: Path, payload: bytes | None
+) -> None:
+    from dataclasses import replace
+
+    folder = tmp_path / "config"
+    folder.mkdir()
+    if payload is not None:
+        (folder / "models.lock.json").write_bytes(payload)
+    recipe = replace(STRATA, directory=tmp_path)
+
+    with patch("doctor.subprocess.run", side_effect=FileNotFoundError("sudo missing")):
+        findings = doctor.diagnose(recipe, tmp_path / "models", devices=tmp_path / "dev")
+
+    assert [(item.name, item.status) for item in findings[-2:]] == [
+        ("Configuration", "FAIL"),
+        ("Prepared models", "FAIL"),
+    ]
+    assert "setup.md" in findings[-1].detail
+    assert not (tmp_path / "models").exists()
+
+
+def test_diagnose_reports_metadata_permission_error_and_continues(tmp_path: Path) -> None:
+    with (
+        patch("doctor.subprocess.run", side_effect=FileNotFoundError("sudo missing")),
+        patch.object(Path, "read_text", side_effect=PermissionError("metadata access denied")),
+    ):
+        findings = doctor.diagnose(STRATA, tmp_path / "models", devices=tmp_path / "dev")
+
+    assert [(item.name, item.status) for item in findings[-2:]] == [
+        ("Configuration", "FAIL"),
+        ("Prepared models", "FAIL"),
+    ]
+    assert all("metadata access denied" in item.detail for item in findings[-2:])

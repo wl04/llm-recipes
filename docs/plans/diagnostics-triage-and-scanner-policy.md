@@ -13,6 +13,8 @@ rule-level verdicts, limitations, and corrections. Use it as the handoff referen
       control and unrelated type errors; see the inventory’s verified boundary table.
 - [x] Validate both source extractors with CPU-only archive tests: checksum rejection,
       traversal, escaping links, and cleanup without publishing rejected sources.
+- [x] Verify doctor JSON-read failures reach diagnostic findings and malformed nested
+      configuration does not abort independent checks (`tests/test_doctor.py`).
 - [ ] Confirm the actual Pi scanner processes, configurations, and local dispositions.
 - [ ] Verify tracked policy independently of machine-local dispositions.
 - [ ] Resolve unnecessarily broad or ineffective suppressions.
@@ -79,8 +81,9 @@ alternative; do not install the GPU stack solely to satisfy the host editor.
 - Verify exact opengrep IDs and the documented suppression mechanism for the installed version.
   The existing Strata `.pi-lens.json` entries are reported ineffective. Remove redundant entries
   only after establishing which tracked mechanism works, or retain an explicit unresolved finding.
-- Confirm the doctor suppression against caller-level error handling. Keep the runtime
-  throwing-call exceptions limited to reviewed files and acknowledge their future coverage gap.
+- Verify enforcement of the doctor suppression; caller-level error handling is covered by
+  CPU tests. Keep runtime throwing-call exceptions limited to reviewed files and acknowledge
+  their future coverage gap.
 - Narrow clangd exceptions to the HIP probe where practical. Ensure a machine with a configured
   HIP toolchain can receive ordinary missing-header/type/identifier diagnostics.
 - Confirm the fixture spelling exceptions without editing fixture data or excluding all tests.
@@ -94,10 +97,9 @@ finding still reports. Do not add intentionally broken probe code to the main ch
 ### Downloads and extraction
 
 Keep the confirmed SHA-256 checks and `filter="data"`. Shared regression coverage lives in
-`tests/test_source_extraction.py`; the repository checks pass with 836 tests. ShellCheck was
-unavailable for this validation. Scanner suppression enforcement still needs the Pi checks above.
-The inventory's distinction between
-initial URLs, redirects, byte limits, and integrity is the review baseline. Decide separately
+`tests/test_source_extraction.py`. ShellCheck was unavailable for the CPU validation.
+Scanner suppression enforcement still needs the Pi checks above. The inventory's distinction
+between initial URLs, redirects, byte limits, and integrity is the review baseline. Decide separately
 whether source-archive byte limits or redirect restrictions have a concrete benefit; neither
 is an automatic requirement of an audit warning. Preserve legitimate Hugging Face redirects.
 
