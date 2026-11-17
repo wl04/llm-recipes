@@ -76,6 +76,41 @@ suppressions, but their answers can differ: a suppression needed by one can be r
 for the other. Review disagreements rather than enforcing diagnostic parity. Typed stubs
 can describe real interfaces; they are not inherently `Any` placeholders.
 
+### Verified Pyright exception boundaries
+
+Probe baseline: `e7fc9c4`, 2026-11-17, Pyright 1.1.414 and the repository venv.
+A disposable copy of tracked files was checked from outside its root with explicit
+`--project <copy>/pyrightconfig.json --pythonpath <repository>/.venv/bin/python`.
+The unmodified copy reported 86 files and zero diagnostics.
+
+Each location below received a probe with two unresolved imports (a nonexistent external
+package and a misspelled first-party helper) and `value: str = 123`. A correctly named
+helper was present beside each probe. Counts are per probe file.
+
+| Location | Missing-import diagnostics | Assignment-type diagnostics |
+| --- | ---: | ---: |
+| Repository root | 2 | 1 |
+| `scripts/` | 2 | 1 |
+| `tests/` | 2 | 1 |
+| `runtimes/strata/scripts/` | 2 | 1 |
+| `runtimes/exllamav3-tabbyapi/container/` | 0 | 1 |
+| `runtimes/exllamav3-tabbyapi/scripts/` | 0 | 1 |
+| `runtimes/strata/container/` | 0 | 1 |
+| Nested directory inside `runtimes/strata/container/` | 0 | 1 |
+| Sibling `runtimes/strata/container_extra_probe/` | 2 | 1 |
+
+Control: removing only the three environment-level `reportMissingImports` overrides
+restored both import diagnostics in all nine locations; every assignment error remained.
+This confirms recursive, directory-bounded suppression rather than skipped analysis.
+It also confirms that first-party typos are hidden alongside missing image packages.
+The probe files and modified configuration were confined to the disposable copy.
+
+To repeat, use the same two imports and assignment at each location, run the explicit
+project/interpreter command, then remove only the overrides in the copy and compare
+`reportMissingImports` and `reportAssignmentType` per file. Verify the clean baseline first:
+if the checker cannot query the selected interpreter, missing host dependencies invalidate
+the comparison. This checks Pyright configuration, not Pi's choice of server or interpreter.
+
 ### Exceptions and numeric conversions
 
 `doctor.read_json` propagates failures to callers that turn them into diagnostic findings.

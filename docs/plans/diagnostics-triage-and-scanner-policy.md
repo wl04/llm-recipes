@@ -9,6 +9,8 @@ rule-level verdicts, limitations, and corrections. Use it as the handoff referen
 - [x] Validate landed production fixes and the repository checks at `ea37cf7`.
 - [x] Independently reproduce Pyright 1.1.414: 86 files, zero diagnostics with the configured exceptions.
 - [x] Separate verified code behavior from reported workstation observations.
+- [x] Probe Pyright exception boundaries in a disposable checkout, including an unsuppressed
+      control and unrelated type errors; see the inventory’s verified boundary table.
 - [ ] Confirm the actual Pi scanner processes, configurations, and local dispositions.
 - [ ] Verify tracked policy independently of machine-local dispositions.
 - [ ] Resolve unnecessarily broad or ineffective suppressions.
@@ -65,8 +67,9 @@ Keep the verified config-relative mypy search path and Python 3.12 target. Confi
 uses `pyrightconfig.json` and the project interpreter. Review unused-ignore disagreements
 individually; “unused in Pyright” does not imply “unused in mypy”.
 
-The three missing-import exceptions also hide first-party import errors within their roots.
-Document that trade-off. Narrow them if the local tooling supports a practical, maintainable
+The disposable-checkout probe confirms that the three missing-import exceptions hide both
+external and first-party import errors recursively within their roots, while unrelated type
+errors remain visible. The inventory records the tested boundaries and control. Narrow them if the local tooling supports a practical, maintainable
 alternative; do not install the GPU stack solely to satisfy the host editor.
 
 ### Rule dispositions
