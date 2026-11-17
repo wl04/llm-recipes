@@ -1,7 +1,7 @@
 {
   "pythonVersion": "3.12",
   "extraPaths": ["scripts"],
-  "reportUnnecessaryTypeIgnoreComment": "warning",
+  "reportUnnecessaryTypeIgnoreComment": "error",
   "executionEnvironments": [
     {
       "root": "tests",
