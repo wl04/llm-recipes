@@ -17,7 +17,6 @@ def extract_verified(archive: Path, destination: Path, expected_sha256: str) -> 
         raise ValueError(f"Source archive checksum mismatch: {archive.name}")
     with tempfile.TemporaryDirectory() as temporary:
         folder = Path(temporary)
-        # pi-lens-ignore: trailofbits.python.tarfile-extractall-traversal
         with tarfile.open(archive) as source:
             source.extractall(folder, filter="data")
         roots = list(folder.iterdir())
@@ -33,7 +32,6 @@ def main() -> None:
         with tempfile.TemporaryDirectory() as temporary:
             archive = Path(temporary) / "source.tar.gz"
             # The lock supplies only the path segment; scheme and host stay literal.
-            # pi-lens-ignore: python.lang.security.audit.dynamic-urllib-use-detected
             with urllib.request.urlopen(url, timeout=120) as response, archive.open("wb") as output:
                 shutil.copyfileobj(response, output)
             extract_verified(archive, Path("/opt/src") / name, source["sha256"])

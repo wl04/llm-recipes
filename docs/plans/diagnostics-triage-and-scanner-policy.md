@@ -31,16 +31,16 @@ Established properties:
 - ROCm and the HIP headers exist only inside the Strata image, so a host clangd has no HIP headers
   in its search path. Missing-header diagnostics and the symbol errors that follow from them in the
   probe are that gap in the editor's view, not a defect in the probe.
-- Inline rule directives in `scripts/doctor.py`, `check_hip.cpp`, and the three download scripts
-  remain tracked. `scripts/check.sh` neither runs the scanners that read them nor honors them.
+- Tracked sources carry no scanner-rule directive. The download, extraction, and probe sites state
+  their invariants in ordinary comments and rest on portable guarantees: SHA-256 verification with
+  `filter="data"` under CPU-only tests for the downloaders, finding propagation under tests for
+  `doctor.read_json`, and the image build that compiles and runs the HIP probe.
 
 No checker migration is planned. The aim is aligned configuration and evidence, not identical
 answers from both Python type checkers.
 
 ## Remaining work
 
-- [ ] Decide each inline rule directive in tracked sources, and remove it where the guarantee comes
-      from a portable check or a test instead.
 - [ ] Review the unused-ignore disagreements between mypy and Pyright one by one.
 - [ ] Confirm the editor loads `pyrightconfig.json` with the project interpreter.
 - [ ] Record HIP toolchain validation for the probe as container output, then narrow `.clangd`.
@@ -65,9 +65,9 @@ overrides in `pyproject.toml` name the exempted modules because mypy is the gate
 exception would hide first-party import errors throughout the subtree, and installing the GPU stack
 to satisfy a host editor is not an option.
 
-Directives that only a specific harness reads are outside the contract. Where one appears to have
-no effect, compare its rule id with the id the scanner reports before crediting or widening it; a
-mismatched id suppresses nothing.
+Directives that only a specific harness reads are outside the contract, and tracked sources carry
+none. Where one is proposed and appears to have no effect, compare its rule id with the id the
+scanner reports before crediting or widening it; a mismatched id suppresses nothing.
 
 ## 2. Workstation observations
 

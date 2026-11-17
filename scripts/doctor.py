@@ -24,7 +24,6 @@ class Finding:
 def read_json(path: Path) -> dict[str, Any]:
     """Read metadata, rejecting non-object documents."""
     # Every caller reports read failures as findings; see the handlers in this module.
-    # ast-grep-ignore: unchecked-throwing-call-python
     data = json.loads(path.read_text())
     if not isinstance(data, dict):
         raise ValueError(f"Expected an object: {path}")

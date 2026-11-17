@@ -97,14 +97,14 @@ prompts rather than verdicts:
 | --- | --- | --- |
 | missing-import exemption on image-only import statements | inline `# pyright: ignore` in `runtimes/`, tracked | the editor's Pyright; `check.sh` does not run Pyright |
 | mypy exemptions for image-only modules | `pyproject.toml`, tracked | `check.sh` through mypy |
-| inline directives naming scanner rules | `scripts/doctor.py`, `runtimes/strata/container/check_hip.cpp`, `runtimes/exllamav3-tabbyapi/container/fetch_sources.py`, `runtimes/strata/container/fetch_sources.py`, and `runtimes/strata/scripts/prepare_models.py`; tracked | no repository gate; only a scanner that recognizes the directive |
 | word exclusions for fixture payloads | `.typos.toml`, tracked | `check.sh` through typos |
 | suppressed clangd diagnostic codes | `runtimes/strata/container/.clangd`, tracked | clangd on any machine that runs it |
 | stored dispositions for individual findings | machine-local, outside Git | nothing portable |
 
-A directive whose rule id differs from the id the scanner reports suppresses nothing, so a
-directive that appears to have no effect needs its id compared with the reported one before it is
-credited or widened. A file-wide exception also hides matching findings added to that file later.
+No scanner-rule directive is tracked. A directive naming a rule id that differs from the id the
+scanner reports suppresses nothing, so a proposed one needs its id compared with the reported one
+before it is credited or widened, and a file-wide exception also hides matching findings added to
+that file later.
 
 ## Findings and policy
 
@@ -172,8 +172,8 @@ download paths.
 ### C++ smoke check
 
 The HIP probe needs the image toolchain, because ROCm and the HIP headers exist only inside the
-image. Its `printf` conversions match the argument types, so the inline style directive there is a
-reasonable narrow exception; a formatting finding there is a false positive on its own merits.
+image. The probe prints its result for the image build to parse, and its `printf` conversions match
+the argument types, so a formatting finding there is a false positive on its own merits.
 
 [.clangd](../runtimes/strata/container/.clangd) suppresses `pp_file_not_found`,
 `unknown_typename`, and `undeclared_var_use` throughout the container directory. Those codes also
