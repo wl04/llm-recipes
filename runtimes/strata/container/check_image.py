@@ -4,7 +4,7 @@ import json
 import subprocess
 from pathlib import Path
 
-import serve.server  # noqa: F401
+import serve.server  # noqa: F401  # pyright: ignore[reportMissingImports]
 
 lock = json.loads(Path("/opt/build/versions.lock.json").read_text())
 print(json.dumps(lock, indent=2), flush=True)

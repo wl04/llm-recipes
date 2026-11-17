@@ -41,12 +41,12 @@ The script runs Ruff lint and formatting checks, the `typos` spell checker, mypy
 
 `pyproject.toml` defines the exact mypy targets and external-import exceptions. Strict checking covers the generator, launcher modules, host reporting, the ExLlamaV3 runtime helpers, and tests. The two runtimes carry same-named helper modules that import siblings by name, so `check.sh` checks `runtimes/strata` in its own mypy invocation; run `bash scripts/check.sh` rather than a bare `mypy` to cover both. `mypy_path` points at `scripts` so a single-file `mypy` invocation resolves first-party modules; runtime directories stay off the search path because each is checked in its own invocation.
 
-`pyrightconfig.json` governs editor-side Pyright analysis, targets Python 3.14, and scopes
-missing-import exceptions to three image-only roots. These exceptions also hide missing
-first-party imports within those roots. mypy remains the strict CI gate; Pyright provides
-editor feedback. Both report unused suppressions, but their type models differ: review
-checker disagreements rather than requiring identical diagnostics. Prefer a checker-specific
-suppression when only that checker needs it, and name the rule and reason.
+`pyrightconfig.json` governs editor-side Pyright analysis, targets Python 3.14, and sets the module
+search paths. A missing-import exemption sits on the individual import statement that names a module
+available only inside a container image, so first-party imports in the same file stay checked. mypy
+remains the strict CI gate; Pyright provides editor feedback. Both report unused suppressions, but
+their type models differ: review checker disagreements rather than requiring identical diagnostics.
+Prefer a checker-specific suppression when only that checker needs it, and name the rule and reason.
 
 `.typos.toml` holds the `typos` exclusions, and the HIP probe directory keeps clangd
 configuration in `.clangd`. Exceptions should use the narrowest practical scope and retain

@@ -9,7 +9,7 @@ import tarfile
 import tempfile
 import urllib.request
 
-import torch
+import torch  # pyright: ignore[reportMissingImports]
 
 
 def main() -> None:

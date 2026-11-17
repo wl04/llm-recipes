@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-import torch
+import torch  # pyright: ignore[reportMissingImports]
 
 
 def main() -> None:
@@ -41,12 +41,12 @@ def main() -> None:
         raise RuntimeError(f"Expected exactly one visible RX 9070 XT, found {matches}")
     torch.cuda.set_device(matches[0])
     # These imports are the importability smoke test; keep them despite being unused.
-    import exllamav3_ext  # noqa: F401
-    import exllamav3  # noqa: F401
-    from exllamav3.architecture.dflash2 import DFlash2Model  # noqa: F401
+    import exllamav3_ext  # noqa: F401  # pyright: ignore[reportMissingImports]
+    import exllamav3  # noqa: F401  # pyright: ignore[reportMissingImports]
+    from exllamav3.architecture.dflash2 import DFlash2Model  # noqa: F401  # pyright: ignore[reportMissingImports]
 
     sys.path.insert(0, "/opt/src/tabbyAPI")
-    from common.config_models import TabbyConfigModel  # noqa: F401
+    from common.config_models import TabbyConfigModel  # noqa: F401  # pyright: ignore[reportMissingImports]
 
     x = torch.ones((1024, 1024), device=f"cuda:{matches[0]}")
     y = x @ x

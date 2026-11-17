@@ -9,8 +9,9 @@ the repository defines:
   default target and the separate `runtimes/strata` invocation, CPU-only pytest, the
   generated-document check, and ShellCheck when installed.
 - `pyrightconfig.json` governs editor analysis: Python 3.14 target, `scripts` and test search
-  paths, and `reportMissingImports` disabled in the three image-only roots. Pyright resolves this
-  file from the project root in any editor, with or without an assistant harness.
+  paths. Import statements naming image-only packages carry a
+  `# pyright: ignore[reportMissingImports]` directive. Pyright resolves this file from the project
+  root in any editor, with or without an assistant harness.
 - `.typos.toml` and `runtimes/strata/container/.clangd` are tool-native configuration for the
   `typos` CLI and clangd, portable to any machine that runs those tools.
 
@@ -21,9 +22,9 @@ Established properties:
   without a working interpreter reports missing imports for the development dependencies. mypy is
   the strict gate and covers the same files under a different type model. Both report unused
   suppressions and can disagree about which ones are needed.
-- The missing-import exceptions in the three image-only roots are directory-bounded and recursive
-  and hide first-party import failures as well as image dependencies; unrelated type errors stay
-  visible inside those roots.
+- Missing-import exemptions sit on individual import statements, so a misspelled first-party import
+  beside one is reported, and `reportUnnecessaryTypeIgnoreComment` set to `error` makes an exemption
+  whose import has become resolvable a failure. Unrelated type errors stay visible everywhere.
 - The repository carries no scanner-harness configuration file, and no repository gate depends on
   one. A tracked exception belongs to a checker that some documented workflow actually runs;
   configuration for a checker nobody runs is decoration rather than policy.
@@ -57,10 +58,12 @@ modules, while runtime directories stay off the search path because each is chec
 invocation. Keep the Python 3.14 target. Prefer a checker-specific suppression where only one
 checker needs it, naming the rule and the reason.
 
-The missing-import exceptions in the three image-only roots hide both external and first-party
-import errors recursively within those roots while leaving unrelated type errors visible. Narrow
-them where the tooling supports a maintainable alternative. Installing the GPU stack to satisfy a
-host editor is not an option.
+A missing-import exemption belongs on the import statement that names a module available only
+inside a container image: Pyright scopes a rule by line, file, or directory prefix and has no
+per-module form, so the statement-level directive is the narrowest one it supports, while the mypy
+overrides in `pyproject.toml` name the exempted modules because mypy is the gate. A directory-level
+exception would hide first-party import errors throughout the subtree, and installing the GPU stack
+to satisfy a host editor is not an option.
 
 Directives that only a specific harness reads are outside the contract. Where one appears to have
 no effect, compare its rule id with the id the scanner reports before crediting or widening it; a

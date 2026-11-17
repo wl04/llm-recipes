@@ -44,7 +44,7 @@ def verify(root: Path, spec: dict[str, Any]) -> None:
 
 
 def download(root: Path, spec: dict[str, Any]) -> None:
-    from huggingface_hub import HfApi, hf_hub_download
+    from huggingface_hub import HfApi, hf_hub_download  # pyright: ignore[reportMissingImports]
 
     destination = root / spec["directory"]
     marker = destination / "source.json"
@@ -94,8 +94,8 @@ def quantize(root: Path, lock: dict[str, Any]) -> None:
             )
     verify(source, lock["draft"])
 
-    import torch
-    from exllamav3.conversion.convert_model import main, parser, prepare
+    import torch  # pyright: ignore[reportMissingImports]
+    from exllamav3.conversion.convert_model import main, parser, prepare  # pyright: ignore[reportMissingImports]
 
     names = [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
     device = gpu.select_device(names)

@@ -32,14 +32,14 @@ def validate_sections(config: dict[str, Any]) -> None:
     sys.path.insert(0, "/opt/src/tabbyAPI")
     from typing import get_args
 
-    from common.config_models import TabbyConfigModel
+    from common.config_models import TabbyConfigModel  # pyright: ignore[reportMissingImports]
 
     for section, fields in config.items():
         annotation = TabbyConfigModel.model_fields[section].annotation
         model = next(t for t in get_args(annotation) if t is not type(None))
         unknown = set(fields) - set(model.model_fields)
         if section == "sampling":
-            from common.sampling import BaseSamplerRequest, split_sampling_section
+            from common.sampling import BaseSamplerRequest, split_sampling_section  # pyright: ignore[reportMissingImports]
 
             unknown -= set(BaseSamplerRequest.model_fields)
             split_sampling_section(fields, "the sampling config")

@@ -11,9 +11,9 @@ actually provides, and how the remaining findings should be read. The
   generated-document check, and ShellCheck when it is installed. CI runs the same script on the
   interpreter floor that `requires-python` in `pyproject.toml` declares.
 - [pyrightconfig.json](../pyrightconfig.json) governs editor analysis: Python 3.14, `scripts` on
-  the search path, separate test search paths, and `reportMissingImports` disabled in three
-  image-only roots. Any editor that loads the project resolves this file on its own; the
-  assistant harness is not part of the contract.
+  the search path, and separate test search paths. Import statements that name image-only packages
+  carry a `# pyright: ignore[reportMissingImports]` directive. Any editor that loads the project
+  resolves this file on its own; the assistant harness is not part of the contract.
 - [.typos.toml](../.typos.toml) narrows the `typos` run to prose by exempting fixture payload
   tokens, and [.clangd](../runtimes/strata/container/.clangd) configures clangd. Both apply on any
   machine that runs the corresponding tool.
@@ -37,30 +37,39 @@ Behavior with regression coverage in `scripts/check.sh`:
 
 ## Coverage the configuration trades away
 
-`pyrightconfig.json` disables missing-import diagnostics in three roots:
+Torch, ExLlamaV3, TabbyAPI's `common` modules, and Strata's `serve.server` are unresolvable on a
+CPU host by design: they exist only inside the container image that runs the code, and the image
+sets the search path (`PYTHONPATH=/opt/src/strata`) that makes `serve.server` importable there.
+Installing the GPU stack to satisfy a host editor is unnecessary, so each import statement that
+names one of them carries the exemption:
 
-- `runtimes/exllamav3-tabbyapi/container`
-- `runtimes/exllamav3-tabbyapi/scripts`
-- `runtimes/strata/container`
+```python
+import torch  # pyright: ignore[reportMissingImports]
+from common.sampling import BaseSamplerRequest, split_sampling_section  # pyright: ignore[reportMissingImports]
+```
 
-Those roots hold image-only packages: Torch, ExLlamaV3, TabbyAPI's `common` modules, and Strata's
-server dependencies. Installing them into the host environment for editor analysis is unnecessary.
+A directive covers only the statement it sits on, so the rest of those files keeps full import
+checking, and files such as `runtimes/exllamav3-tabbyapi/scripts/gpu.py` and
+`runtimes/strata/container/fetch_sources.py`, which import nothing image-only, are checked
+completely. `pyrightconfig.json` holds no directory-level exception; its `executionEnvironments`
+entry merely adds `runtimes/exllamav3-tabbyapi/scripts` to the search path for `tests`, which
+imports those launcher modules.
 
-The exceptions are directory-bounded and recursive, and they hide first-party import failures
-alongside image dependencies, so they are a traded coverage gap rather than evidence that imports
-in those roots resolve. Every other location - the repository root, `scripts/`, `tests/`,
-`runtimes/strata/scripts/`, and sibling directories of the exempted roots - reports both an
-unresolvable external import and a misspelled first-party import, while reporting type errors such
-as an `int` assigned to a `str` annotation everywhere. Those overrides are the only thing
-suppressing the import diagnostics: without them the same files report both imports inside the
-three roots, and the type errors stay reported in every location.
+A name that exists in both environments cannot be fixed with a search path.
+`runtimes/strata/scripts` contains a `serve.py` for the host launcher, while the container probe
+imports `serve.server` from the upstream tree inside the image. Pointing Pyright at the host
+directory resolves `serve` to the wrong module and then reports a missing `server` submodule, which
+is a worse diagnostic than the one the directive suppresses. Pyright scopes a rule by line, file,
+or directory prefix and has no per-module form, unlike the mypy overrides in `pyproject.toml`, which
+list the exempted modules precisely because mypy is the gate.
 
-To reproduce, place a file containing one nonexistent external import, one misspelled first-party
-import, and a wrong-type assignment in each location, with a correctly named helper beside it, then
-run `pyright --project <checkout>/pyrightconfig.json --pythonpath <checkout>/.venv/bin/python
-<file>` and compare per file. Start from an unmodified checkout and confirm it reports nothing:
-where the checker cannot query the selected interpreter, missing host dependencies change the
-import result and the comparison proves nothing.
+To reproduce the coverage claim, put one nonexistent external import, one misspelled first-party
+import, and a wrong-type assignment in a file next to an import that carries a directive, then run
+`pyright --project <checkout>/pyrightconfig.json --pythonpath <checkout>/.venv/bin/python <file>`.
+The import error and the type error both surface; only the directed statement stays quiet. Start
+from an unmodified checkout and confirm it reports nothing: where the checker cannot query the
+selected interpreter, missing host dependencies change the import result and the comparison proves
+nothing.
 
 ## Reading scanner output
 
@@ -86,7 +95,7 @@ prompts rather than verdicts:
 
 | Suppression | Location | Gated by |
 | --- | --- | --- |
-| `reportMissingImports` off in three roots | `pyrightconfig.json`, tracked | the editor's Pyright; `check.sh` does not run Pyright |
+| missing-import exemption on image-only import statements | inline `# pyright: ignore` in `runtimes/`, tracked | the editor's Pyright; `check.sh` does not run Pyright |
 | mypy exemptions for image-only modules | `pyproject.toml`, tracked | `check.sh` through mypy |
 | inline directives naming scanner rules | `scripts/doctor.py`, `runtimes/strata/container/check_hip.cpp`, `runtimes/exllamav3-tabbyapi/container/fetch_sources.py`, `runtimes/strata/container/fetch_sources.py`, and `runtimes/strata/scripts/prepare_models.py`; tracked | no repository gate; only a scanner that recognizes the directive |
 | word exclusions for fixture payloads | `.typos.toml`, tracked | `check.sh` through typos |
@@ -104,8 +113,9 @@ credited or widened. A file-wide exception also hides matching findings added to
 Keep the config-relative mypy search path and the Python 3.14 target, and keep
 `mypy_path` pointed at `scripts` so a single-file mypy invocation resolves first-party modules.
 Review each unused-ignore disagreement individually, since an ignore unused by one checker can be
-required by the other. Narrow the missing-import exceptions where a maintainable alternative
-exists; do not install the GPU stack to satisfy a host editor.
+required by the other. Keep a missing-import exemption on the import statement that names the
+image-only module, so unrelated imports in the same file stay checked; do not install the GPU stack
+to satisfy a host editor.
 
 ### Exceptions and numeric conversions
 
