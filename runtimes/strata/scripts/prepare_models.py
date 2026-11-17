@@ -44,6 +44,8 @@ def download(url: str, path: Path, size: int, digest: str) -> None:
         headers = {"Range": f"bytes={offset}-"} if offset else {}
         request = urllib.request.Request(url, headers=headers)
         print(f"Downloading {path.name}: {offset:,}/{size:,} bytes", flush=True)
+        # The lock supplies only the path segment; scheme and host stay literal.
+        # pi-lens-ignore: python.lang.security.audit.dynamic-urllib-use-detected
         with urllib.request.urlopen(request, timeout=120) as response:
             if offset and (
                 response.status != 206

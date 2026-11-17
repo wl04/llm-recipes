@@ -1,0 +1,5 @@
+# HIP headers ship only in the ROCm build image (see Dockerfile), so the compiler driver
+# available here cannot resolve them.
+Diagnostics:
+  # The HIP header is absent here, so every HIP symbol is reported as unknown too.
+  Suppress: [pp_file_not_found, unknown_typename, undeclared_var_use]

@@ -29,6 +29,8 @@ def main() -> None:
         url = f"https://codeload.github.com/{owner_repo}/tar.gz/{source['revision']}"
         with tempfile.TemporaryDirectory() as tmp:
             archive = Path(tmp) / "source.tar.gz"
+            # The lock supplies only the path segment; scheme and host stay literal.
+            # pi-lens-ignore: python.lang.security.audit.dynamic-urllib-use-detected
             with urllib.request.urlopen(url, timeout=120) as response, archive.open("wb") as stream:
                 shutil.copyfileobj(response, stream)
             expected = source["archive_sha256"]
@@ -38,6 +40,7 @@ def main() -> None:
                     f"Archive checksum mismatch for {name}: expected {expected}, got {actual}"
                 )
             unpacked = Path(tmp) / "source"
+            # pi-lens-ignore: trailofbits.python.tarfile-extractall-traversal
             with tarfile.open(archive) as tar:
                 tar.extractall(unpacked, filter="data")
             entries = list(unpacked.iterdir())
