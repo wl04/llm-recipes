@@ -37,15 +37,18 @@ Install the upstream packages into Pi's shared user configuration:
 pi install npm:pi-mcp-adapter
 pi install npm:pi-web-access
 pi install npm:pi-lens
-# pi-lens might need explicit approve for @ast-grep/cli
-npm --prefix ~/.pi/agent/npm install-scripts ls
-npm --prefix ~/.pi/agent/npm install-scripts approve @ast-grep/cli
 pi install npm:pi-hashline-edit-pro
 pi install npm:context-mode
 pi install npm:@juicesharp/rpiv-ask-user-question
 pi install npm:@juicesharp/rpiv-todo
 ```
 
+Installation of some of the packages might need running:
+
+```bash
+npm --prefix ~/.pi/agent/npm install-scripts ls
+npm --prefix ~/.pi/agent/npm install-scripts approve --all
+```
 Restart Pi after installation. Use `pi list` to inspect installed packages. Follow each extension's linked documentation to configure MCP servers, search providers, and other preferences.
 
 When extension versions or settings materially affect an experiment, record them with its results. Context management and tool-output filtering can change prompt sizes, cache reuse, and compaction behavior.
