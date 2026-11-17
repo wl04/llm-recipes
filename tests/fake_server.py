@@ -54,7 +54,7 @@ class FakeServer:
     def base_url(self) -> str:
         return f"http://127.0.0.1:{self._server.server_address[1]}"
 
-    def start(self) -> "FakeServer":
+    def start(self) -> FakeServer:
         self._thread.start()
         return self
 
@@ -63,7 +63,7 @@ class FakeServer:
         self._server.shutdown()
         self._server.server_close()
 
-    def __enter__(self) -> "FakeServer":
+    def __enter__(self) -> FakeServer:
         return self.start()
 
     def __exit__(self, *exc: object) -> None:

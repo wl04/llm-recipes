@@ -156,7 +156,7 @@ def recipe_identity(recipe_dir: Path) -> str:
     for profile in sorted(recipe_dir.glob("*/profile.yaml")):
         try:
             existing = yaml.safe_load(profile.read_text(encoding="utf-8"))
-        except (OSError, yaml.YAMLError):
+        except OSError, yaml.YAMLError:
             continue
         identifier = existing.get("id") if isinstance(existing, dict) else None
         if isinstance(identifier, str) and identifier.strip():

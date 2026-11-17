@@ -190,7 +190,7 @@ def test_relative_spread_is_range_over_median(values: list[float], expected: flo
 
 
 class FakeResponse(io.BytesIO):
-    def __enter__(self) -> "FakeResponse":
+    def __enter__(self) -> FakeResponse:
         return self
 
     def __exit__(self, *exc: object) -> None:

@@ -182,7 +182,7 @@ class Runner:
                     self._sampler.start()
                     monitoring = True
                 self._phases_and_workloads()
-        except (KeyboardInterrupt, Interrupted):
+        except KeyboardInterrupt, Interrupted:
             status, code = "interrupted", ExitCode.INTERRUPTED
         except (PreflightError, LifecycleError) as failure:
             status, code, error = "failed", ExitCode.PREFLIGHT_FAILED, str(failure)
@@ -209,7 +209,7 @@ class Runner:
         try:
             yield entry
             entry["status"] = "ok"
-        except (KeyboardInterrupt, Interrupted):
+        except KeyboardInterrupt, Interrupted:
             raise
         except Exception as failure:
             entry["status"] = "failed"

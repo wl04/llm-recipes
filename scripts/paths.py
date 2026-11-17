@@ -53,7 +53,7 @@ def version_stamp(root: Path) -> dict[str, object] | None:
     """
     try:
         stamp = json.loads((root / "VERSION").read_text())
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return None
     if not isinstance(stamp, dict):
         return None

@@ -22,7 +22,7 @@
 
 ## Development dependencies and checks
 
-Use Python 3.12 or later, as specified in `pyproject.toml`. Install the pinned development dependencies into the repository virtual environment:
+Use Python 3.14 or later, as specified in `pyproject.toml`. Install the pinned development dependencies into the repository virtual environment:
 
 ```bash
 uv venv .venv
@@ -37,11 +37,11 @@ Run the same CPU-only checks locally and in CI:
 bash scripts/check.sh
 ```
 
-The script runs Ruff lint and formatting checks, the `typos` spell checker, mypy, pytest, generated-document checks, and ShellCheck. Shell entry points are hand-formatted; ShellCheck is the only shell check. The workflow is `.github/workflows/check.yml`, which runs the script on the oldest interpreter the project claims to support and on the newest interpreter it is validated against; `requires-python` in `pyproject.toml` states the range. If ShellCheck is unavailable locally, the script skips shell checks with a warning; CI installs it.
+The script runs Ruff lint and formatting checks, the `typos` spell checker, mypy, pytest, generated-document checks, and ShellCheck. Shell entry points are hand-formatted; ShellCheck is the only shell check. The workflow is `.github/workflows/check.yml`, which runs the script on the interpreter floor that `requires-python` in `pyproject.toml` declares. If ShellCheck is unavailable locally, the script skips shell checks with a warning; CI installs it.
 
 `pyproject.toml` defines the exact mypy targets and external-import exceptions. Strict checking covers the generator, launcher modules, host reporting, the ExLlamaV3 runtime helpers, and tests. The two runtimes carry same-named helper modules that import siblings by name, so `check.sh` checks `runtimes/strata` in its own mypy invocation; run `bash scripts/check.sh` rather than a bare `mypy` to cover both. `mypy_path` points at `scripts` so a single-file `mypy` invocation resolves first-party modules; runtime directories stay off the search path because each is checked in its own invocation.
 
-`pyrightconfig.json` governs editor-side Pyright analysis, targets Python 3.12, and scopes
+`pyrightconfig.json` governs editor-side Pyright analysis, targets Python 3.14, and scopes
 missing-import exceptions to three image-only roots. These exceptions also hide missing
 first-party imports within those roots. mypy remains the strict CI gate; Pyright provides
 editor feedback. Both report unused suppressions, but their type models differ: review

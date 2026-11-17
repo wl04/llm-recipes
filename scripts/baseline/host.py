@@ -22,7 +22,7 @@ class HostError(Exception):
     """A host fact could not be established; the message says what to fix."""
 
 
-def run_command(command: list[str], timeout: float = 15.0) -> "subprocess.CompletedProcess[str]":
+def run_command(command: list[str], timeout: float = 15.0) -> subprocess.CompletedProcess[str]:
     """Run a bounded, noninteractive command; a missing executable is reported as a failure."""
     try:
         return subprocess.run(command, capture_output=True, text=True, timeout=timeout, check=False)

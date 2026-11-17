@@ -10,12 +10,12 @@
 Configurations and results from running language models on my own hardware. Each experiment records the model, inference settings, hardware and software, performance, memory usage, and practical observations.
 
 [![Static and unit checks](https://github.com/wl04/llm-recipes/actions/workflows/check.yml/badge.svg)](https://github.com/wl04/llm-recipes/actions/workflows/check.yml)
-[![Python: 3.12+](https://img.shields.io/badge/python-3.12+-blue)](pyproject.toml)
+[![Python: 3.14+](https://img.shields.io/badge/python-3.14+-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ## Quick start
 
-Serving needs an AMD Radeon GPU with ROCm support, Docker, Python 3.12 or later, and `sudo` for container access. It runs entirely on your machine.
+Serving needs an AMD Radeon GPU with ROCm support, Docker, Python 3.14 or later, and `sudo` for container access. It runs entirely on your machine.
 
 1. Install the `llm-recipes` command from a checkout. It copies a runtime snapshot to `~/.llm-recipes` and symlinks shims into `~/.local/bin`; keep that directory on `PATH`. The installer requests sudo credentials to check for running containers; file installation runs as your regular user. Re-run the same command after updating the repository.
 

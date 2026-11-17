@@ -251,7 +251,7 @@ def empty(value: object) -> bool:
 
 def rows(
     data: Mapping[str, object], labels: Mapping[str, object], prefix: str = ""
-) -> Generator[str, None, None]:
+) -> Generator[str]:
     for key, value in data.items():
         if empty(value):
             continue
@@ -364,7 +364,7 @@ def _as_number(value: object) -> float | None:
         return None
     try:
         return float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 

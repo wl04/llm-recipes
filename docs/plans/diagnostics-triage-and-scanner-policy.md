@@ -8,7 +8,7 @@ the repository defines:
 - `bash scripts/check.sh` gates Ruff lint and formatting, the `typos` spell checker, mypy for the
   default target and the separate `runtimes/strata` invocation, CPU-only pytest, the
   generated-document check, and ShellCheck when installed.
-- `pyrightconfig.json` governs editor analysis: Python 3.12 target, `scripts` and test search
+- `pyrightconfig.json` governs editor analysis: Python 3.14 target, `scripts` and test search
   paths, and `reportMissingImports` disabled in the three image-only roots. Pyright resolves this
   file from the project root in any editor, with or without an assistant harness.
 - `.typos.toml` and `runtimes/strata/container/.clangd` are tool-native configuration for the
@@ -54,7 +54,7 @@ answers from both Python type checkers.
 `pyproject.toml` defines the mypy targets and the image-only exemptions; the config-relative
 `mypy_path` pointing at `scripts` keeps a single-file mypy invocation able to resolve first-party
 modules, while runtime directories stay off the search path because each is checked in its own
-invocation. Keep the Python 3.12 target. Prefer a checker-specific suppression where only one
+invocation. Keep the Python 3.14 target. Prefer a checker-specific suppression where only one
 checker needs it, naming the rule and the reason.
 
 The missing-import exceptions in the three image-only roots hide both external and first-party

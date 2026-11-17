@@ -9,8 +9,8 @@ actually provides, and how the remaining findings should be read. The
 - `bash scripts/check.sh` runs Ruff lint and formatting checks, the `typos` spell checker, mypy
   for the default target and a separate `runtimes/strata` invocation, CPU-only pytest, the
   generated-document check, and ShellCheck when it is installed. CI runs the same script on the
-  oldest supported interpreter and the newest validated one.
-- [pyrightconfig.json](../pyrightconfig.json) governs editor analysis: Python 3.12, `scripts` on
+  interpreter floor that `requires-python` in `pyproject.toml` declares.
+- [pyrightconfig.json](../pyrightconfig.json) governs editor analysis: Python 3.14, `scripts` on
   the search path, separate test search paths, and `reportMissingImports` disabled in three
   image-only roots. Any editor that loads the project resolves this file on its own; the
   assistant harness is not part of the contract.
@@ -101,7 +101,7 @@ credited or widened. A file-wide exception also hides matching findings added to
 
 ### Imports and typing
 
-Keep the config-relative mypy search path and the Python 3.12 target, and keep
+Keep the config-relative mypy search path and the Python 3.14 target, and keep
 `mypy_path` pointed at `scripts` so a single-file mypy invocation resolves first-party modules.
 Review each unused-ignore disagreement individually, since an ignore unused by one checker can be
 required by the other. Narrow the missing-import exceptions where a maintainable alternative
@@ -199,6 +199,6 @@ build.
 - [mypy configuration](https://mypy.readthedocs.io/en/stable/config_file.html)
 - [Upstream tar extraction rule](https://github.com/trailofbits/semgrep-rules/blob/main/python/tarfile-extractall-traversal.yaml)
 - [Python extraction filters](https://docs.python.org/3/library/tarfile.html#extraction-filters)
-- [Python 3.12 redirect implementation](https://github.com/python/cpython/blob/3.12/Lib/urllib/request.py)
+- [Python 3.14 redirect implementation](https://github.com/python/cpython/blob/3.14/Lib/urllib/request.py)
 - [clangd configuration](https://clangd.llvm.org/config)
 - [typos configuration](https://github.com/crate-ci/typos)

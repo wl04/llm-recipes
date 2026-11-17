@@ -68,7 +68,7 @@ def cgroup_pids(path: Path) -> set[int]:
     """Process IDs currently in a cgroup."""
     try:
         return {int(item) for item in (path / "cgroup.procs").read_text().split()}
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return set()
 
 
@@ -172,7 +172,7 @@ def read_drm_vram(pids: set[int], address: str, proc: Path = Path("/proc")) -> R
                 if fields.get("drm-driver") != "amdgpu" or fields.get("drm-pdev") != address:
                     continue
                 clients[fields["drm-client-id"]] = _kib(fields.get("drm-memory-vram", "0 KiB"))
-            except (OSError, KeyError, ValueError):
+            except OSError, KeyError, ValueError:
                 continue
     if not readable:
         reading.errors["proc_vram_bytes"] = "fdinfo of the server processes is not readable"

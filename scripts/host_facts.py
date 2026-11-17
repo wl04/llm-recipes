@@ -102,7 +102,7 @@ def amd_devices(pci_root: Path) -> list[tuple[int, str]]:
                 continue
             try:
                 vram = int((device / "mem_info_vram_total").read_text().strip())
-            except (OSError, ValueError):
+            except OSError, ValueError:
                 continue
             found.append((vram, device.name))
     found.sort(key=lambda item: (-item[0], item[1]))
@@ -150,7 +150,7 @@ def gpu_block(
     if lspci is not None:
         try:
             model = parse_gpu_description(lspci(), pci_name)
-        except (OSError, subprocess.SubprocessError):
+        except OSError, subprocess.SubprocessError:
             model = None
     return {
         "model": model,
