@@ -1,9 +1,23 @@
 {
+  "pythonVersion": "3.12",
   "extraPaths": ["scripts"],
+  "reportUnnecessaryTypeIgnoreComment": "warning",
   "executionEnvironments": [
     {
       "root": "tests",
       "extraPaths": ["scripts", "runtimes/exllamav3-tabbyapi/scripts"]
+    },
+    {
+      "root": "runtimes/exllamav3-tabbyapi/container",
+      "reportMissingImports": "none"
+    },
+    {
+      "root": "runtimes/exllamav3-tabbyapi/scripts",
+      "reportMissingImports": "none"
+    },
+    {
+      "root": "runtimes/strata/container",
+      "reportMissingImports": "none"
     }
   ]
 }
