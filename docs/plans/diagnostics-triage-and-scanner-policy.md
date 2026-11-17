@@ -122,8 +122,10 @@ Reference: [pyright configuration](https://github.com/microsoft/pyright/blob/mai
 - [x] Fix the recipe guard in `serve.py` so unreadable, non-object, or keyless launch settings reach
       `parser.error` instead of a traceback; `tests/test_serve_validation.py` now drives `main` through
       each of those cases plus the runtime mismatch and asserts exit code 2.
-- [ ] Decide `check_hip.cpp` and the two Dockerfiles under item 10: `clangd` is absent, so those files
-      sit in the unconfirmed lane.
+- [x] Re-check `check_hip.cpp`: `clangd` is installed at `~/.pi-lens/tools/clangd/bin/clangd`, so the
+      file was measured rather than assumed absent. It reports fifteen errors, all from the absent
+      `hip/hip_runtime.h` (no ROCm on this workstation), and one `cpp-no-printf` warning. Dispositioned
+      under items 10 and 11; `runtimes/strata/container/.clangd` now carries the path-scoped carve-out.
 
 ## 3. Constrain outbound model and source fetches
 
@@ -134,17 +136,15 @@ composed from `versions.lock.json`, and `urllib` accepts `file://` and plain `ht
 modified or mirror-substituted lock can move a build to an arbitrary scheme or host. opengrep
 reports these as `dynamic-urllib-use-detected` (CWE-939).
 
-- [ ] Write failing tests first, CPU-only with a patched opener as `tests/test_strata_preparation.py`
-      does: `file://`, `http://`, and a host outside the expected domain are rejected with a message
-      naming the lock field, and an expected `https://` host still fetches.
-- [ ] Accept `https://` only, with the host drawn from the lock's own host field or a literal
-      allowlist in the recipe; reject userinfo, ports other than 443, and every other scheme, before
-      a byte is transferred.
-- [ ] Keep the validation inside each runtime: a container build context cannot import repository
-      modules, so no shared helper and no new third-party HTTP dependency.
-- [ ] Re-run the lane. The audit rule keys on a dynamic argument rather than on validation, so the
-      three findings are expected to survive; disposition them in the commit that adds the
-      validation, with the reason naming the scheme and host check.
+- [x] Measured before writing code, and the premise did not hold: all four network call lines build the
+      URL from a literal `https://` and a literal host (`codeload.github.com` in both `fetch_sources.py`,
+      `huggingface.co` in `prepare_models.py`); the lock supplies path segments only, so no value can
+      move the scheme or the authority. `HF_ENDPOINT` is assigned a literal in a child environment and
+      never read as input, and every download is size-bounded and checked against a pinned SHA-256.
+- [x] Closed on that evidence: a scheme-and-host check over a value that cannot vary in scheme or host
+      restates the line above it. The three findings are dispositioned, with the reasoning recorded in
+      `docs/diagnostics-inventory.md` and the publisher's own classification of the rule as an audit
+      rule quoted there.
 
 ## 4. Make the module search path config-relative and prove which config file each checker reads
 
@@ -158,19 +158,22 @@ settings in a VS Code settings.json will be ignored"*; basedpyright, which is wh
 here actually launches, is a pyright fork with its own `[tool.basedpyright]` table. Which of those
 files the running server reads has not been demonstrated in this repository.
 
-- [ ] Set the search path config-relative:
-      `mypy_path = "$MYPY_CONFIG_FILE_DIR/scripts"`. Verify by running mypy from a subdirectory on a
-      test module that imports `paths`, `install`, `launcher`, and `baseline`, and confirm it
-      resolves the same way as from the root. Keep `bash scripts/check.sh` green.
-- [ ] Establish, by experiment in a scratch directory outside the repository, which config file the
-      editor checker honours: `pyrightconfig.json`, `[tool.pyright]`, or `[tool.basedpyright]`. Drive
-      it with an unresolvable import plus a severity override in one candidate file at a time, and
-      record the observed result here.
-- [ ] Choose the single location for pyright configuration on that evidence and state it in item 11.
-      One file, read by the checker that runs here; do not maintain both.
-- [ ] Record the interpreter-version constraint with a measurement rather than a claim: state which
-      `pythonVersion` the project intends and confirm that the venv's `site-packages` still resolve
-      at that value, since a pinned floor release and a newer workstation venv interact.
+- [x] `mypy_path = "$MYPY_CONFIG_FILE_DIR/scripts"`. Verified by running mypy on a module that imports
+      `paths`, `install`, `launcher` and `baseline` from the repository root, from `tests/`, and from
+      `scripts/baseline/`; all three resolve identically, and `bash scripts/check.sh` is green.
+- [x] Precedence established by experiment on the real editor lane. The running server is pyright
+      **1.1.414** at `~/.pi-lens/tools/node_modules/pyright/`, not basedpyright — neither `pyright` nor
+      `basedpyright` is on `PATH`, so nothing outside that directory can be what launches. With both a
+      `pyrightconfig.json` and a `[tool.pyright]` table present, an unresolvable import that the table
+      resolves goes silent when the `pyrightconfig.json` is emptied to `{}`: the standalone file wins and
+      the table is not consulted. The headless CLI at that same path needs
+      `--pythonpath .venv/bin/python` to reproduce the server's answers, which is why a CLI run without
+      it disagreed with the editor.
+- [x] Single location chosen on that evidence: `pyrightconfig.json`. `[tool.pyright]` was removed from
+      `pyproject.toml` so one file governs; `pyproject.toml` keeps only the mypy table.
+- [x] `pythonVersion` pinned to `"3.12"`, the `requires-python` floor the CI matrix tests. Measured at
+      that value with the project interpreter: 86 files, 0 errors, 0 warnings, 0 notes, and the venv's
+      `site-packages` still resolve — an earlier unversioned run resolved them through auto-detected 3.14.
 
 ## 5. Scope container-only imports with execution environments
 
@@ -185,24 +188,23 @@ diagnostic overrides. Its own guidance for unresolved imports orders the fixes: 
 select the correct
 platform-specific imports — the comment is the last resort.
 
-- [ ] Add an execution environment per container tree, with `extraPaths` mirroring the `sys.path`
-      insert the code performs at runtime, and `reportMissingImports` scoped to `"none"` there only.
-- [ ] State the accepted trade-off here: a path-scoped severity override also hides unresolved
-      first-party imports inside those trees, which is wider than mypy's per-module exemption. Judge
-      each tree by what it actually imports — the container trees import siblings and image
-      packages, nothing else.
-- [ ] Where that breadth is unacceptable, narrow it instead of widening it: set the rule per file
-      with a file-level pyright directive in the affected module, or per import with
-      `# pyright: ignore[reportMissingImports]`. Verify the file-level form against the running
-      server before relying on it.
-- [ ] Never set `reportMissingImports` off at the top level, and do not install torch or
-      huggingface_hub to satisfy editor analysis: a multi-gigabyte dependency in the 3.12/3.14 CI
-      matrix buys nothing, since CI never imports them.
-- [ ] Confirm after the change which rule actually fires in those files, and distinguish
-      `reportMissingImports` (no source and no stub) from `reportMissingModuleSource` (stub found,
-      source missing) rather than assuming.
-- [ ] Re-measure per item 1: the import family should reach zero outside the container trees, with
-      `tests/` first-party imports still resolving through their execution environment.
+- [x] Three execution environments added: one rooted at `tests/` carrying `extraPaths` for the
+      first-party modules, and one per container tree with `reportMissingImports: "none"` in that
+      environment only.
+- [x] Accepted trade-off recorded: a path-scoped severity override also hides unresolved first-party
+      imports inside those trees. Each tree was judged by what it imports — the container trees import
+      image packages and siblings, nothing that exists on the workstation — and no host path is covered.
+- [x] Not narrowed further: the environment scope already excludes `scripts/`, `tests/` and the
+      repository tooling, so no file-level or import-level pyright directive was needed. The only
+      `# type: ignore` that conflicted with pyright was removed by annotating its value instead
+      (item 6), so no directive is relied upon anywhere.
+- [x] `reportMissingImports` stays on at the top level, and no heavy dependency was installed for editor
+      analysis.
+- [x] Re-measured with the headless CLI against the project interpreter: 86 files, 0 errors, 0 warnings.
+      Only `reportMissingImports` fired before the change; `reportMissingModuleSource` never appeared, so
+      none of these names has a stub in the venv.
+- [x] Outside the container trees the import family is zero, and `tests/` first-party imports resolve
+      through their own environment — verified by the same run reporting 0 errors over `tests/`.
 
 ## 6. Parity between the checkers on stale suppressions
 
@@ -215,12 +217,15 @@ and its counterpart to `warn_unused_ignores` is `reportUnnecessaryTypeIgnoreComm
 removed"*, default `"none"`. Today the editor lane has no equivalent guard, so a suppression can go
 stale in the exact place a developer reads it.
 
-- [ ] Set `reportUnnecessaryTypeIgnoreComment` to `"error"` in the location chosen by item 4.
-- [ ] Run the lane and triage every report it produces. The test suite carries `# type: ignore[arg-type]`
-      comments that mypy requires; if pyright considers any of them unnecessary, resolve each one
-      individually — correct the annotation, or record why the two checkers legitimately disagree.
-- [ ] Confirm the setting does not silence a needed suppression: a real `# pyright: ignore` added in
-      items 5 and 7 must stay silent.
+- [x] `reportUnnecessaryTypeIgnoreComment` set to `"error"` in `pyrightconfig.json`, the location item 4
+      proved the lane reads.
+- [x] The lane reports nothing at that level. Six `# type: ignore` comments existed; five remain, each one
+      required by mypy and accepted by pyright. The sixth was a genuine disagreement:
+      `tests/test_baseline_session.py:23` carried `# type: ignore[arg-type]` that mypy needed and pyright
+      reported as unnecessary. The annotation, not the suppression, was wrong — the fixture value is a
+      `dict[str, Any]` payload passed where the schema widens — so the value is annotated and the comment
+      deleted. Both checkers are now silent on all five remaining sites.
+- [x] No `# pyright: ignore` exists in the tree, so nothing depends on the setting staying quiet.
 
 ## 7. Disposition the mitigated tarfile extraction sites
 
@@ -229,9 +234,13 @@ stale in the exact place a developer reads it.
 mitigation available from Python 3.12, which `requires-python = ">=3.12"` guarantees. The audit rule
 matches the call shape regardless of arguments.
 
-- [ ] Put a rule-id suppression comment above each call so the judgement is in the diff and visible
-      in review, naming the rule and the `filter="data"` argument that mitigates it.
-- [ ] Keep the rule active everywhere else, so extraction added anywhere new is still reported.
+- [x] Both sites carry the rule-id directive above the call, naming the rule and, on the exllama side,
+      the `filter="data"` argument that mitigates it. The strata site additionally holds a `false-positive`
+      disposition, because the `opengrep` lane applies inline directives unevenly there (measured, recorded
+      in `docs/diagnostics-inventory.md`).
+- [x] The rule stays enabled everywhere else: the carve is two named files, not the tree, so an
+      `extractall` without `filter=` in new code is still reported. Measured: the family reports nothing
+      outside the two dispositioned sites.
 
 ## 8. Set policy for the lexically blind throwing-call rule
 
@@ -251,17 +260,20 @@ into `unchecked-numeric-parse-python` and shipped at `warning` because raisabili
 from syntax alone"*. Neither mypy nor pyright contains an equivalent check, so no change to
 `check.sh` or to pyright configuration can affect these findings.
 
-- [ ] Decide the mechanism and record it here, in order of preference: path scoping through the
-      lane's own project policy file, limited to the entry points whose contract is caller-level
-      handling; a project rule that shadows the bundled rule id at `warning`, following the
-      numeric-parse precedent, which keeps the signal for new code and costs a maintained rule fork;
-      or per-site dispositions, which are machine-local and expire when the flagged line changes.
-- [ ] Keep the rule active for first-party modules that have no catching entry point; a
-      repository-wide disable is not acceptable.
-- [ ] Add no `try` blocks purely to satisfy this rule at the sites above. It would duplicate handling
-      that `main` and `check_configuration` already perform, against the boundary-handling rules in
-      `AGENTS.md`.
-- [ ] A session-scoped deferral is not an end state: the findings return on the next session.
+- [x] Mechanism chosen: path scoping through the lane's project policy file. `.pi-lens.json` lists the
+      eight runtime modules by name under `rules.unchecked-throwing-call-python.ignorePaths`; the second
+      option (a shadowing rule at `warning`) was rejected as a maintained rule fork for a rule whose
+      counts follow argument punctuation, and blanket per-site dispositions were rejected as machine-local
+      and expiring. The one host-code site, `scripts/doctor.py`, keeps an inline
+      `# ast-grep-ignore:` because the file's contract is that its callers report read failures.
+- [x] Still active for first-party modules with no catching entry point: `scripts/` and `tests/` are not
+      in the carve, and measurement found zero findings there after the `importer.py` fix — a new
+      uncaught throwing call in host code reports immediately. Nothing was disabled repository-wide.
+- [x] No `try` was added to satisfy the rule. The one `try` that appeared (`importer.py`, native settings
+      read) exists because the error it raises did not name the file the operator has to fix; a test now
+      asserts the path appears, and the finding cleared as a side effect.
+- [x] No session-scoped deferral used: every disposition here is a file in git or a content-bound store
+      entry, so the result survives the session.
 
 ## 9. Keep fixture literals out of the spell-check lane
 
@@ -290,22 +302,26 @@ all shows only in its coverage footer, so a zero-finding lane counts as unconfir
 and the duplication claims are re-checked before any refactor. Three files sit in an inconclusive
 language-server lane because no server covers them.
 
-- [ ] Extract the duplicated 7 lines in `scripts/baseline/importer.py` into one helper, relying on
-      the existing coverage around both call sites. This is first-party code and a real duplication
-      case.
-- [ ] Keep the duplicated block in the two `container/fetch_sources.py` files: project instructions
-      make each container build context self-contained, so similar-looking code stays independent.
-      Record that reason as the disposition.
-- [ ] Decide per runner, in writing: keep it and disposition its output, or turn it off through the
-      lane's documented runner policy key. Judge by whether the runner has ever produced an
-      actionable finding here; a secrets scan over a measurements repository is cheap and worth
-      keeping.
-- [ ] For the inconclusive lane, either supply the server (Docker analysis for the Dockerfiles,
-      `clangd` for `check_hip.cpp`) or disable those servers for the project so the sweep stops
-      reporting an inconclusive result. An inconclusive lane is not a clean verdict, so leaving it
-      requires saying so here.
-- [ ] Run the sweep twice and compare the coverage footer; a lane that times out consistently is a
-      configuration fact, not flakiness.
+- [x] The duplicated block in `scripts/baseline/importer.py` is not reported by the duplication runner in
+      any sweep of this session, so there is nothing to extract; the claim came from an earlier session's
+      run. Re-checked before any refactor, as required: `jscpd` answers with zero findings.
+- [x] The similar block in the two `container/fetch_sources.py` files stays, and `jscpd` does not report it
+      either. The reason is recorded: project instructions make each container build context
+      self-contained, so similar-looking code stays independent.
+- [x] Per runner, in writing, in `docs/diagnostics-inventory.md`: keep `gitleaks` (a secrets scan over a
+      measurements repository is cheap and it answers), keep `opengrep`, `ast-grep`, `typos`, `clangd` and
+      the pyright lane with the dispositions recorded there, and keep the advisory runners that report
+      nothing rather than turning them off — an empty result from a runner that answers is information.
+      Nothing was switched off through `dispatch.disabledRunners`, which is a union across tiers and could
+      never be lifted again from project configuration.
+- [x] The inconclusive lane was resolved by observation, not by installing anything: `clangd` is already
+      present and measures `check_hip.cpp`; the Docker language server answers for both Dockerfiles and
+      finds nothing. No server was installed for this purpose, and `check_hip.cpp` is dispositioned by path
+      rather than left unmeasured.
+- [x] Sweeps were compared, and two behaviours are now treated as facts rather than flakiness: a cold lane
+      reports less than a warm one (`ast-grep` gave nothing under `runtimes/` cold and 22 findings warm,
+      same files), and a lane that times out repeatedly gets demoted for the rest of the session — its
+      coverage footer then says the wait budget cannot override the demotion.
 
 ## 11. Record the analysis policy in project instructions
 
@@ -314,14 +330,15 @@ configuration is editor-side only, and notes that unresolvable imports are advis
 record where the editor lane's rule policy lives, which findings were dispositioned and why, that a
 finding can be triaged rather than fixed, or which config file the editor checker reads.
 
-- [ ] Name the single configuration file for each checker and the axis it scopes by: mypy by imported
-      module name, pyright by path. State that `scripts/check.sh` remains the only gate that fails a
-      build.
-- [ ] State the suppression contract for both checkers: a suppression names the rule or diagnostic
-      and the reason, sits at the narrowest scope that keeps the rest of the file checked, and is
-      reviewed in the diff. Rule configuration is for scope, never for concealing a defect.
-- [ ] Keep enforcement out of the editor lane: any check that must fail the build belongs in
-      `check.sh`, because a scanner that runs only on developer workstations cannot gate anything.
+- [x] Each checker's file and scoping axis stated in `docs/project-instructions.md`: mypy by imported
+      module name, Pyright by path through `pyrightconfig.json`, which is the only file it reads here. The
+      same text states that `scripts/check.sh` remains the only gate that fails a build.
+- [x] The suppression contract is stated there: a suppression names the rule and the reason, sits at the
+      narrowest scope that keeps the rest of the file checked, and is reviewed in the diff; rule
+      configuration is for scope, never for concealing a defect.
+- [x] Enforcement stays out of the editor lane, with the reason recorded: a scanner that runs only on
+      developer workstations cannot gate anything, and a lane that does not answer reports no findings
+      rather than a clean result.
 
 ## Delivery and validation
 
