@@ -41,29 +41,22 @@ The script runs Ruff lint and formatting checks, mypy, pytest, generated-documen
 
 `pyproject.toml` defines the exact mypy targets and external-import exceptions. Strict checking covers the generator, launcher modules, host reporting, the ExLlamaV3 runtime helpers, and tests. The two runtimes carry same-named helper modules that import siblings by name, so `check.sh` checks `runtimes/strata` in its own mypy invocation; run `bash scripts/check.sh` rather than a bare `mypy` to cover both. `mypy_path` points at `scripts` so a single-file `mypy` invocation resolves first-party modules; runtime directories stay off the search path because each is checked in its own invocation.
 
-`pyrightconfig.json` is the single configuration file for editor and agent-side Pyright analysis; a
-`[tool.pyright]` table is not consulted while that file exists, so all settings live in the file. It pins
-`pythonVersion` to the `requires-python` floor, adds `extraPaths` for the workspace modules, gives `tests/`
-an environment of its own, and sets `reportMissingImports: "none"` for the container trees only, where the
-imported names exist solely in the image. `reportUnnecessaryTypeIgnoreComment` is `error`, mirroring mypy's
-`warn_unused_ignores`, so a stale suppression is reported in the editor exactly where CI would reject it.
-`check.sh` never reads this file and code stays independent of its rules. `warn_unused_ignores` turns a
-`# type: ignore` added for an editor into a CI failure, so a suppression that cannot be avoided is written
-as `# pyright: ignore`.
+`pyrightconfig.json` governs editor-side Pyright analysis, targets Python 3.12, and scopes
+missing-import exceptions to three image-only roots. These exceptions also hide missing
+first-party imports within those roots. mypy remains the strict CI gate; Pyright provides
+editor feedback. Both report unused suppressions, but their type models differ: review
+checker disagreements rather than requiring identical diagnostics. Prefer a checker-specific
+suppression when only that checker needs it, and name the rule and reason.
 
-Editor and agent diagnostics are governed by three files, each scoped as narrowly as the finding allows:
-`pyrightconfig.json` (above), `.clangd` beside the HIP sources (the three diagnostic codes that follow from
-the absent ROCm header, for that directory only), and `.pi-lens.json` at the repository root, whose
-`rules.<id>.ignorePaths` lists individual modules rather than whole trees. A suppression names the rule and
-the reason at the narrowest scope that leaves the rest of the file checked, and appears in the diff. The
-one host-code suppression (`scripts/doctor.py`) is inline because the surrounding callers are the reason
-it is safe; the runtime carve-outs are path-scoped because their entry-point contract is an uncaught
-failure that the caller or the image build reports. No rule is disabled repository-wide.
+Other tracked advisory configuration lives in `.pi-lens.json`, `.typos.toml`, and the HIP
+probe directory's `.clangd`. Exceptions should use the narrowest practical scope and retain
+unrelated checks. A file-wide exception also suppresses future matching findings in that file.
+pi-lens stored dispositions are outside Git; their effect is not reproduced by cloning the repo.
 
-Any check that must fail a build belongs in `scripts/check.sh`. An editor lane cannot gate anything: it runs
-on one workstation, its servers cache configuration until they restart, and a lane that does not answer
-reports no findings rather than a clean result. `docs/diagnostics-inventory.md` records the measured state
-of every rule that reports here, its verdict, and the mechanism that carries the verdict.
+Any check required to fail CI belongs in `scripts/check.sh`. An unanswered scanner lane is
+unconfirmed, not clean. The [diagnostics inventory](diagnostics-inventory.md) distinguishes
+verified code behavior, configured coverage gaps, and workstation observations; the
+[local validation plan](plans/diagnostics-triage-and-scanner-policy.md) lists remaining checks.
 
 After editing profiles or adding results, follow [generation instructions](authoring.md#generate-configuration-guides) and commit profiles with generated Markdown. Preserve generated-section markers. Update templates and the authoring guide when changing structure or conventions.
 
