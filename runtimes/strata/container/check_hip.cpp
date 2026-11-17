@@ -32,7 +32,7 @@ int main() {
         check(hipMemcpy(&value, device, sizeof(int), hipMemcpyDeviceToHost));
         check(hipFree(device));
         if (value != 1) throw std::runtime_error("HIP kernel returned the wrong result");
-        // The image build reads this line as JSON; specifiers match the argument types.
+        // Callers parse this line as JSON; specifiers match the argument types.
         std::printf("{\"device\":%d,\"architecture\":\"gfx1201\",\"vram_bytes\":%zu,\"kernel\":\"PASS\"}\n",
                     selected, properties.totalGlobalMem);
         return 0;

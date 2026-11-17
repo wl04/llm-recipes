@@ -172,8 +172,9 @@ download paths.
 ### C++ smoke check
 
 The HIP probe needs the image toolchain, because ROCm and the HIP headers exist only inside the
-image. The probe prints its result for the image build to parse, and its `printf` conversions match
-the argument types, so a formatting finding there is a false positive on its own merits.
+image. The probe prints its result as JSON, which `runtimes/strata/container/check_image.py` and the
+launcher in `runtimes/strata/scripts/serve.py` parse, and its `printf` conversions match the argument
+types, so a formatting finding there is a false positive on its own merits.
 
 [.clangd](../runtimes/strata/container/.clangd) suppresses `pp_file_not_found`,
 `unknown_typename`, and `undeclared_var_use` throughout the container directory. Those codes also

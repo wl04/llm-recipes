@@ -34,7 +34,8 @@ Established properties:
 - Tracked sources carry no scanner-rule directive. The download, extraction, and probe sites state
   their invariants in ordinary comments and rest on portable guarantees: SHA-256 verification with
   `filter="data"` under CPU-only tests for the downloaders, finding propagation under tests for
-  `doctor.read_json`, and the image build that compiles and runs the HIP probe.
+  `doctor.read_json`, the image build that compiles the HIP probe, and the smoke check and launcher
+  that parse its JSON output.
 
 No checker migration is planned. The aim is aligned configuration and evidence, not identical
 answers from both Python type checkers.
