@@ -426,7 +426,10 @@ def _native_serving(recipe_dir: Path) -> dict[str, Any]:
         native = recipe_dir / "config" / "strata.json"
         if not native.is_file():
             return rows
-        settings = json.loads(native.read_text())
+        try:
+            settings = json.loads(native.read_text())
+        except (OSError, json.JSONDecodeError) as error:
+            raise ValueError(f"{native}: unreadable JSON settings") from error
         if not isinstance(settings, Mapping):
             raise ValueError(f"{native}: expected a JSON object")
         args = _seq(settings.get("args"))

@@ -383,6 +383,17 @@ def test_settings_apply_effective_cache_when_context_overridden(
         assert "vision_min_image_tokens" not in settings["serving"]
 
 
+def test_settings_block_names_the_settings_file_when_json_is_malformed(tmp_path: Path) -> None:
+    root = _make_repo(tmp_path)
+    recipe = root / "recipes" / RECIPE
+    (recipe / "config/tabby.yml").unlink()
+    (recipe / "config/strata.json").write_text("{")
+
+    facts = {"options": {"context": 4096, "draft": "off", "vision": "off"}}
+    with pytest.raises(ValueError, match=r"strata\.json"):
+        importer.settings_block({}, {}, facts, recipe, "strata")
+
+
 def test_build_profile_prefers_run_local_facts_over_live_logs(tmp_path: Path) -> None:
     root = _make_repo(tmp_path)
     run = tmp_path / "run"
