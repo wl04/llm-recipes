@@ -89,6 +89,8 @@ On the Recipes tab, select a recipe and press **s**. The form starts with the re
 
 If Docker rejects the start, the form keeps your values and shows the error. After Docker accepts it, the dashboard switches to Instances and selects the new instance when it appears. The status shows its API address while the model loads. Use **l** to follow logs, **x** to stop the selected instance, **r** to refresh, and **q** to quit. **Esc** closes the log view. Closing the dashboard leaves running instances active.
 
+![Terminal dashboard Instances tab with an example coding server](../assets/tui/dashboard.svg)
+
 For development, run `.venv/bin/python scripts/tui.py` from the checkout.
 
 ## Launch manifest

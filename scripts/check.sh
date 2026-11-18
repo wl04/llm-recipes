@@ -28,6 +28,7 @@ tool mypy
 tool mypy runtimes/strata
 tool pytest
 tool python scripts/generate_configurations.py --check
+tool python scripts/generate_tui_screenshots.py --check
 
 if command -v shellcheck >/dev/null; then
     find scripts runtimes -name '*.sh' -not -path '*/.venv/*' -exec shellcheck {} +

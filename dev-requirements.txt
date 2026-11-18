@@ -6,3 +6,6 @@ mypy==2.4.1
 typos==1.52.2
 ruamel.yaml==0.19.1
 textual==8.2.8
+
+# Textual screenshot rendering
+rich==15.0.0

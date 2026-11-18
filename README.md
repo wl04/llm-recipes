@@ -110,6 +110,8 @@ Different models or independently maintained quantizations have separate recipes
 
 Run `llm-recipes tui` to configure launches, manage instances, and follow logs. [Dashboard guide](docs/launcher.md#terminal-dashboard)
 
+![Terminal dashboard launch form with context, drafting, vision, and port settings](assets/tui/launch-settings.svg)
+
 ---
 
 [Adding recipes and results](docs/authoring.md) · [Launcher guide](docs/launcher.md) · [Baseline contract](docs/baseline.md) · [Pi setup](docs/clients/pi.md) · [Development](docs/project-instructions.md)

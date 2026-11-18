@@ -63,6 +63,8 @@ unconfirmed, not clean.
 
 After editing profiles or adding results, follow [generation instructions](authoring.md#generate-configuration-guides) and commit profiles with generated Markdown. Preserve generated-section markers. Update templates and the authoring guide when changing structure or conventions.
 
+Refresh the README and launcher guide screenshots with `.venv/bin/python scripts/generate_tui_screenshots.py`. The generator renders the dashboard headlessly with the tracked manifests and a sample instance. Commit changed SVGs under `assets/tui/` with the UI changes. The check script verifies that the images match the current rendering.
+
 ## Machine roots
 
 Normal serving runs from the installed snapshot `~/.llm-recipes/app` (`LLM_RECIPES_RUNTIME` prefix; its own venv and `llm-recipes` / `llm-recipes-baseline` shims symlinked into `~/.local/bin`). `python3 scripts/install.py install` refreshes it. Development and tests can run scripts from the checkout. Keep `~/.local/bin` on `PATH` so the shims resolve. The data root is `~/llm-recipes` (`LLM_RECIPES_HOME`): `recipes/<recipe-id>/` model data, `.cache/`, `baselines/`, `logs/<instance>/` with each instance's `facts.json`.
