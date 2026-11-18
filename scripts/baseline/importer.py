@@ -776,7 +776,13 @@ def import_run(
 
     with staged_experiment(destination) as staged:
         shutil.copyfile(run_dir / RESULTS_NAME, staged / RESULTS_NAME)
-        shutil.copyfile(root / "templates/recipe/baseline-summary.md", staged / "summary.md")
+        summary = (root / "templates/recipe/baseline-summary.md").read_text()
+        if (recipe_dir / "setup.md").is_file():
+            profile_link = " · [Profile YAML](profile.yaml)"
+            summary = summary.replace(
+                profile_link, " · [Build and run](../setup.md)" + profile_link, 1
+            )
+        (staged / "summary.md").write_text(summary)
         shutil.copyfile(
             root / "templates/recipe/NNN-YYYY-MM-DD-description/configuration.md",
             staged / "configuration.md",

@@ -1,6 +1,6 @@
 # Adding recipes and results
 
-Copy `templates/recipe/` to `recipes/<model-format-hardware-memory>/`. Choose a descriptive lowercase folder name, such as `qwen3.8-27b-gguf-rx-9070-xt-16-gb-vram`.
+Create `recipes/<model-format-hardware-memory>/` and copy `recipe.md` and the `NNN-YYYY-MM-DD-description/` folder from `templates/recipe/`. The importer uses the shared baseline and session summary templates directly. Choose a descriptive lowercase folder name, such as `qwen3.8-27b-gguf-rx-9070-xt-16-gb-vram`.
 
 ```text
 recipes/<model-format-hardware-memory>/
@@ -21,7 +21,7 @@ recipes/<model-format-hardware-memory>/
 
 For another result, copy the three files from `templates/recipe/NNN-YYYY-MM-DD-description/` into a new numbered result folder. The existing result remains a snapshot of its configuration.
 
-A baseline experiment holds the output of the baseline runner instead of a hand-written statistics report. Name it `NNN-YYYY-MM-DD-baseline`, adding a suffix when its configuration differs from the recipe default, and add it with `run_baseline.py import` — the [import recipe](baseline.md#import-a-baseline-run) creates the folder, the marked summary, `results.json`, and the complete `profile.yaml`; you add only optional notes. The generator writes the title from the folder name (or the profile `title` key) and renders `results.json` into the marked results block, so the report contains no hand-written prose; anything you add outside the markers is kept. `--check` fails when `results.json` or the title has changed but has not been regenerated. See the [baseline contract](baseline.md) for the result format.
+A baseline experiment holds the output of the baseline runner instead of a hand-written statistics report. Name it `NNN-YYYY-MM-DD-baseline`, adding a suffix when its configuration differs from the recipe default, and add it with `run_baseline.py import` — the [import recipe](baseline.md#import-a-baseline-run) creates the folder, the marked summary, `results.json`, and the complete `profile.yaml`; you add only optional notes. The generator writes the title from the folder name (or the profile `title` key) and renders `results.json` into the marked results block, and preserves authored text outside the markers. `--check` fails when `results.json` or the title has changed but has not been regenerated. See the [baseline contract](baseline.md) for the result format.
 
 A session experiment reports a real coding session against a launched instance instead of a hand-counted console log. Add it with `run_baseline.py session <instance> --create <slug>` — the [session recipe](baseline.md#report-a-coding-session) creates the folder, aggregates the engine logs, and seeds `profile.yaml`. The generator renders `session-results.json` into the session markers; keep narrative outside them. Use the [generation commands](#generate-configuration-guides) after editing the JSON. Strata logs carry no timestamps, so window filtering and the wall-clock span apply to timestamped logs; the report shows everything else as `unavailable`.
 
@@ -159,12 +159,14 @@ Docker Hub tag links display as `repository:tag`. Tags can move; the full digest
 
 The generator owns a built-in label registry for every canonical profile path, so a profile needs no `labels` mapping for standard fields. The section headings are `Serving`, `Sampling`, `Thinking`, `Requests`, and `Experiment notes`. Add an optional `labels` mapping only to override one path for that experiment, for example `labels: {requests.max_output_tokens: Response length limit}`; keys are dotted paths within `settings`. Unknown dotted paths render from their key and are reported when generating, so extend the generator's registry in a code change when a new standard field appears. Keep units in labels where useful. The labels mapping itself is omitted from the generated guide.
 
-The profile identifier supplies the generated document title. Both Markdown documents end with links to their companions: configuration guides link to Recipe, Results, and Profile YAML; summaries link to Recipe, Configuration, and Profile YAML. When a recipe has `setup.md`, use these footers:
+The profile identifier supplies the configuration guide’s title. Use this footer order:
 
-- Configuration: `[Recipe](../recipe.md) · [Results](summary.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)`
-- Summary: `[Recipe](../recipe.md) · [Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)`
+| Document | Links |
+|---|---|
+| Configuration | Recipe · Results · Build and run (container recipes) · Profile YAML · Results data (baseline only) |
+| Summary | Recipe · Configuration · Build and run (container recipes) · Profile YAML · Results data (baseline only) |
 
-The generator adds the Build and run link automatically when `setup.md` exists in the recipe folder. Update the authored summary footer to match. Recipes without `setup.md` link to Recipe and their two companion files. The configuration footer is generated. Record speculative decoding under `settings.serving` alongside the other serving rows.
+The generator writes the configuration footer. The baseline importer adds **Build and run** when the recipe has `setup.md`. For authored summaries and imported session reports, use the container footer from the template when `setup.md` exists. Record speculative decoding under `settings.serving`.
 
 ## Recipe identity and folder name
 

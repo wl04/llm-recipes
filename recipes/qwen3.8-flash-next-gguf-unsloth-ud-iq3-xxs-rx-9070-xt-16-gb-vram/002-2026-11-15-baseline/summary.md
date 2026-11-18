@@ -80,4 +80,4 @@ Decode is a client estimate: (output tokens - 1) / (last - first output). Prefil
 
 ---
 
-[Recipe](../recipe.md) · [Configuration](configuration.md) · [Profile YAML](profile.yaml) · [Results data](results.json)
+[Recipe](../recipe.md) · [Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml) · [Results data](results.json)

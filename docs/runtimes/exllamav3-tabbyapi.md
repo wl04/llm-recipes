@@ -37,7 +37,9 @@ The helper validates `config/tabby.yml` against the pinned TabbyAPI schema, veri
 
 ## Baseline and clients
 
-The [baseline runner](../baseline.md) is the way to check and measure a TabbyAPI recipe; the recipe's setup guide has the command. [`001-2026-11-14-baseline`](../../recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/001-2026-11-14-baseline/summary.md) records the interface facts a run relies on: streamed usage carries `cached_tokens`; the token-count route is `/v1/token/encode`, which applies the chat template so `length` equals the returned token-id count; thinking is disabled with `chat_template_kwargs.enable_thinking: false` (supplied via `--request-extra` and retained in the run policy); engine timings come from the server logs, which is where the summary's Prefill (tok/s) and Draft acceptance columns are read. `/v1/models` lists every directory under `/models`, including the draft's converted and source directories, which report null context and zero size; only the loaded target has a runtime context, and the runner refuses to guess when several ids are listed, so the recipe pins the served target. The server answers unknown model ids with HTTP 200 and serves the loaded model regardless, so identity comes from the run policy, not from request acceptance.
+Run the baseline command from the recipe’s setup guide. The runner selects the target named in `tabby.yml` because `/v1/models` also lists the draft and source model directories. It sends `chat_template_kwargs.enable_thinking: false` for the performance and functional cases and `true` for the reasoning case. The [baseline guide](../baseline.md#what-a-run-measures) covers overrides.
+
+Streamed usage supplies cached-token counts. The runner counts prompts through `/v1/token/encode`, which applies the chat template and omits the final assistant prefix. Prefill and draft acceptance come from the server log.
 
 Use [Pi setup](../clients/pi.md) and the recipe's provider configuration.
 

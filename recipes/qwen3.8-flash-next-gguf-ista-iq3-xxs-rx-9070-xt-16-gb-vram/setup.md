@@ -12,21 +12,25 @@ Run from the repository root with the serving instance stopped:
 
 ```bash
 python3 runtimes/strata/scripts/prepare_models.py \
-  --recipe recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram
+  --recipe recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram \
+  --models "${LLM_RECIPES_HOME:-$HOME/llm-recipes}"
 ```
 
-The [model lock](config/models.lock.json) selects two target shards, a BF16 CPU projector, and Q2_0 MTP. Target tensors retain their native formats. Files are prepared under `$HOME/llm-recipes/recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram/`.
+The [model lock](config/models.lock.json) selects two target shards, a BF16 CPU projector, and Q2_0 MTP. Target tensors retain their native formats. Files are prepared under `<models root>/recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram/`.
+
+For a custom root, set `LLM_RECIPES_HOME` for preparation and launch. If you pass a different `--models` path to preparation, pass that same path to the launcher and baseline runner.
 
 ## Launch
 
 Run one model instance at a time on the RX 9070 XT workstation. Stop the other recipe's instance before switching, then:
 
 ```bash
+sudo -v
 llm-recipes doctor qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram
 llm-recipes start qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram --detach
 ```
 
-The instance name defaults to the recipe identifier; file logs land in `$HOME/llm-recipes/logs/<instance>`. The manifest already holds the tested configuration, so the command passes no capacity options.
+The instance name defaults to the recipe identifier; file logs land in `<models root>/logs/<instance>`. The manifest already holds the tested configuration, so the command passes no capacity options.
 
 Readiness: `curl -f http://127.0.0.1:8080/health`. The API is `http://127.0.0.1:8080/v1` and serves `qwen3.8-flash-next-iq3_xxs`.
 

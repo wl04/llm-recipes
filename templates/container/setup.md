@@ -8,13 +8,14 @@ Link to `docs/runtimes/<runtime>.md#build-and-check`. State model-specific RAM, 
 
 ## Prepare models
 
-Provide the runtime preparation command with this recipe's directory and external models path. Link `config/models.lock.json`; describe conversion choices and output location specific to this model. Link the runtime guide for verification, resume, and retry behavior.
+Provide the runtime preparation command with this recipe’s directory and the models root used by the launcher. Link `config/models.lock.json`; describe conversion choices and output location specific to this model. Link the runtime guide for verification, resume, and retry behavior.
 
 ## Launch
 
 The `llm-recipes` command comes from the installed serving snapshot; link to [Quick start](../../README.md#quick-start) for installation and refresh. After preparation, check the recipe before starting. Link to [diagnostics](../../docs/launcher.md#diagnose-a-recipe) for check scope and troubleshooting.
 
 ```bash
+sudo -v
 llm-recipes doctor <recipe>
 llm-recipes start <recipe> --detach
 ```
@@ -29,7 +30,7 @@ Run with the installed command:
 llm-recipes-baseline run <recipe>
 ```
 
-Add launch options only where the launch command above differs from the manifest defaults (for example `--context` and `--vision`). Mention thinking only when the reader has to act on it (for example, a server that thinks by default and needs `--request-extra` to disable it); otherwise the baseline guide covers it. Link the guide for preconditions, the phases, the output location, and how to publish a result. Do not repeat the guide's instructions here. Do not link results from this page: the setup guide is read before any experiment exists.
+Add launch options only where the launch command above differs from the manifest defaults (for example `--context` and `--vision`). Document any overrides this recipe needs. Link to the baseline guide for thinking controls, model selection, preconditions, output, and publishing results. Do not repeat the guide's instructions here. Do not link results from this page: the setup guide is read before any experiment exists.
 
 ## Pi
 
@@ -44,7 +45,7 @@ llm-recipes stop <recipe>
 
 Link to [launcher controls](../../docs/launcher.md#foreground-and-background-execution) and the runtime's file-log documentation.
 
-Use `llm-recipes tui` to start this recipe with its defaults and view instance logs. See the [launcher guide](../../docs/launcher.md#terminal-dashboard).
+Use `llm-recipes tui` and press **s** on the recipe to open the launch form. It starts with the recipe defaults and accepts per-instance overrides. See the [launcher guide](../../docs/launcher.md#terminal-dashboard).
 
 ---
 

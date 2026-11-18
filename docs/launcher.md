@@ -1,6 +1,6 @@
 # Launcher guide
 
-Serving normally runs through the installed `llm-recipes` command (the `~/.llm-recipes` snapshot; see [machine roots](project-instructions.md#machine-roots)). From the development checkout, run the equivalent `python3 scripts/launch.py` commands below from the repository root using host Python 3 and `sudo docker`. Build the image and prepare models following the selected recipe's `setup.md`.
+Serving normally runs through the installed `llm-recipes` command (the `~/.llm-recipes` snapshot; see [machine roots](project-instructions.md#machine-roots)). From the development checkout, run the equivalent `python3 scripts/launch.py` commands below from the repository root using Python 3.14 or later and `sudo docker`. Build the image and prepare models following the selected recipe's `setup.md`.
 
 ## Recipes and instances
 
@@ -58,8 +58,8 @@ Explicit CLI options override the recipe's launch defaults.
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `--name NAME` | Recipe identifier | Instance name |
-| `--models DIRECTORY` | `~/llm-recipes` | Prepared model directory |
-| `--logs DIRECTORY` | `<data home>/logs/<instance>` | Persistent server file logs |
+| `--models DIRECTORY` | `LLM_RECIPES_HOME` or `~/llm-recipes` | Models root |
+| `--logs DIRECTORY` | `<models root>/logs/<instance>` | Persistent server file logs |
 | `--port PORT` | Manifest port | Host loopback port; update the client's API address when changed |
 | `--context TOKENS` | Manifest context | Context capacity |
 | `--draft on\|off` | Manifest drafting setting | Configured speculative decoding |
@@ -73,7 +73,7 @@ Run `python3 scripts/launch.py start --help` (or `llm-recipes start --help`) for
 
 ## Persistent logs
 
-The default directory is `<models>/logs/<instance>`, with `<models>` the data root (`~/llm-recipes`, overridable with `LLM_RECIPES_HOME`). Use `--logs` to choose another location, including an existing log directory.
+The default directory is `<models root>/logs/<instance>`. The launcher takes the root from `--models` when supplied, then `LLM_RECIPES_HOME`, then `~/llm-recipes`. Use `--logs` to choose another location, including an existing log directory.
 
 `logs --follow` reads console output while the container exists. After it exits, read the files in the host log directory. Server-specific filenames, rotation, and retention are documented in the [runtime guides](#shared-runtimes).
 

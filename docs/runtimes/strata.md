@@ -52,7 +52,7 @@ The two IDs must match. Stop the candidate with `python3 scripts/launch.py stop 
 
 ## Preparation
 
-Run the preparation command in the recipe's setup guide with that recipe directory and external models root.
+Run the preparation command in the recipe’s setup guide. Pass the same models root to preparation and serving. The preparation script takes an explicit `--models` path and falls back to `~/llm-recipes` when it is omitted.
 
 The helper mounts the recipe and runtime read-only and the external models directory writable, running as the host UID. The recipe's data folder is `recipes/<recipe-id>` under the models root, derived from the recipe folder name; `models.lock.json` pins shard revisions, sizes and SHA-256 hashes, the projector, MTP source, and pack conversion options. Each recipe has its own `prepared.json` in its data folder.
 
@@ -71,7 +71,7 @@ prepared.json        # Completion record matching model and runtime locks
 
 The [launcher](../launcher.md#shared-runtimes) provides the mounts and entry point. The Strata adapter adds unlimited memory locking, 2 GiB shared memory, and a 120-second stop timeout.
 
-The serving helper checks the completion receipt against the selected model and runtime locks, checks all shard sizes and required artifacts, selects the RX 9070 XT, and creates a temporary native configuration. `--context`, `--draft`, and `--vision cpu|off` override that recipe's defaults. The GPU-resident KV setting is capped at 32,768 cells by this integration. The API is published on host loopback; offline mode disables external fetching. Readiness is `/health`.
+The serving helper checks the completion receipt against the selected model and runtime locks, checks all shard sizes and required artifacts, selects a single visible `gfx1201` device, and creates a temporary native configuration. `--context`, `--draft`, and `--vision cpu|off` override that recipe's defaults. The GPU-resident KV setting is capped at 32,768 cells by this integration. The API is published on host loopback; offline mode disables external fetching. Readiness is `/health`.
 
 `server.log` retains API console output; `engine.log` contains engine and vision messages. Both append in the selected host log directory and survive container removal. Rotate them while the server is stopped. A baseline run points them at its own output directory. The wrapper forwards stop signals and preserves the server exit status.
 

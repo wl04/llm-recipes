@@ -32,12 +32,13 @@ See [preparation and retry behavior](../../docs/runtimes/exllamav3-tabbyapi.md#p
 ## Launch
 
 ```bash
+sudo -v
 llm-recipes doctor qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
 llm-recipes start qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
   --detach --vision on --context 131072
 ```
 
-The instance name defaults to the recipe identifier; file logs land in `$HOME/llm-recipes/logs/<instance>`.
+The instance name defaults to the recipe identifier; file logs land in `<models root>/logs/<instance>`.
 
 API: `http://127.0.0.1:5000/v1`; browser chat: `/ui/`; model status: `/ui/status`; the API serves `qwen3.8-27b-exl3-3bpw`.
 

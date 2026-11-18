@@ -25,7 +25,7 @@
 Use Python 3.14 or later, as specified in `pyproject.toml`. Install the pinned development dependencies into the repository virtual environment:
 
 ```bash
-uv venv .venv
+uv venv --python 3.14 .venv
 uv pip install -p .venv -r dev-requirements.txt
 ```
 

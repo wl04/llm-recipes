@@ -570,3 +570,17 @@ def test_import_rejects_legacy_complete_run_with_recorded_problems(tmp_path: Pat
 
     with pytest.raises(ValueError, match="run has failures"):
         importer.import_run(run_dir, root)
+
+
+@pytest.mark.parametrize("is_container", [False, True])
+def test_import_links_setup_only_when_recipe_has_setup(tmp_path: Path, is_container: bool) -> None:
+    root = _make_repo(tmp_path)
+    if is_container:
+        (root / "recipes" / RECIPE / "setup.md").write_text("# Setup\n")
+
+    folder = importer.import_run(_make_run(tmp_path), root)
+
+    for name in ("configuration.md", "summary.md"):
+        document = (folder / name).read_text()
+        assert ("[Build and run](../setup.md)" in document) is is_container
+        assert "[Results data](results.json)" in document
