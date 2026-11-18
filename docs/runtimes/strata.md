@@ -19,6 +19,37 @@ Lower `MAX_JOBS` if compiler memory use is excessive. The image check exercises 
 
 The image name and API-server/engine pairing are declared in [`runtime.json`](../../runtimes/strata/runtime.json). Reuse the image while its lock matches; rebuild after changing build inputs or pins. Preparation and serving check the image's lock against this runtime's lock.
 
+## Compare a candidate runtime
+
+Keep the baseline checkout, `:probe` tag, and prepared models untouched. Find `software.running_image_id` in the baseline experiment's `profile.yaml` and tag **that ID**, not the current `:probe`. For example, for experiment `002`:
+
+```bash
+baseline_id=sha256:afe7c1bff2f14085879a86bfcdc5729996a66beac14edee40207c08e255feca6
+sudo docker image tag "$baseline_id" llm-recipes/strata-rdna4:baseline-002
+```
+
+If Docker cannot find that ID, the tag cannot recover the measured image. In a separate worktree, set `image` in `runtimes/strata/runtime.json` to a distinct tag such as `llm-recipes/strata-rdna4:candidate` and apply the candidate build inputs. From that worktree's root:
+
+```bash
+image=llm-recipes/strata-rdna4:candidate
+recipe=qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram
+sudo docker build --build-arg MAX_JOBS=4 -t "$image" runtimes/strata/container
+sudo docker run --rm --device=/dev/kfd --device=/dev/dri "$image"
+```
+
+Use a separate data root: `prepared.json` includes the runtime lock, so preparing in the baseline directory can invalidate it for the baseline. Allow space for the recipe's preparation outputs and stop the baseline server before starting the candidate. Use the worktree launcher, not the installed `llm-recipes` snapshot:
+
+```bash
+export LLM_RECIPES_HOME="$HOME/llm-recipes-strata-candidate"
+python3 runtimes/strata/scripts/prepare_models.py --recipe "recipes/$recipe" --models "$LLM_RECIPES_HOME"
+python3 scripts/launch.py start "$recipe" --name strata-candidate --detach
+cid=$(sudo docker ps -q --filter label=io.llm-recipes.instance=strata-candidate)
+sudo docker container inspect --format '{{.Image}}' "$cid"
+sudo docker image inspect --format '{{.Id}}' "$image"
+```
+
+The two IDs must match. Stop the candidate with `python3 scripts/launch.py stop strata-candidate` before running the [baseline suite](../baseline.md) with the same recipe and settings. Keep the candidate result separate and check its recorded `running_image_id`. To return to the baseline, use the original checkout and data root.
+
 ## Preparation
 
 Run the preparation command in the recipe's setup guide with that recipe directory and external models root.
