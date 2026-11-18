@@ -337,6 +337,90 @@ def _unavailable(document: dict[str, Any]) -> list[str]:
     return ["", "### Unavailable measurements", "", *reasons] if reasons else []
 
 
+def _performance(cases: list[dict[str, Any]]) -> list[str]:
+    """Show comparable client metrics before the full case details."""
+    by_id = {case["id"]: case for case in cases}
+    ids = ["context-8k"]
+    cold = next(
+        (
+            case_id
+            for case_id in ("context-120k", "context-64k", "context-32k")
+            if case_id in by_id and by_id[case_id]["status"] != "skipped"
+        ),
+        None,
+    )
+    if cold:
+        ids.append(cold)
+    replay = next((tier for tier in ("64k", "32k") if f"conversation-{tier}-replay" in by_id), None)
+    if replay:
+        ids.extend(
+            [
+                f"context-{replay}",
+                f"conversation-{replay}-replay",
+                f"conversation-{replay}-followup",
+            ]
+        )
+    else:
+        ids.extend(["conversation-fresh", "conversation-reuse-3"])
+
+    def timing(metrics: dict[str, Any], name: str, range_key: str) -> str:
+        value = _number(metrics.get(name))
+        low, high = metrics.get(f"{range_key}_min"), metrics.get(f"{range_key}_max")
+        if _has(low) and _has(high):
+            return f"{value} ({_number(low)} to {_number(high)})"
+        return value
+
+    rows = []
+    for case_id in dict.fromkeys(ids):
+        if (case := by_id.get(case_id)) is None:
+            continue
+        m = case.get("metrics", {})
+        rows.append(
+            [
+                _cell(case_id),
+                _cell(case["status"]),
+                f"{case.get('successful_runs', 0)}/{case['runs']}",
+                _number(m.get("input_tokens")),
+                _number(m.get("output_tokens")),
+                _number(m.get("cached_input_tokens")),
+                timing(m, "first_output_s", "first_output"),
+                timing(m, VISIBLE_OUTPUT, "first_visible_output"),
+                timing(m, "client_decode_tok_s", "client_decode"),
+            ]
+        )
+    if not rows:
+        return []
+    lines = [
+        "",
+        "### Performance at a glance",
+        "",
+        *_table(
+            [
+                "Case",
+                "Status",
+                "OK / tried",
+                "Input",
+                "Output",
+                "Cached input",
+                "First output (s)",
+                "First visible text (s)",
+                "Decode (tok/s)",
+            ],
+            rows,
+        ),
+    ]
+    replay_id = f"conversation-{replay}-replay" if replay else "conversation-reuse-3"
+    if replay_id in by_id and not _has(
+        by_id[replay_id].get("metrics", {}).get("cached_input_tokens")
+    ):
+        lines += ["", "Reuse unconfirmed. The replay has no reported cached-input count."]
+    if not replay and "conversation-fresh" in by_id:
+        note = by_id["conversation-fresh"].get("note")
+        if note:
+            lines += ["", f"Short replay. {_cell(note)}"]
+    return lines
+
+
 def render_results_block(document: dict[str, Any]) -> str:
     """Render the results section of an experiment summary.
 
@@ -352,6 +436,8 @@ def render_results_block(document: dict[str, Any]) -> str:
         f"run {_cell(run['status'])} · model `{_cell(server['model'])}` · "
         f"configured context {server['context_tokens']:,} tokens",
     ]
+    if document["suite_version"] == "3":
+        lines += _performance(document["cases"])
     if document.get("functional"):
         lines += _functional(document["functional"])
     if "boot" in document:
@@ -359,7 +445,8 @@ def render_results_block(document: dict[str, Any]) -> str:
     if "warmup" in document:
         lines += _warmup(document["warmup"])
     lines += _cases(document["cases"])
-    lines += _conversation(document["cases"])
+    if document["suite_version"] != "3":
+        lines += _conversation(document["cases"])
     if document.get("resources"):
         boot_metrics = document.get("boot", {}).get("metrics", {})
         lines += _resources(document["resources"], boot_metrics)

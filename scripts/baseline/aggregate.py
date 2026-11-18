@@ -78,6 +78,8 @@ def _case_metrics(
     kind: str,
     aligned: engine_log.Alignment | None,
     engine_reason: str,
+    *,
+    suite_v3: bool,
 ) -> dict[str, Any]:
     usages = [r["usage"] for r in ok if r.get("usage")]
     prompt = [u["prompt_tokens"] for u in usages if u.get("prompt_tokens") is not None]
@@ -112,11 +114,13 @@ def _case_metrics(
         ),
         **_engine_metrics(ok, kind, aligned, engine_reason),
     }
-    if any(r.get("workload") == "reasoning" for r in ok):
+    reasoning = any(r.get("workload") == "reasoning" for r in ok)
+    if suite_v3 or reasoning:
         first_visible = [r["first_content_s"] for r in ok if r.get("first_content_s") is not None]
         metrics["first_visible_output_s"] = _median_metric(
             first_visible, "s", CLIENT_SOURCE, "no visible output was received"
         )
+    if reasoning:
         for name, key in (
             ("reasoning_chars", "reasoning_chars"),
             ("visible_chars", "visible_chars"),
@@ -130,6 +134,16 @@ def _case_metrics(
             spread = stats.relative_spread(values)
             if spread is not None:
                 metrics[name] = _measured(spread, "ratio", f"{len(ok)} runs, range over median")
+    if suite_v3:
+        for name, values, unit in (
+            ("first_output", first, "s"),
+            ("first_visible_output", first_visible, "s"),
+            ("client_decode", rates, "tokens/s"),
+        ):
+            if len(values) >= 2:
+                metrics[f"{name}_min"] = _measured(min(values), unit, CLIENT_SOURCE)
+                metrics[f"{name}_max"] = _measured(max(values), unit, CLIENT_SOURCE)
+
     return metrics
 
 
@@ -139,6 +153,8 @@ def _case_entry(
     kind: str,
     aligned: engine_log.Alignment | None,
     engine_reason: str,
+    *,
+    suite_v3: bool,
 ) -> dict[str, Any]:
     attempts = [r for r in records if r.get("status") != "skipped"]
     if not attempts:
@@ -150,16 +166,20 @@ def _case_entry(
         for r in attempts
         if r["status"] != "ok"
     ]
+    if suite_v3:
+        notes.extend(str(r["note"]) for r in attempts if r.get("note"))
     status = "ok" if ok else "failed"
     metrics: dict[str, Any] = {}
     if ok:
-        metrics = _case_metrics(ok, kind, aligned, engine_reason)
+        metrics = _case_metrics(ok, kind, aligned, engine_reason, suite_v3=suite_v3)
         minimum = max((r.get("min_output_tokens") or 0 for r in ok), default=0)
         output = metrics["output_tokens"]["value"]
         if minimum and output is not None and output < minimum:
             status = "insufficient_sample"
             notes.append(f"Median output {output} tokens is below the {minimum}-token minimum")
     entry: dict[str, Any] = {"id": case_id, "status": status, "runs": len(attempts)}
+    if suite_v3:
+        entry["successful_runs"] = len(ok)
     if ok:
         finishes = Counter(r.get("finish_reason") or "unknown" for r in ok)
         entry["finish_reason"] = (
@@ -459,7 +479,9 @@ def build_results(raw: RawRun) -> dict[str, Any]:
         if not parsed:
             aligned, engine_reason = None, "the engine log has no per-request lines"
     document["cases"] = [
-        _case_entry(case, records, kind, aligned, engine_reason)
+        _case_entry(
+            case, records, kind, aligned, engine_reason, suite_v3=meta["suite_version"] == "3"
+        )
         for case, records in grouped.items()
     ]
     document["resources"] = []

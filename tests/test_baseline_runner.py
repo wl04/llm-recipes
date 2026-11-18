@@ -299,7 +299,9 @@ def test_run_replays_conversation_prefixes_after_the_cold_full_prompt(
     conversation = [p for p in server.requests if p.get("stream") and len(p["messages"]) > 1]
     full = conversation[0]["messages"]
     assert [p["messages"] for p in conversation[1:]] == [full[:3], full[:5], full]
-    assert [c["id"] for c in results_of(raw)["cases"]][-5:] == [
+    document = results_of(raw)
+    assert "Neither the 64K nor 32K replay fits" in case_of(document, "conversation-fresh")["note"]
+    assert [c["id"] for c in document["cases"]][-5:] == [
         "conversation-fresh",
         "conversation-reuse-1",
         "conversation-reuse-2",
@@ -750,3 +752,40 @@ def test_run_forces_tools_with_the_named_object_choice_form_for_strata(
     assert forced
     tools = next(c for c in results_of(raw)["functional"] if c["id"] == "tools")
     assert tools["status"] == "pass"
+
+
+@pytest.mark.parametrize(
+    ("context", "tier", "kind"),
+    [(2048, "64k", "strata"), (1250, "32k", "strata"), (2048, "64k", "lmstudio")],
+)
+def test_run_reuses_largest_fitting_cold_prompt(
+    tmp_path: Path, context: int, tier: str, kind: str
+) -> None:
+    from dataclasses import replace
+
+    from baseline.report import render_results_block
+
+    suite = replace(SUITE, contexts=(("context-32k", 400), ("context-64k", 1000)))
+    with FakeServer() as server:
+        code, raw, _ = execute(tmp_path, server, suite=suite, context_tokens=context, kind=kind)
+
+    assert code == ExitCode.OK
+    cases = results_of(raw)["cases"]
+    ids = [case["id"] for case in cases]
+    assert "conversation-fresh" not in ids
+    assert f"conversation-{tier}-replay" in ids
+    calls = [p for p in server.requests if p.get("stream")]
+    seed = next(
+        index
+        for index, p in enumerate(calls)
+        if f"Request t1-context-{tier}-1." in p["messages"][0]["content"]
+    )
+    cold, exact, followup_one, followup_two = calls[seed : seed + 4]
+    assert exact == cold
+    assert followup_one["messages"][:-1] == followup_two["messages"][:-1]
+    assert followup_one["messages"][:1] == cold["messages"]
+    assert followup_one["messages"][-1] != followup_two["messages"][-1]
+    report = render_results_block(results_of(raw))
+    assert "### Performance at a glance" in report
+    assert "First visible text" in report
+    assert "Reuse unconfirmed" in report

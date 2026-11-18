@@ -363,7 +363,6 @@ class Runner:
         self._probe()
         self._sustained()
         self._contexts()
-        self._conversation()
         self._reasoning()
 
     def _payload(
@@ -546,10 +545,10 @@ class Runner:
         self._writer.append_request(record)
         if error:
             self._problems.append(f"{case} run {run}: {error}")
-            return None if result is None or not result.text else result
+            return None
         return result
 
-    def _count_tokens(self, text: str) -> int | None:
+    def _count_tokens(self, messages: list[dict[str, Any]]) -> int | None:
         """Count a prompt with the server's tokenizer route, without running the prompt."""
         route = workloads.TOKEN_COUNT_ROUTE.get(self._config.kind)
         if route is None or self._count_failed:
@@ -557,7 +556,7 @@ class Runner:
         body = {
             "model": self._model,
             "max_tokens": 1,
-            "messages": [{"role": "user", "content": text}],
+            "messages": messages,
         }
         count_key = "input_tokens"
         if self._config.kind == "tabbyapi":
@@ -589,7 +588,7 @@ class Runner:
     def _prompt_request(
         self, *, phase: str, case: str, run: int, nonce: str, variant: int, tokens: int,
         task: str, max_tokens: int, **extra: Any,  # noqa: ANN401 - request-body fields
-    ) -> api.StreamResult | None:  # fmt: skip
+    ) -> tuple[workloads.Prompt, api.StreamResult | None]:  # fmt: skip
         def build(chars: int) -> workloads.Prompt:
             return workloads.build_prompt(
                 self._config.corpus, nonce=nonce, variant=variant, target_chars=chars, task=task
@@ -597,7 +596,7 @@ class Runner:
 
         prompt, counted = workloads.fit_prompt(
             build,
-            lambda candidate: self._count_tokens(candidate.text),
+            lambda candidate: self._count_tokens([{"role": "user", "content": candidate.text}]),
             tokens,
             initial_chars=workloads.target_chars(tokens, self._chars_per_token),
         )
@@ -623,7 +622,7 @@ class Runner:
             self._chars_per_token = workloads.calibrate(prompt.chars, result.usage.prompt_tokens)
             self._meta["workload"]["chars_per_token"] = round(self._chars_per_token, 4)
             self._save_meta()
-        return result
+        return prompt, result
 
     def _warmup(self) -> None:
         suite = self._config.suite
@@ -632,7 +631,7 @@ class Runner:
         for index in range(suite.warmup_max):
             nonce = f"{self._config.run_id}-warmup-{index}"
             if index == 0:
-                result = self._prompt_request(
+                _, result = self._prompt_request(
                     phase="warmup", case="warmup", run=1, nonce=nonce, variant=900,
                     tokens=CALIBRATION_TOKENS, task=workloads.REVIEW_TASK,
                     max_tokens=suite.warmup_output,
@@ -684,7 +683,7 @@ class Runner:
                 min_output_tokens=suite.min_sustained_output,
             )
 
-    def _conversation(self) -> None:
+    def _conversation(self, fallback: str) -> None:
         """Replay a fixed multi-turn coding conversation: cold full prompt, then warm prefixes.
 
         ``conversation-fresh`` sends the complete history while its prefixes are uncached.
@@ -701,6 +700,7 @@ class Runner:
             messages=[dict(m) for m in turns[-1]],
             max_tokens=workloads.CONVERSATION_OUTPUT,
             conversation_messages=len(turns[-1]),
+            note=fallback,
         )
         for index, prefix in enumerate(turns, start=1):
             case = f"conversation-reuse-{index}"
@@ -731,10 +731,52 @@ class Runner:
             workload="reasoning",
         )
 
+    def _replay(self, tier: str, prompt: workloads.Prompt, result: api.StreamResult) -> bool:
+        """Issue one exact replay and two fixed follow-ups if they fit."""
+        seed = [{"role": "user", "content": prompt.text}]
+        followups = workloads.replay_followups(seed)
+        seed_tokens = result.usage.prompt_tokens if result.usage else None
+        output = workloads.REPLAY_FOLLOWUP_OUTPUT
+        context = self._config.context_tokens
+        for messages in followups:
+            count = self._count_tokens(messages)
+            if count is None:
+                if seed_tokens is None:
+                    return False
+                count = seed_tokens + workloads.REPLAY_INPUT_RESERVE
+            elif self._config.kind == "tabbyapi":
+                # TabbyAPI's count omits the final assistant prefix.
+                count += 32
+            if count + output > context:
+                return False
+        seed_cap = self._config.suite.context_output
+        if seed_tokens is not None and seed_tokens + seed_cap > context:
+            return False
+
+        replay = f"conversation-{tier}-replay"
+        self._progress(replay)
+        self._stream_request(
+            phase="case", case=replay, run=1, messages=seed, max_tokens=seed_cap,
+            content_sha256=prompt.content_sha256, prompt_sha256=prompt.prompt_sha256,
+        )  # fmt: skip
+        case = f"conversation-{tier}-followup"
+        self._progress(case)
+        for run, messages in enumerate(followups, 1):
+            self._stream_request(
+                phase="case", case=case, run=run, messages=messages, max_tokens=output,
+                min_output_tokens=64,
+            )  # fmt: skip
+        return True
+
     def _contexts(self) -> None:
         suite = self._config.suite
         plan = workloads.plan_contexts(suite, self._config.context_tokens)
         largest = max(plan, key=lambda item: item.tokens, default=None)
+        replay = workloads.replay_context(plan, self._config.context_tokens, suite.context_output)
+        replay_ran = False
+        fallback = "Neither the 64K nor 32K replay fits the configured context."
+        if replay is not None:
+            fallback = f"The {replay.label} seed did not complete or its follow-ups could not fit."
         for index, item in enumerate(plan):
             self._check_stop()
             runs = suite.largest_context_runs if item is largest else 1
@@ -745,13 +787,17 @@ class Runner:
                         self._progress(
                             f"{item.label}: run {run} of {runs}" if runs > 1 else item.label
                         )
-                        self._prompt_request(
+                        prompt, result = self._prompt_request(
                             phase="case", case=item.label, run=run,
                             nonce=f"{self._config.run_id}-{item.label}-{run}",
                             variant=100 + index + 50 * (run - 1),
                             tokens=item.tokens, task=workloads.REVIEW_TASK,
                             max_tokens=suite.context_output, noise_probe=runs > 1,
                         )  # fmt: skip
+                        if item is replay and run == 1 and result is not None:
+                            replay_ran = self._replay(
+                                item.label.removeprefix("context-"), prompt, result
+                            )
                     continue
                 except ValueError as error:
                     recorded = workloads.PlannedContext(item.label, item.tokens, str(error))
@@ -763,3 +809,5 @@ class Runner:
                     "note": recorded.skip,
                 }
             )
+        if not replay_ran:
+            self._conversation(fallback)

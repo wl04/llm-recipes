@@ -483,6 +483,44 @@ class PlannedContext:
     skip: str | None
 
 
+# Allow for the fixed reply, follow-up question, and chat framing without a tokenizer.
+REPLAY_INPUT_RESERVE = 256
+REPLAY_FOLLOWUP_OUTPUT = 256
+
+
+def replay_context(
+    plan: list[PlannedContext], context_tokens: int, context_output: int
+) -> PlannedContext | None:
+    """Select the largest supported replay tier with room for its follow-ups."""
+    reserve = max(context_output, REPLAY_INPUT_RESERVE + REPLAY_FOLLOWUP_OUTPUT)
+    return max(
+        (
+            item
+            for item in plan
+            if item.label in {"context-32k", "context-64k"}
+            and item.skip is None
+            and item.tokens + reserve <= context_tokens
+        ),
+        key=lambda item: item.tokens,
+        default=None,
+    )
+
+
+def replay_followups(seed: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    """Return two returning turns with the same fixed history and different requests."""
+    history = [
+        *seed,
+        {"role": "assistant", "content": "I reviewed the supplied Python source."},
+    ]
+    return [
+        [*history, {"role": "user", "content": question}]
+        for question in (
+            "Which edge cases would you test first? Explain how you would test them.",
+            "Explain one maintainability improvement and sketch how to implement it.",
+        )
+    ]
+
+
 def plan_contexts(config: SuiteConfig, context_tokens: int) -> list[PlannedContext]:
     """Mark the context cases whose input plus output cannot fit the server's context."""
     plan = []

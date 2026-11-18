@@ -86,15 +86,18 @@ With `--logs`, `facts.json` may be absent (LM Studio logs are one such case); th
 | Suite | Workloads | Recorded baselines |
 |---|---|---|
 | v1 | checks, warmup, 8K/32K/64K/120K context, sustained coding | TabbyAPI/exl3, ISTA GGUF, Unsloth GGUF (`001`) |
-| v2 | v1 plus conversation-reuse and reasoning | Unsloth GGUF (`002`), 27B GGUF (LM Studio) |
+| v2 | v1 plus short conversation reuse and reasoning | Unsloth GGUF (`002`), 27B GGUF (LM Studio) |
+| v3 | Automatic long conversation replay and a compact performance summary | See the suite version in each report |
 
-Re-running a recipe whose published baseline is v1 with the current suite closes the gap — roughly 6–11 minutes of GPU time.
+Use the same suite version and replay tier when comparing results.
 
 ## What a run measures
 
 Container phases, sampled separately in `results.json`: idle 30 s (warn above 10% system CPU) → load (served model up to 30 min) → settle (CPU quiet for 10 s, up to 120 s) → loaded idle 10 s → suite → unload → after-unload 10 s (RAM/VRAM deltas; these alone do not establish a leak). Desktop runs record settle, loaded idle, and the suite.
 
-The suite runs at concurrency one: functional checks (streaming text, forced tool call, vision) → adaptive warmup (up to 4 requests) → five distinct approximately 8K-token code reviews → three sustained coding tasks (LRU cache, tokenizer, event store; tests requested, code not executed) → approximately 32K/64K/120K-token code reviews (largest runs twice; cases that cannot fit input plus output are skipped) → one fixed multi-turn coding conversation sent cold, then its three growing prefixes replayed → one reasoning request with a multi-step arithmetic task. Output caps: 1,024 tokens (context cases), 2,048 (sustained), 1,536 (reasoning), 256 (conversation turns); sustained replies under 512 tokens are marked insufficient samples.
+The suite runs at concurrency one: functional checks (streaming text, forced tool call, vision) → adaptive warmup (up to 4 requests) → five distinct approximately 8K-token code reviews → three sustained coding tasks (LRU cache, tokenizer, event store; tests requested, code not executed) → approximately 32K/64K/120K-token code reviews (largest runs twice; cases that cannot fit input plus output are skipped) → one reasoning request with a multi-step arithmetic task. Cold cases cap output at 1,024 tokens, sustained cases at 2,048, and reasoning at 1,536. Sustained replies under 512 tokens are marked insufficient samples.
+
+During the context cases, the runner automatically picks a 64K replay when it fits, then 32K, then the short conversation. The first cold request of the selected tier seeds an identical replay at the same output cap, followed by two fixed turns capped at 256 tokens. The short fallback uses the existing cold conversation and its three growing prefixes.
 
 Long prompts come from the running Python interpreter's standard-library source (PSF-licensed) — comparable runs should use the same Python version. Token pre-counts use each server's endpoint (`/v1/messages/count_tokens` on Strata, `/v1/token/encode` on TabbyAPI, which excludes the assistant prefix) or a calibrated characters-per-token estimate; results show actual reported token counts.
 
@@ -123,7 +126,7 @@ python3 scripts/run_baseline.py render <run-dir>
 
 Resources are sampled every 1 s over active request intervals, excluding prompt preparation; polling can miss brief peaks. Server cgroup (CPU cores, charged RAM, swap), system (`/proc`), GPU device (sysfs VRAM/GTT, utilization, power, temperature), and DRM fdinfo server allocations are distinct scopes and must not be added together. The Markdown RAM column shows system-used RAM.
 
-Client first-output latency and decode rate are separate from engine timings; decode is `(completion_tokens - 1) / (last output - first output)` from reported token counts. Repeated cases report medians and relative spread. Cached input tokens come from `usage.prompt_tokens_details.cached_tokens`; when a server omits it, the conversation section compares the identical cold and warm first-output times instead of assuming reuse. Engine timings and draft acceptance come from `server-logs/` matched to requests in order; a mismatch stops matching. LM Studio engine metrics remain unavailable.
+Client first-output latency and decode rate are separate from engine timings; decode is `(completion_tokens - 1) / (last output - first output)` from reported token counts. The v3 summary shows successful samples, reported token counts, first output, first visible text, and decode speed. Repeated samples show the median and observed range. An exact replay uses the first cold request even when the cold row summarizes several runs. Cached input comes from `usage.prompt_tokens_details.cached_tokens`. Missing counts leave reuse unconfirmed and the observed latencies remain available. Engine timings and draft acceptance come from `server-logs/` matched to requests in order; a mismatch stops matching. LM Studio engine metrics remain unavailable.
 
 What to expect on the current workstation: full suite including load — 5–6 min (Strata), ~11 min (TabbyAPI); TabbyAPI with a draft model legitimately reports warmup "did not converge" because draft acceptance fluctuates; LM Studio first-token spread at mid-range contexts can reach ~96% while decode stays within ~12%, so judge LM Studio first-output noise per case, not by the usual floors.
 
