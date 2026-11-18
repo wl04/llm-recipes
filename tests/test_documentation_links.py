@@ -1,6 +1,7 @@
 """Check that relative links in checked-in Markdown documents resolve."""
 
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -93,12 +94,12 @@ def targets(document: Path) -> list[tuple[str, Path]]:
     for line in prose(document.read_text()):
         for match in LINK.finditer(line):
             target = match.group(1)
-            if target.startswith("#") or PLACEHOLDER.search(target):
+            if PLACEHOLDER.search(target):
                 continue
             if re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", target):
                 continue
             path = target.split("#", 1)[0]
-            found.append((target, base if not path else (base.parent / path).resolve()))
+            found.append((target, document if not path else (base.parent / path).resolve()))
     return found
 
 
@@ -138,3 +139,17 @@ def test_link_anchor_matches_a_heading_in_the_linked_document(document: Path) ->
             broken.append(target)
 
     assert not broken, f"{document.relative_to(ROOT)} links to unknown anchors: {broken}"
+
+
+@pytest.mark.parametrize("in_template", [False, True], ids=["document", "template"])
+def test_targets_resolves_fragment_against_source_when_link_is_same_page(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, in_template: bool
+) -> None:
+    if in_template:
+        monkeypatch.setattr(sys.modules[__name__], "TEMPLATES", tmp_path)
+    document = tmp_path / "guide.md"
+    document.write_text("[Broken anchor](#missing)\n")
+
+    resolved = targets(document)
+
+    assert resolved == [("#missing", document)]
