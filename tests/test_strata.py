@@ -33,6 +33,58 @@ sys.path.insert(0, str(RUNTIME / "scripts"))
 serve = load_module("strata_serve", RUNTIME / "scripts/serve.py")
 
 
+@pytest.mark.parametrize("manifest", ["[]", "null"])
+def test_serve_reports_invalid_manifest_when_launch_json_is_not_an_object(
+    manifest: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config = tmp_path / "config"
+    config.mkdir()
+    (config / "launch.json").write_text(manifest)
+    monkeypatch.setattr(sys, "argv", ["serve.py", "--recipe", str(tmp_path)])
+
+    result = serve.main()
+
+    assert result == 1
+    assert "launch.json must contain a JSON object" in capsys.readouterr().err
+
+
+def test_serve_names_manifest_when_launch_json_has_invalid_syntax(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config = tmp_path / "config"
+    config.mkdir()
+    (config / "launch.json").write_text("{")
+    monkeypatch.setattr(sys, "argv", ["serve.py", "--recipe", str(tmp_path)])
+
+    result = serve.main()
+
+    assert result == 1
+    assert "launch.json: invalid JSON" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("output", ["[]", "{}", '{"device":true}', '{"device":-1}', "{"])
+def test_probe_device_rejects_invalid_hip_probe_output(
+    output: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(serve.subprocess, "check_output", lambda *args, **kwargs: output)
+
+    with pytest.raises(ValueError, match="check_hip"):
+        serve.probe_device()
+
+
+def test_probe_device_returns_visibility_string_when_index_is_valid(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(serve.subprocess, "check_output", lambda *args, **kwargs: '{"device":0}')
+
+    result = serve.probe_device()
+
+    assert result == "0"
+
+
 def test_configure_disables_optional_models_without_mutating_defaults() -> None:
     original = json.loads((RECIPE / "config/strata.json").read_text())
 

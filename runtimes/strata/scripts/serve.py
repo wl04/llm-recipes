@@ -103,6 +103,19 @@ def run_logged(command: list[str], log: Path, environment: dict[str, str]) -> in
                     process.wait()
 
 
+def probe_device() -> str:
+    """Read the HIP device index before the server initializes HIP."""
+    output = subprocess.check_output(["/opt/strata/bin/check_hip"], text=True)
+    try:
+        report = json.loads(output)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"check_hip returned invalid JSON: {error.msg}") from error
+    device = report.get("device") if isinstance(report, dict) else None
+    if type(device) is not int or device < 0:
+        raise ValueError("check_hip must report a non-negative integer device index")
+    return str(device)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--recipe", type=Path, required=True)
@@ -129,8 +142,7 @@ def main() -> int:
             raise ValueError("Prepared model lock differs; rerun prepare_models.py")
         validate_model_files(Path("/models") / folder, models)
         validate_files(config)
-        device = json.loads(subprocess.check_output(["/opt/strata/bin/check_hip"], text=True))
-        environment = dict(os.environ, HIP_VISIBLE_DEVICES=str(device["device"]))
+        environment = dict(os.environ, HIP_VISIBLE_DEVICES=probe_device())
         print(json.dumps(config, indent=2), flush=True)
         with tempfile.TemporaryDirectory(prefix="strata-runtime-") as temporary:
             path = Path(temporary) / "config.json"

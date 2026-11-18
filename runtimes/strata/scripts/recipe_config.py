@@ -11,7 +11,15 @@ def recipe_paths(recipe: Path) -> tuple[Path, Path]:
     relative to the models root (host) or the ``/models`` mount (container).
     """
     config = recipe / "config"
-    manifest = json.loads((config / "launch.json").read_text())
+    manifest_path = config / "launch.json"
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"{manifest_path}: invalid JSON at line {error.lineno}: {error.msg}"
+        ) from error
+    if not isinstance(manifest, dict):
+        raise ValueError(f"{manifest_path} must contain a JSON object")
     if manifest.get("runtime") != "strata":
         raise ValueError("Preparation and serving require a Strata recipe")
     if not recipe.name or recipe.name != recipe.name.strip("/"):
