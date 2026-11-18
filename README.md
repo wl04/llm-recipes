@@ -43,6 +43,12 @@ Container serving needs Docker, Python 3.14 or later, and `sudo` for container a
 
 More detail: [launcher guide](docs/launcher.md) · [machine roots](docs/project-instructions.md#machine-roots) · [baseline contract](docs/baseline.md)
 
+## Launcher
+
+Run `llm-recipes tui` to configure launches, manage instances, and follow logs. [Dashboard guide](docs/launcher.md#terminal-dashboard)
+
+![Terminal dashboard launch form with context, drafting, vision, and port settings](assets/tui/launch-settings.svg)
+
 ## Recipes
 
 | Model | Software | Hardware | Recipe |
@@ -51,10 +57,6 @@ More detail: [launcher guide](docs/launcher.md) · [machine roots](docs/project-
 | Qwen3.8-27B · 3 bpw EXL3 | TabbyAPI · ExLlamaV3 · ROCm · Ubuntu 26.10 | RX 9070 XT · 16 GB VRAM · Ryzen 7 9800X3D · 64 GB RAM | [Open recipe](recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/recipe.md) |
 | Qwen3.8-Flash-Next · ISTA IQ3_XXS GGUF | Strata · ROCm · Ubuntu 26.10 | RX 9070 XT · 16 GB VRAM · Ryzen 7 9800X3D · 64 GB RAM | [Open recipe](recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram/recipe.md) |
 | Qwen3.8-Flash-Next · Unsloth UD-IQ3_XXS GGUF | Strata · ROCm · Ubuntu 26.10 | RX 9070 XT · 16 GB VRAM · Ryzen 7 9800X3D · 64 GB RAM | [Open recipe](recipes/qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram/recipe.md) |
-
-Run `llm-recipes tui` to configure launches, manage instances, and follow logs. [Dashboard guide](docs/launcher.md#terminal-dashboard)
-
-![Terminal dashboard launch form with context, drafting, vision, and port settings](assets/tui/launch-settings.svg)
 
 ## Structure
 
