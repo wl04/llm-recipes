@@ -9,9 +9,6 @@ dependencies = ["PyYAML==6.0.3", "textual==8.2.8"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--strict-markers"
-markers = [
-    "subprocess: starts a repository script as a child process; the rest of the suite runs in-process",
-]
 
 [tool.ruff]
 line-length = 100

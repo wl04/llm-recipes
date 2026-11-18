@@ -11,7 +11,6 @@ import pytest
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "paths.py"
 
 
-@pytest.mark.subprocess
 def test_entry_point_prints_the_data_home_for_shell_callers(tmp_path: Path) -> None:
     environment = {**os.environ, paths.DATA_HOME_ENV: str(tmp_path / "data")}
 

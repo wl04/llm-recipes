@@ -89,7 +89,6 @@ def test_start_preserves_mount_boundaries_with_spaces(recipe: launcher.Recipe) -
     ]
 
 
-@pytest.mark.subprocess
 def test_start_rejects_invalid_context_before_execution(recipe: launcher.Recipe) -> None:
     result = subprocess.run(
         [
@@ -109,7 +108,6 @@ def test_start_rejects_invalid_context_before_execution(recipe: launcher.Recipe)
     assert "multiple of 256" in result.stderr
 
 
-@pytest.mark.subprocess
 def test_start_rejects_unsupported_vision_before_execution(recipe: launcher.Recipe) -> None:
     result = subprocess.run(
         [
@@ -128,7 +126,6 @@ def test_start_rejects_unsupported_vision_before_execution(recipe: launcher.Reci
     assert result.returncode == 2
 
 
-@pytest.mark.subprocess
 def test_start_dry_run_leaves_directories_absent_without_gpu(
     recipe: launcher.Recipe, tmp_path: Path
 ) -> None:

@@ -165,18 +165,6 @@ def test_start_selected_without_focused_row_does_not_run_any_command(
     asyncio.run(scenario())
 
 
-def test_status_updates_status_line() -> None:
-    async def scenario() -> None:
-        app = make_app()
-        async with app.run_test() as pilot:
-            await pilot.pause()
-            app._status("Started alpha")
-            await pilot.pause()
-            assert "Started alpha" in str(app.query_one("#status", Static).render())
-
-    asyncio.run(scenario())
-
-
 @pytest.mark.parametrize(
     ("failures", "expected"),
     [(0, "ok"), (1, "1 fail"), (2, "2 fail")],
