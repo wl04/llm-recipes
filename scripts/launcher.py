@@ -60,6 +60,9 @@ def instance_name(value: str) -> str:
     return value
 
 
+VISION_MODES = {"tabbyapi": ("on", "off"), "strata": ("cpu", "off")}
+
+
 def validate_options(options: LaunchOptions, adapter: str = "tabbyapi") -> None:
     """Validate common options and the selected adapter's capabilities."""
     instance_name(options.name)
@@ -67,11 +70,10 @@ def validate_options(options: LaunchOptions, adapter: str = "tabbyapi") -> None:
         raise ValueError("context must be at least 1024 and a multiple of 256 (at most 9 digits)")
     if not 1 <= options.port <= 65535:
         raise ValueError("port must be between 1 and 65535")
-    visions = {"tabbyapi": ("on", "off"), "strata": ("cpu", "off")}
-    if adapter not in visions:
+    if adapter not in VISION_MODES:
         raise ValueError(f"Unsupported adapter: {adapter}")
-    if options.draft not in ("on", "off") or options.vision not in visions[adapter]:
-        raise ValueError(f"{adapter}: draft must be on/off; vision must be {visions[adapter]}")
+    if options.draft not in ("on", "off") or options.vision not in VISION_MODES[adapter]:
+        raise ValueError(f"{adapter}: draft must be on/off; vision must be {VISION_MODES[adapter]}")
 
 
 def resolve_launch_options(

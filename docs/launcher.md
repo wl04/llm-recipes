@@ -83,7 +83,11 @@ Queries (`list`, `ps`, `status`) accept `--json` for machine-readable output.
 
 ### Terminal dashboard
 
-Run `llm-recipes tui` after the normal installation. It asks for Docker credentials before opening. Use **s** to start the selected recipe with its defaults, **x** to stop an instance, **l** to follow logs, **r** to refresh, and **q** to quit. Escape closes the log view; closing the dashboard leaves running instances active.
+Run `llm-recipes tui` after the normal installation. It asks for Docker credentials before opening.
+
+On the Recipes tab, select a recipe and press **s**. The form starts with the recipe defaults. Press **Enter** on **Start** to accept them, or use **Tab** and **Shift+Tab** to edit the instance name, context, drafting, vision, and host port. The form previews the API address and log directory. **Reset defaults** restores the form, and **Esc** cancels before launch. Overrides apply to this instance.
+
+If Docker rejects the start, the form keeps your values and shows the error. After Docker accepts it, the dashboard switches to Instances and selects the new instance when it appears. The status shows its API address while the model loads. Use **l** to follow logs, **x** to stop the selected instance, **r** to refresh, and **q** to quit. **Esc** closes the log view. Closing the dashboard leaves running instances active.
 
 For development, run `.venv/bin/python scripts/tui.py` from the checkout.
 

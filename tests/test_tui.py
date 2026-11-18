@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 import launcher
 import pytest
 import tui
-from launcher import Recipe
-from textual.widgets import DataTable, Static
+from launcher import LaunchOptions, Recipe
+from textual.widgets import Button, DataTable, Input, Select, Static, Switch, TabbedContent
 
 RECIPE = Recipe(
     name="alpha",
@@ -218,8 +219,11 @@ def test_start_records_facts_after_container_confirmation(monkeypatch: pytest.Mo
         async with app.run_test() as pilot:
             await pilot.pause()
             app._recipes = {"alpha": RECIPE}
-            worker = app.start_instance("alpha")
-            await asyncio.wait_for(worker.wait(), timeout=5)
+            app._fill_recipes(app._recipes)
+            app.action_start_selected()
+            await pilot.pause()
+            await pilot.press("enter")
+            await asyncio.wait_for(app.workers.wait_for_complete(), timeout=5)
             await pilot.pause()
             assert recorded == ["abc123"]
             assert "Started alpha" in str(app.query_one("#status", Static).render())
@@ -308,3 +312,103 @@ def test_execute_avoids_interactive_sudo_and_reports_failure(
     monkeypatch.setattr("tui.subprocess.run", run)
     with pytest.raises(RuntimeError, match="credentials expired"):
         tui.execute(["sudo", "docker", "stop", "example"])
+
+
+@pytest.mark.parametrize(("adapter", "vision"), [("strata", "cpu"), ("tabbyapi", "on")])
+def test_launch_form_reuses_validated_options_and_retains_edits_after_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, adapter: str, vision: str
+) -> None:
+    launched: list[LaunchOptions] = []
+    recipe = replace(RECIPE, adapter=adapter)
+
+    def launch(selected: Recipe, options: LaunchOptions) -> str | None:
+        assert selected == recipe
+        launched.append(options)
+        if len(launched) == 1:
+            raise RuntimeError("port is already allocated")
+        return None
+
+    monkeypatch.setattr(tui, "DEFAULT_MODELS", tmp_path)
+    monkeypatch.setattr(tui, "launch_recipe", launch)
+    monkeypatch.setattr(
+        tui,
+        "load_instances",
+        lambda: [
+            INSTANCE_RECORD,
+            {**INSTANCE_RECORD, "instance": "coding"},
+        ],
+    )
+
+    async def scenario() -> None:
+        app = make_app()
+        async with app.run_test(size=(80, 24)) as pilot:
+            app._recipes = {recipe.name: recipe}
+            app._fill_recipes(app._recipes)
+            await pilot.press("s")
+            form = app.screen
+            form.query_one("#launch-start", Button).active_effect_duration = 0
+            assert form.query_one("#launch-context", Input).value == str(recipe.context)
+            form.query_one("#launch-name", Input).value = "coding"
+            form.query_one("#launch-context", Input).value = "12345"
+            await pilot.click("#launch-start")
+            assert not launched
+            assert "multiple of 256" in str(form.query_one("#launch-error", Static).render())
+
+            form.query_one("#launch-context", Input).value = "65536"
+            form.query_one("#launch-port", Input).value = "8081"
+            form.query_one("#launch-draft", Switch).value = False
+            form.query_one("#launch-vision", Select).value = vision
+            await pilot.pause()
+            assert "127.0.0.1:8081/v1" in str(form.query_one("#launch-preview", Static).render())
+
+            await pilot.click("#launch-start")
+            await asyncio.wait_for(app.workers.wait_for_complete(), timeout=5)
+            assert app.screen is form
+            assert form.query_one("#launch-port", Input).value == "8081"
+            assert "port is already allocated" in str(
+                form.query_one("#launch-error", Static).render()
+            )
+
+            await pilot.click("#launch-start")
+            await asyncio.wait_for(app.workers.wait_for_complete(), timeout=5)
+            await pilot.pause()
+            assert app.screen is not form
+            assert app.query_one(TabbedContent).active == "instances"
+            assert app._selected_name("#instance-table") == "coding"
+            assert "127.0.0.1:8081/v1" in str(app.query_one("#status", Static).render())
+
+    asyncio.run(scenario())
+    assert (
+        launched
+        == [
+            LaunchOptions(
+                "coding", tmp_path, tmp_path / "logs/coding", 65536, "off", vision, 8081, True
+            )
+        ]
+        * 2
+    )
+
+
+def test_launch_form_resets_defaults_and_escape_cancels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    launched: list[LaunchOptions] = []
+    monkeypatch.setattr(tui, "launch_recipe", lambda recipe, options: launched.append(options))
+
+    async def scenario() -> None:
+        app = make_app()
+        async with app.run_test(size=(80, 24)) as pilot:
+            app._recipes = {RECIPE.name: RECIPE}
+            app._fill_recipes(app._recipes)
+            await pilot.press("s")
+            form = app.screen
+            form.query_one("#launch-name", Input).value = "custom"
+            form.query_one("#launch-port", Input).value = "8081"
+            await pilot.click("#launch-reset")
+            assert form.query_one("#launch-name", Input).value == RECIPE.name
+            assert form.query_one("#launch-port", Input).value == str(RECIPE.port)
+            await pilot.press("escape")
+            assert app.screen is not form
+
+    asyncio.run(scenario())
+    assert not launched

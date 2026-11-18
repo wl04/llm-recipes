@@ -12,9 +12,12 @@ from typing import ClassVar
 import paths
 from doctor import diagnose
 from launcher import (
+    VISION_MODES,
+    LaunchOptions,
     Recipe,
     discover_recipes,
     gpu_groups,
+    instance_name,
     instances_command,
     lifecycle_command,
     parse_instances,
@@ -23,12 +26,25 @@ from launcher import (
     resolve_launch_options,
     start_command,
     start_with_facts,
+    validate_options,
 )
 from textual import work
 from textual.app import App, ComposeResult
-from textual.containers import VerticalScroll
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import DataTable, Footer, Header, Static, TabbedContent, TabPane
+from textual.widgets import (
+    Button,
+    DataTable,
+    Footer,
+    Header,
+    Input,
+    Label,
+    Select,
+    Static,
+    Switch,
+    TabbedContent,
+    TabPane,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MODELS = paths.data_home()
@@ -133,14 +149,185 @@ class LogStreamScreen(ModalScreen[None]):
         self.workers.cancel_all()
 
 
+def launch_recipe(recipe: Recipe, options: LaunchOptions) -> str | None:
+    """Start a detached instance and return any launch metadata warning."""
+    command = start_command(recipe, options, groups=gpu_groups(), uid=os.getuid(), gid=os.getgid())
+    prepare_start(recipe, options)
+    status, warning = start_with_facts(recipe, options, command, execute)
+    if status:
+        raise RuntimeError(f"Docker start exited with {status}")
+    return warning
+
+
+class LaunchScreen(ModalScreen[tuple[LaunchOptions, str | None]]):
+    """Edit the options for one launch."""
+
+    AUTO_FOCUS = "#launch-start"
+    BINDINGS: ClassVar = [("escape", "cancel", "Cancel")]
+    CSS = """
+    LaunchScreen { align: center middle; }
+    #launch-dialog {
+        width: 96%;
+        max-width: 80;
+        height: auto;
+        max-height: 96%;
+        padding: 0 1;
+        border: round $accent;
+        background: $surface;
+    }
+    #launch-title { height: auto; text-style: bold; }
+    #launch-fields { height: auto; max-height: 18; }
+    .launch-row { height: auto; align-vertical: middle; }
+    .launch-row Label { width: 17; }
+    .launch-row Input, .launch-row Select { width: 1fr; }
+    #launch-preview, #launch-error { height: auto; }
+    #launch-error { color: $error; }
+    #launch-buttons { height: 3; }
+    #launch-buttons Button { min-width: 8; margin-right: 1; }
+    """
+
+    def __init__(self, recipe: Recipe, models: Path) -> None:
+        super().__init__()
+        self.recipe = recipe
+        self.models = models
+        self._starting = False
+
+    def compose(self) -> ComposeResult:
+        recipe = self.recipe
+        vision_labels = {"off": "Off", "on": "GPU", "cpu": "CPU"}
+        with Vertical(id="launch-dialog"):
+            yield Static(f"Launch {recipe.name}", id="launch-title", markup=False)
+            with VerticalScroll(id="launch-fields"):
+                with Horizontal(classes="launch-row"):
+                    yield Label("Instance name")
+                    yield Input(recipe.name, id="launch-name", compact=True)
+                with Horizontal(classes="launch-row"):
+                    yield Label("Context tokens")
+                    yield Input(
+                        str(recipe.context), type="integer", id="launch-context", compact=True
+                    )
+                with Horizontal(classes="launch-row"):
+                    yield Label("Drafting")
+                    yield Switch(recipe.draft == "on", id="launch-draft")
+                with Horizontal(classes="launch-row"):
+                    yield Label("Vision")
+                    yield Select(
+                        [(vision_labels[value], value) for value in VISION_MODES[recipe.adapter]],
+                        value=recipe.vision,
+                        allow_blank=False,
+                        id="launch-vision",
+                        compact=True,
+                    )
+                with Horizontal(classes="launch-row"):
+                    yield Label("Host port")
+                    yield Input(str(recipe.port), type="integer", id="launch-port", compact=True)
+                yield Static("", id="launch-preview", markup=False)
+                yield Static("", id="launch-error", markup=False)
+            with Horizontal(id="launch-buttons"):
+                yield Button("Start", variant="primary", id="launch-start")
+                yield Button("Reset defaults", id="launch-reset")
+                yield Button("Cancel", id="launch-cancel")
+
+    def on_mount(self) -> None:
+        self._update_preview()
+
+    def _field(self, name: str) -> Input:
+        return self.query_one(f"#launch-{name}", Input)
+
+    def _number(self, field: str, label: str) -> int:
+        try:
+            return int(self._field(field).value)
+        except ValueError as error:
+            raise ValueError(f"{label} must be a whole number") from error
+
+    def _options(self) -> LaunchOptions:
+        name = instance_name(self._field("name").value.strip())
+        options = resolve_launch_options(
+            self.recipe,
+            name=name,
+            models=self.models,
+            logs=paths.logs_dir(self.models, name),
+            context=self._number("context", "Context"),
+            draft="on" if self.query_one("#launch-draft", Switch).value else "off",
+            vision=str(self.query_one("#launch-vision", Select).value),
+            port=self._number("port", "Host port"),
+            detached=True,
+        )
+        validate_options(options, self.recipe.adapter)
+        return options
+
+    def _update_preview(self) -> None:
+        try:
+            options = self._options()
+        except ValueError:
+            text = f"Model root: {self.models}\nEnter valid launch options to preview the address."
+        else:
+            text = (
+                f"API: http://127.0.0.1:{options.port}/v1\n"
+                f"Model root: {options.models}\nLogs: {options.logs}"
+            )
+        self.query_one("#launch-preview", Static).update(text)
+
+    def on_input_changed(self) -> None:
+        self._update_preview()
+
+    def action_cancel(self) -> None:
+        if not self._starting:
+            self.dismiss()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if self._starting:
+            return
+        if event.button.id == "launch-cancel":
+            self.action_cancel()
+        elif event.button.id == "launch-reset":
+            recipe = self.recipe
+            self._field("name").value = recipe.name
+            self._field("context").value = str(recipe.context)
+            self._field("port").value = str(recipe.port)
+            self.query_one("#launch-draft", Switch).value = recipe.draft == "on"
+            self.query_one("#launch-vision", Select).value = recipe.vision
+            self.query_one("#launch-error", Static).update("")
+        elif event.button.id == "launch-start":
+            error_box = self.query_one("#launch-error", Static)
+            try:
+                options = self._options()
+            except ValueError as error:
+                error_box.update(str(error))
+                error_box.scroll_visible()
+                return
+            self._set_starting(True)
+            error_box.update("Starting container…")
+            error_box.scroll_visible()
+            self._start(options)
+
+    def _set_starting(self, starting: bool) -> None:
+        self._starting = starting
+        for widget in self.query("Input, Switch, Select, Button"):
+            widget.disabled = starting
+
+    @work
+    async def _start(self, options: LaunchOptions) -> None:
+        try:
+            warning = await asyncio.to_thread(launch_recipe, self.recipe, options)
+        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as error:
+            self._set_starting(False)
+            self.query_one("#launch-start", Button).focus()
+            error_box = self.query_one("#launch-error", Static)
+            error_box.update(str(error))
+            error_box.scroll_visible()
+        else:
+            self.dismiss((options, warning))
+
+
 class LlmRecipesApp(App[None]):
     """Recipe dashboard with doctor badges and a live instance list."""
 
     CSS = """
-    #status { height: 1; dock: bottom; }
+    #status { height: auto; min-height: 1; max-height: 3; dock: bottom; }
     """
     BINDINGS: ClassVar = [
-        ("s", "start_selected", "Start recipe"),
+        ("s", "start_selected", "Configure launch"),
         ("x", "stop_selected", "Stop instance"),
         ("l", "show_logs", "Show logs"),
         ("r", "refresh_all", "Refresh"),
@@ -150,10 +337,11 @@ class LlmRecipesApp(App[None]):
     def __init__(self) -> None:
         super().__init__()
         self._recipes: dict[str, Recipe] = {}
+        self._instance_to_select: str | None = None
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Static("", id="status")
+        yield Static("", id="status", markup=False)
         with TabbedContent():
             with TabPane("Recipes", id="recipes"):
                 yield DataTable(id="recipe-table")
@@ -242,7 +430,8 @@ class LlmRecipesApp(App[None]):
 
     def _fill_instances(self, instances: list[dict[str, str]]) -> None:
         table = self.query_one("#instance-table", DataTable)
-        selected = table.cursor_row
+        selected = self._selected_name("#instance-table")
+        preferred = self._instance_to_select
         table.clear(columns=False)
         for record in instances:
             table.add_row(
@@ -252,8 +441,11 @@ class LlmRecipesApp(App[None]):
                 record["ports"],
                 key=record["instance"],
             )
-        if selected is not None and selected < table.row_count:
-            table.move_cursor(row=selected)
+        if preferred is not None and preferred in table.rows:
+            selected = preferred
+            self._instance_to_select = None
+        if selected is not None and selected in table.rows:
+            table.move_cursor(row=table.get_row_index(selected))
 
     def _selected_name(self, selector: str) -> str | None:
         """Return the key of the focused row in the addressed table."""
@@ -263,41 +455,24 @@ class LlmRecipesApp(App[None]):
         return table.ordered_rows[table.cursor_row].key.value
 
     def action_start_selected(self) -> None:
+        if self.query_one(TabbedContent).active != "recipes":
+            return
         name = self._selected_name("#recipe-table")
-        if name is not None:
-            self.start_instance(name)
+        if name is not None and (recipe := self._recipes.get(name)) is not None:
+            self.push_screen(LaunchScreen(recipe, DEFAULT_MODELS), self._launch_finished)
 
-    @work(thread=True, exclusive=True, group="start_instance")
-    def start_instance(self, name: str) -> None:
-        recipe = self._recipes.get(name)
-        if recipe is None:
-            self.call_from_thread(self._status, f"Unknown recipe: {name}")
+    def _launch_finished(self, result: tuple[LaunchOptions, str | None] | None) -> None:
+        if result is None:
             return
-        try:
-            options = resolve_launch_options(
-                recipe,
-                name=name,
-                models=DEFAULT_MODELS,
-                logs=paths.logs_dir(DEFAULT_MODELS, name),
-                context=None,
-                draft=None,
-                vision=None,
-                port=None,
-                detached=True,
-            )
-            command = start_command(
-                recipe, options, groups=gpu_groups(), uid=os.getuid(), gid=os.getgid()
-            )
-            prepare_start(recipe, options)
-            status, warning = start_with_facts(recipe, options, command, execute)
-        except Exception as error:  # noqa: BLE001 - the status bar reports worker failures
-            self.call_from_thread(self._status, f"Start {name} failed: {error}")
-            return
-        message = f"Started {name}" if status == 0 else f"Start {name} exited with {status}"
+        options, warning = result
+        message = f"Started {options.name}\nModel loading: http://127.0.0.1:{options.port}/v1"
         if warning:
-            message += f"; {warning}"
-        self.call_from_thread(self._status, message)
-        self.call_from_thread(self.load_instances)
+            message += f" · {warning}"
+        self._status(message)
+        self._instance_to_select = options.name
+        self.query_one(TabbedContent).active = "instances"
+        self.query_one("#instance-table", DataTable).focus()
+        self.load_instances()
 
     def action_stop_selected(self) -> None:
         name = self._selected_name("#instance-table")
