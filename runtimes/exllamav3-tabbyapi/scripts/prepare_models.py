@@ -158,7 +158,15 @@ def preparation_lock(models: Path) -> Iterator[None]:
 
 def model_root(recipe: Path, models: Path) -> Path:
     """Resolve the recipe's data folder under the models mount: recipes/<recipe>."""
-    manifest = json.loads((recipe / "config/launch.json").read_text())
+    manifest_path = recipe / "config/launch.json"
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"{manifest_path}: invalid JSON at line {error.lineno}: {error.msg}"
+        ) from error
+    if not isinstance(manifest, dict):
+        raise ValueError(f"{manifest_path} must contain a JSON object")
     if manifest.get("runtime") != "exllamav3-tabbyapi":
         raise ValueError("expected an exllamav3-tabbyapi recipe")
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", recipe.name):
@@ -173,7 +181,10 @@ def cli() -> None:
     parser.add_argument("--models", type=Path, default=Path("/models"))
     args = parser.parse_args()
     recipe = args.recipe.resolve()
-    args.models = model_root(recipe, args.models)
+    try:
+        args.models = model_root(recipe, args.models)
+    except (OSError, ValueError) as error:
+        parser.error(str(error))
     image_lock = json.loads(Path("/opt/build/versions.lock.json").read_text())
     recipe_lock = json.loads((RUNTIME / "container/versions.lock.json").read_text())
     if image_lock != recipe_lock:

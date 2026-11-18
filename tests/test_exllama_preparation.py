@@ -29,6 +29,43 @@ def preparation(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     return module
 
 
+@pytest.mark.parametrize(
+    ("action", "manifest", "message"),
+    [
+        ("download", "[]", "must contain a JSON object"),
+        ("quantize-draft", "null", "must contain a JSON object"),
+        ("download", "{\n  invalid", "invalid JSON at line 2"),
+    ],
+)
+def test_cli_rejects_invalid_launch_manifest_before_preparing_models(
+    tmp_path: Path,
+    preparation: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    action: str,
+    manifest: str,
+    message: str,
+) -> None:
+    recipe = tmp_path / "recipe"
+    config = recipe / "config"
+    config.mkdir(parents=True)
+    launch = config / "launch.json"
+    launch.write_text(manifest)
+    models = tmp_path / "models"
+    monkeypatch.setattr(
+        sys, "argv", ["prepare_models.py", "--recipe", str(recipe), "--models", str(models), action]
+    )
+
+    with pytest.raises(SystemExit) as error:
+        preparation.cli()
+
+    assert error.value.code == 2
+    diagnostic = capsys.readouterr().err
+    assert str(launch) in diagnostic
+    assert message in diagnostic
+    assert not models.exists()
+
+
 @pytest.fixture
 def model_spec() -> dict[str, str | list[str]]:
     return {
