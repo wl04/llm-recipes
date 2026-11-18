@@ -4,6 +4,11 @@
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
+if [[ ${CI:-} == true ]] && ! command -v shellcheck >/dev/null; then
+    echo "shellcheck is required in CI" >&2
+    exit 1
+fi
+
 # Prefer the repository virtualenv; fall back to tools on PATH (CI).
 tool() {
     local name=$1
