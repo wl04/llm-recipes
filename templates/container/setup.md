@@ -23,11 +23,10 @@ The instance name defaults to the recipe identifier and the model data root defa
 
 ## Baseline
 
-Run from the repository root:
+Run with the installed command:
 
 ```bash
-sudo -v
-python3 scripts/run_baseline.py run <recipe>
+llm-recipes-baseline run <recipe>
 ```
 
 Add launch options only where the launch command above differs from the manifest defaults (for example `--context` and `--vision`). Mention thinking only when the reader has to act on it (for example, a server that thinks by default and needs `--request-extra` to disable it); otherwise the baseline guide covers it. Link the guide for preconditions, the phases, the output location, and how to publish a result. Do not repeat the guide's instructions here. Do not link results from this page: the setup guide is read before any experiment exists.

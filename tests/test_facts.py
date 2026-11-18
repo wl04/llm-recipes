@@ -155,15 +155,22 @@ def start_argv(tmp_path: Path, port: str) -> list[str]:
     ]
 
 
+def fake_start(command: list[str], *, status: int = 0) -> int:
+    Path(command[command.index("--cidfile") + 1]).write_text("abc123")
+    return status
+
+
 def drive_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, port: str) -> Path:
     """Run ``launch.py start`` with every external process replaced by a fake."""
     (tmp_path / "models").mkdir()
     monkeypatch.setattr(launch, "refresh_sudo_ticket", lambda: None)
     monkeypatch.setattr(launch, "gpu_groups", list)
-    monkeypatch.setattr(launch, "run_command", lambda command: 0)
+    monkeypatch.setattr(launch, "run_command", fake_start)
     monkeypatch.setattr(host_facts, "collect", lambda: dict(HOST))
 
     def fake_inspect(command: list[str]) -> subprocess.CompletedProcess[str]:
+        if command[3] == "container":
+            return subprocess.CompletedProcess(command, 0, f"true {IMAGE['image_id']}", "")
         assert command[:4] == ["sudo", "-n", "docker", "image"]
         output = json.dumps({"Id": IMAGE["image_id"], "RepoDigests": IMAGE["image_digests"]})
         return subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
@@ -182,6 +189,7 @@ def test_start_writes_facts_json_with_effective_options_in_instance_logs(
     path = drive_start(tmp_path, monkeypatch, "18123")
 
     facts = json.loads(path.read_text())
+    assert facts["container_id"] == "abc123"
     assert facts["options"]["port"] == 18123
     assert facts["options"]["context"] == 65536
     assert facts["image"]["image_digests"] == ["registry/img@sha256:bbb"]
@@ -195,7 +203,7 @@ def test_facts_json_start_survives_a_missing_image_inspect(
     (tmp_path / "models").mkdir()
     monkeypatch.setattr(launch, "refresh_sudo_ticket", lambda: None)
     monkeypatch.setattr(launch, "gpu_groups", list)
-    monkeypatch.setattr(launch, "run_command", lambda command: 0)
+    monkeypatch.setattr(launch, "run_command", fake_start)
     monkeypatch.setattr(
         launcher,
         "_capture_quiet",
@@ -240,3 +248,50 @@ def test_start_facts_records_runtime_descriptor_and_build_lock(tmp_path: Path) -
         facts["config_sha256"]["versions.lock.json"]
         == hashlib.sha256(b'{"version": 1}').hexdigest()
     )
+
+
+def test_failed_start_preserves_existing_launch_facts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "models").mkdir()
+    logs = tmp_path / "logs"
+    logs.mkdir()
+    facts = logs / "facts.json"
+    facts.write_text('{"container_id":"original"}')
+    monkeypatch.setattr(launch, "refresh_sudo_ticket", lambda: None)
+    monkeypatch.setattr(launch, "gpu_groups", list)
+    monkeypatch.setattr(launch, "run_command", lambda command: fake_start(command, status=125))
+
+    assert launch.main(start_argv(tmp_path, "18123")) == 125
+    assert json.loads(facts.read_text()) == {"container_id": "original"}
+
+
+def test_foreground_start_publishes_only_after_docker_reports_running(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dataclasses import replace
+    from threading import Event
+
+    recipe = make_recipe(tmp_path)
+    options = replace(make_options(tmp_path), detached=False)
+    observed = Event()
+    running = Event()
+    published = Event()
+
+    def inspect(command: list[str]) -> subprocess.CompletedProcess[str]:
+        state = "true" if running.is_set() else "false"
+        observed.set()
+        return subprocess.CompletedProcess(command, 0, f"{state} sha256:accepted", "")
+
+    def run(command: list[str]) -> int:
+        Path(command[command.index("--cidfile") + 1]).write_text("abc123")
+        assert observed.wait(5)
+        assert not published.is_set()
+        running.set()
+        assert published.wait(5)
+        return 0
+
+    monkeypatch.setattr(launcher, "_capture_quiet", inspect)
+    monkeypatch.setattr(launcher, "record_start_facts", lambda *args, **kwargs: published.set())
+
+    assert launcher.start_with_facts(recipe, options, ["sudo", "docker", "run"], run) == (0, None)

@@ -428,3 +428,25 @@ def test_yes_option_is_rejected_for_container_recipes(
 
     assert code == ExitCode.USAGE
     assert "--yes" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_managed_tabbyapi_chooses_target_among_served_models(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, explicit: bool
+) -> None:
+    target = "qwen3.8-27b-exl3-3bpw"
+    requested = "alternate" if explicit else target
+    with FakeServer() as server:
+        server.models = ["draft", target, "alternate"]
+        Managed(tmp_path, server, monkeypatch)
+        argv = managed_argv(tmp_path, server)
+        argv[1] = "qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram"
+        if explicit:
+            argv.extend(["--model", requested])
+        code = cli.main(argv, suite=SUITE)
+
+    assert code == ExitCode.OK
+    assert {request["model"] for request in server.requests} == {requested}
+    thinking = [request["chat_template_kwargs"]["enable_thinking"] for request in server.requests]
+    assert thinking.count(True) == 1
+    assert thinking[-1] is True

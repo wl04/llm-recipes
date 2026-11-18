@@ -34,11 +34,10 @@ Readiness: `curl -f http://127.0.0.1:8080/health`. The API is `http://127.0.0.1:
 
 ## Baseline
 
-Run from the repository root:
+Run with the installed command:
 
 ```bash
-sudo -v
-python3 scripts/run_baseline.py run qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram
+llm-recipes-baseline run qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram
 ```
 
 Results and the server logs go to `~/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.

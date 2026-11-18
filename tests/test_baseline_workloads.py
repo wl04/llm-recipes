@@ -83,9 +83,11 @@ def test_request_payload_lets_user_extra_override_defaults() -> None:
     assert payload["reasoning_effort"] == "low"
 
 
-def test_thinking_control_is_unconfigured_for_servers_without_a_verified_field() -> None:
+def test_thinking_control_is_set_for_strata_and_tabbyapi() -> None:
     assert workloads.thinking_request("strata", {}) == {"reasoning_effort": "none"}
-    assert workloads.thinking_request("tabbyapi", {}) == {}
+    assert workloads.thinking_request("tabbyapi", {}) == {
+        "chat_template_kwargs": {"enable_thinking": False}
+    }
 
 
 def test_load_corpus_reads_sorted_python_files_and_skips_tiny_ones(tmp_path: Path) -> None:
@@ -233,7 +235,9 @@ def test_thinking_request_records_fields_after_overrides() -> None:
     assert workloads.thinking_request("strata", {"reasoning_effort": "medium"}) == {
         "reasoning_effort": "medium"
     }
-    assert workloads.thinking_request("tabbyapi", {}) == {}
+    assert workloads.thinking_request("tabbyapi", {}) == {
+        "chat_template_kwargs": {"enable_thinking": False}
+    }
     assert workloads.thinking_request(
         "tabbyapi", {"chat_template_kwargs": {"enable_thinking": True}, "temperature": 1}
     ) == {"chat_template_kwargs": {"enable_thinking": True}}

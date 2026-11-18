@@ -4,15 +4,17 @@ The runner measures functional checks, coding workloads, context scaling, and re
 
 ## Run a baseline
 
-For a container recipe, close GPU-heavy applications and stop other launcher instances; reboot beforehand if practical. Run from the repository root:
+For a container recipe, close GPU-heavy applications and stop other launcher instances; reboot beforehand if practical. Run with the installed command:
 
 ```bash
-python3 scripts/run_baseline.py run <recipe>
+llm-recipes-baseline run <recipe>
 ```
+
+For a checkout or candidate worktree, use `.venv/bin/python scripts/run_baseline.py run <recipe>` from its root with the [development environment](project-instructions.md#development-dependencies-and-checks). Use the checkout environment for the import, render, and session examples below.
 
 The runner starts the recipe as instance `baseline`, stops it afterwards, and asks for your sudo password once at start (later Docker commands use noninteractive sudo, so expiring credentials can fail a late operation, including cleanup — re-run to refresh). It refuses to start while another instance runs or the selected GPU holds more than 2 GiB. Recipe defaults can be overridden with `--models`, `--context`, `--draft`, `--vision`, and `--port`.
 
-Output defaults to `~/llm-recipes/baselines/<recipe>/<date-time>/` (`--output` for another new directory outside the repository); server logs go to `server-logs/` inside the run directory. Ctrl+C preserves partial records and stops the server; `--keep-running` leaves it running.
+Output defaults to `~/llm-recipes/baselines/<recipe>/<date-time>/` (`--output` for another new directory outside the repository); server logs go to `server-logs/` inside the run directory. Ctrl+C preserves partial records and attempts to stop the server. `--keep-running` leaves it running. Cleanup acts on the container ID returned at startup and reports Docker inspection or stop failures.
 
 **Desktop apps:** start the app, load the model per its configuration guide, start its API server, then run the same command. A guided interview confirms the server URL, the served model (read live from `/v1/models`), the configured context, and the app's process id for CPU/RAM and process VRAM measurements — nothing is recorded until you approve the summary. `--yes` accepts determinable defaults and stops instead of guessing when models are ambiguous (pass `--model`). Fully explicit, no interview: `--base-url http://127.0.0.1:<port>/v1 --model <served-model-id> --context <tokens> --pid <server-pid>`. The runner then attaches without touching the app. Changing model or context in the app mid-run invalidates the run.
 
@@ -20,7 +22,7 @@ Other options: `--gpu-pci` (default: the AMD GPU with most VRAM), `--no-gpu`, `-
 
 ## Import a baseline run
 
-Add a completed run to the repository in four steps, from the development checkout (the experiment lands in the repository that contains the script — running import from an installed snapshot would add it to the snapshot instead):
+Add a successful run to the repository in four steps, from the development checkout (the experiment lands in the repository that contains the script — running import from an installed snapshot would add it to the snapshot instead):
 
 1. **Find the run directory** — each run is one directory under `~/llm-recipes/baselines/<recipe>/`; the newest holds `results.json`, `meta.json`, request and sample records, and `server-logs/`:
 
@@ -31,13 +33,13 @@ Add a completed run to the repository in four steps, from the development checko
 2. **Import**:
 
    ```bash
-   python3 scripts/run_baseline.py import <run-dir>
-   python3 scripts/run_baseline.py import <run-dir> --suffix <lowercase-hyphen-slug>  # optional folder-name extension
+   .venv/bin/python scripts/run_baseline.py import <run-dir>
+   .venv/bin/python scripts/run_baseline.py import <run-dir> --suffix <lowercase-hyphen-slug>  # optional folder-name extension
    ```
 
    The command creates the numbered experiment folder under the recipe, copies `results.json`, writes a complete `profile.yaml` from the run's `meta.json`, `facts.json`, recipe configuration, and runtime locks, and regenerates the configuration and recipe index — no manual `profile.yaml` editing. The profile reuses the identity of the recipe's existing experiments when they have one; folder-derived parts serve only the first experiment.
 
-3. **Optional notes** — record a non-obvious constraint or observation in `settings.notes` of the new `profile.yaml`, then re-run `python3 scripts/generate_configurations.py` so `configuration.md` matches.
+3. **Optional notes** — record a non-obvious constraint or observation in `settings.notes` of the new `profile.yaml`, then re-run `.venv/bin/python scripts/generate_configurations.py` so `configuration.md` matches.
 
 4. **Verify and commit**: `scripts/check.sh`, then commit the new experiment folder.
 
@@ -54,21 +56,21 @@ The session command aggregates one instance's coding activity from the engine's 
 1. **Create and fill the experiment in one command** (the instance must have been started by the launcher at least once, so its log directory with `*.log` files and `facts.json` exists):
 
    ```bash
-   python3 scripts/run_baseline.py session <instance> --create <lowercase-hyphen-slug>
+   .venv/bin/python scripts/run_baseline.py session <instance> --create <lowercase-hyphen-slug>
    ```
 
    This numbers the next experiment folder `NNN-<date>-<slug>` under the recipe, copies the `summary.md` and `configuration.md` scaffold from the template, aggregates the logs into `session-results.json`, writes the generated activity block into `summary.md`, and seeds `profile.yaml` from `facts.json` and the sampler parameters the engine echoed to its log. The folder date comes from the instance's `facts.json`.
 
-2. **Regenerate the report, configuration, and recipe index**: `python3 scripts/generate_configurations.py`.
+2. **Regenerate the report, configuration, and recipe index**: `.venv/bin/python scripts/generate_configurations.py`.
 
 3. **Write the narrative** in `summary.md` — Workload and Observations outside the generated markers — then `scripts/check.sh` and commit.
 
 To read the numbers without creating anything, run the same command without `--create`; it prints the document to stdout. To update an existing experiment instead of creating one, use `--experiment <folder>` — an existing `profile.yaml` is never overwritten, and a missing `summary.md` in that folder is an error. All replacements are validated before updating existing files.
 
 ```bash
-python3 scripts/run_baseline.py session <instance>          # print to stdout
-python3 scripts/run_baseline.py session --logs <dir>        # any directory of *.log files
-python3 scripts/run_baseline.py session <instance> --experiment recipes/<recipe>/<NNN-...>
+.venv/bin/python scripts/run_baseline.py session <instance>          # print to stdout
+.venv/bin/python scripts/run_baseline.py session --logs <dir>        # any directory of *.log files
+.venv/bin/python scripts/run_baseline.py session <instance> --experiment recipes/<recipe>/<NNN-...>
 ```
 
 With `--logs`, `facts.json` may be absent (LM Studio logs are one such case); the profile then seeds from the recipe name and the sampler echo alone. A directory without top-level `*.log` files is searched recursively, which covers LM Studio's dated files rotated into month directories.
@@ -95,13 +97,13 @@ Use the same suite version and replay tier when comparing results.
 
 Container phases, sampled separately in `results.json`: idle 30 s (warn above 10% system CPU) → load (served model up to 30 min) → settle (CPU quiet for 10 s, up to 120 s) → loaded idle 10 s → suite → unload → after-unload 10 s (RAM/VRAM deltas; these alone do not establish a leak). Desktop runs record settle, loaded idle, and the suite.
 
-The suite runs at concurrency one: functional checks (streaming text, forced tool call, vision) → adaptive warmup (up to 4 requests) → five distinct approximately 8K-token code reviews → three sustained coding tasks (LRU cache, tokenizer, event store; tests requested, code not executed) → approximately 32K/64K/120K-token code reviews (largest runs twice; cases that cannot fit input plus output are skipped) → one reasoning request with a multi-step arithmetic task. Cold cases cap output at 1,024 tokens, sustained cases at 2,048, and reasoning at 1,536. Sustained replies under 512 tokens are marked insufficient samples.
+The suite runs at concurrency one: functional checks (streaming text, forced tool call, vision) → adaptive warmup (up to 4 requests) → five distinct approximately 8K-token code reviews → three sustained coding tasks (LRU cache, tokenizer, event store; tests requested, code not executed) → approximately 32K/64K/120K-token code reviews (largest fitting case runs twice; cases that cannot fit input plus output are skipped) → one reasoning request with a multi-step arithmetic task. Cold cases cap output at 1,024 tokens, sustained cases at 2,048, and reasoning at 1,536. Sustained replies under 512 tokens are marked insufficient samples.
 
 During the context cases, the runner automatically picks a 64K replay when it fits, then 32K, then the short conversation. The first cold request of the selected tier seeds an identical replay at the same output cap, followed by two fixed turns capped at 256 tokens. The short fallback uses the existing cold conversation and its three growing prefixes.
 
 Long prompts come from the running Python interpreter's standard-library source (PSF-licensed) — comparable runs should use the same Python version. Token pre-counts use each server's endpoint (`/v1/messages/count_tokens` on Strata, `/v1/token/encode` on TabbyAPI, which excludes the assistant prefix) or a calibrated characters-per-token estimate; results show actual reported token counts.
 
-Request policy: performance at temperature 1, top-k 20, top-p 0.95, min-p 0, penalties 0; functional checks at temperature 0. Strata and LM Studio receive explicit `reasoning_effort: none` on all but the reasoning request (`high`) — on LM Studio the Qwen template thinks by default; re-verify the control with [`scripts/probe_lmstudio_thinking.sh`](../scripts/probe_lmstudio_thinking.sh) after app updates. Other servers keep template defaults; use `--request-extra` for an appropriate control. `policy` records these request settings as sent — not verified server behavior — and the configured context, not a queried one. The reasoning case records reasoning and visible text separately (`first_visible_output_s`, character counts); reasoning with no visible text fails the run.
+Request policy: performance at temperature 1, top-k 20, top-p 0.95, min-p 0, penalties 0; functional checks at temperature 0. Strata and LM Studio receive explicit `reasoning_effort: none` on all but the reasoning request (`high`) — on LM Studio the Qwen template thinks by default; re-verify the control with [`scripts/probe_lmstudio_thinking.sh`](../scripts/probe_lmstudio_thinking.sh) after app updates. TabbyAPI receives `chat_template_kwargs.enable_thinking: false` for the baseline and `true` for the reasoning request. Managed TabbyAPI runs select the target from the recipe’s native configuration. Pass `--model` or `--request-extra` to override these defaults. `policy` records these request settings as sent — not verified server behavior — and the configured context, not a queried one. The reasoning case records reasoning and visible text separately (`first_visible_output_s`, character counts); reasoning with no visible text fails the run.
 
 Vision: the default image is [`assets/checks/amdgpu-top.png`](../assets/checks/amdgpu-top.png) with [expectations](../assets/checks/amdgpu-top.expected.json); the JSON-scored answer, image hash, and expectations version are retained. `--image` supplies a custom image for manual review; record encoder image-token settings in the profile — the runner does not detect them.
 
@@ -110,7 +112,7 @@ Vision: the default image is [`assets/checks/amdgpu-top.png`](../assets/checks/a
 The run directory holds `meta.json`, `requests.jsonl`, `samples.jsonl`, server logs, `results.json`, and a draft `summary.md`. Rebuild the report without inference (authored text outside markers is preserved):
 
 ```bash
-python3 scripts/run_baseline.py render <run-dir>
+.venv/bin/python scripts/run_baseline.py render <run-dir>
 ```
 
 [`schema.py`](../scripts/baseline/schema.py) validates the result structure. Every measurement carries value, unit, and source; unavailable ones are `null` with a reason, never zero.

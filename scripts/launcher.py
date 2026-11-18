@@ -6,6 +6,8 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -456,13 +458,15 @@ def write_json_atomic(path: Path, data: object) -> None:
 
 
 def _capture_quiet(command: list[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(command, check=False, capture_output=True, text=True)
+    return subprocess.run(command, check=False, capture_output=True, text=True, timeout=15)
 
 
 def record_start_facts(
     recipe: Recipe,
     options: LaunchOptions,
     *,
+    container_id: str | None = None,
+    image_id: str | None = None,
     run: Callable[[list[str]], subprocess.CompletedProcess[str]] | None = None,
     host: Callable[[], dict[str, object]] | None = None,
     started_at: Callable[[], str] = lambda: datetime.now(UTC).isoformat(timespec="seconds"),
@@ -474,7 +478,7 @@ def record_start_facts(
     """
     inspect = run if run is not None else _capture_quiet
     collect = host if host is not None else host_facts.collect
-    inspection = inspect(image_inspect_command(recipe.image))
+    inspection = inspect(image_inspect_command(image_id or recipe.image))
     if inspection.returncode:
         raise ValueError((inspection.stderr.strip() or "docker image inspect failed")[:200])
     facts = start_facts(
@@ -484,14 +488,78 @@ def record_start_facts(
         image=parse_image_inspect(inspection.stdout),
         started_at=started_at(),
     )
+    if container_id is not None:
+        facts["container_id"] = container_id
     write_json_atomic(options.logs / FACTS_NAME, facts)
     return facts
 
 
-def record_start_warning(recipe: Recipe, options: LaunchOptions) -> str | None:
-    """Record launch facts, returning a visible warning if collection fails."""
-    try:
-        record_start_facts(recipe, options)
-    except (OSError, ValueError, subprocess.SubprocessError) as error:
-        return f"warning: {FACTS_NAME} was not written: {error}"
-    return None
+def start_with_facts(
+    recipe: Recipe,
+    options: LaunchOptions,
+    command: list[str],
+    run: Callable[[list[str]], int],
+) -> tuple[int, str | None]:
+    """Publish facts once Docker starts the particular container created by this command."""
+    with tempfile.TemporaryDirectory(prefix="llm-recipes-start-") as directory:
+        cidfile = Path(directory) / "cid"
+        argv = list(command)
+        index = argv.index("run") + 1
+        argv[index:index] = ["--cidfile", str(cidfile)]
+        finished = threading.Event()
+        failure: str | None = None
+
+        def publish() -> bool:
+            nonlocal failure
+            try:
+                try:
+                    container_id = cidfile.read_text().strip()
+                except FileNotFoundError:
+                    return False
+                if not re.fullmatch(r"[0-9a-f]{6,64}", container_id):
+                    return False
+                result = _capture_quiet(
+                    [
+                        "sudo",
+                        "-n",
+                        "docker",
+                        "container",
+                        "inspect",
+                        "--format",
+                        "{{.State.Running}} {{.Image}}",
+                        container_id,
+                    ]
+                )
+                if result.returncode:
+                    failure = result.stderr.strip() or "container inspection failed"
+                    return False
+                running, image_id = result.stdout.split()
+                if running != "true":
+                    return False
+                record_start_facts(recipe, options, container_id=container_id, image_id=image_id)
+                failure = None
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
+                failure = str(error)
+            return True
+
+        def watch() -> None:
+            while not finished.is_set():
+                if publish():
+                    return
+                finished.wait(0.2)
+
+        if options.detached:
+            status = run(argv)
+            if status == 0 and not publish() and failure is None:
+                failure = "Docker did not confirm a running container"
+        else:
+            watcher = threading.Thread(target=watch, name="launch-facts")
+            watcher.start()
+            try:
+                status = run(argv)
+            finally:
+                finished.set()
+                watcher.join()
+
+        warning = f"warning: {FACTS_NAME} was not written: {failure}" if failure else None
+        return status, warning

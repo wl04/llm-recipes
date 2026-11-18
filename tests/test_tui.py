@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import subprocess
 from pathlib import Path
 
+import launcher
 import pytest
 import tui
 from launcher import Recipe
@@ -188,19 +190,24 @@ def test_main_authenticates_before_opening_dashboard(monkeypatch: pytest.MonkeyP
     assert tui.main() == 0
 
 
-def test_start_records_facts_before_launch(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_start_records_facts_after_container_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
     recorded: list[str] = []
     monkeypatch.setattr(tui, "gpu_groups", list)
     monkeypatch.setattr(tui, "prepare_start", lambda *args: None)
     monkeypatch.setattr(
-        tui,
-        "record_start_warning",
-        lambda recipe, options: recorded.append(recipe.name),
-        raising=False,
+        launcher,
+        "record_start_facts",
+        lambda recipe, options, **kwargs: recorded.append(kwargs["container_id"]),
+    )
+    monkeypatch.setattr(
+        launcher,
+        "_capture_quiet",
+        lambda command: subprocess.CompletedProcess(command, 0, "true sha256:accepted", ""),
     )
 
     def execute(command: list[str]) -> int:
-        assert recorded == ["alpha"]
+        assert not recorded
+        Path(command[command.index("--cidfile") + 1]).write_text("abc123")
         return 0
 
     monkeypatch.setattr(tui, "execute", execute)
@@ -214,7 +221,7 @@ def test_start_records_facts_before_launch(monkeypatch: pytest.MonkeyPatch) -> N
             worker = app.start_instance("alpha")
             await asyncio.wait_for(worker.wait(), timeout=5)
             await pilot.pause()
-            assert recorded == ["alpha"]
+            assert recorded == ["abc123"]
             assert "Started alpha" in str(app.query_one("#status", Static).render())
 
     asyncio.run(scenario())

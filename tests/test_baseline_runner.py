@@ -214,15 +214,15 @@ def test_run_fails_the_check_when_vision_misreads_identity_fields(tmp_path: Path
     assert code == ExitCode.CHECKS_FAILED
 
 
-def test_run_repeats_only_the_probe_and_reports_its_noise_floor(tmp_path: Path) -> None:
+def test_run_repeats_the_probe_and_largest_fitting_context(tmp_path: Path) -> None:
     with FakeServer() as server:
         _, raw, _ = execute(tmp_path, server)
 
     document = results_of(raw)
     assert case_of(document, "context-8k")["runs"] == 3
     assert "noise_decode_spread" in case_of(document, "context-8k")["metrics"]
-    assert case_of(document, "context-a")["runs"] == 1
-    assert "noise_decode_spread" not in case_of(document, "context-a")["metrics"]
+    assert case_of(document, "context-a")["runs"] == SUITE.largest_context_runs
+    assert "noise_decode_spread" in case_of(document, "context-a")["metrics"]
 
 
 def test_run_calibrates_prompt_length_from_the_servers_reported_tokens(tmp_path: Path) -> None:
@@ -594,6 +594,7 @@ def test_managed_run_reports_a_failed_stop_as_a_problem(tmp_path: Path) -> None:
 
     assert code == ExitCode.CHECKS_FAILED
     assert raw.meta["phases"]["unload"]["status"] == "failed"
+    assert raw.meta["run"]["status"] == "failed"
     assert "after_unload" not in raw.meta["phases"]
     assert any("sudo docker stop" in problem for problem in raw.meta["problems"])
 
@@ -774,6 +775,7 @@ def test_run_reuses_largest_fitting_cold_prompt(
     ids = [case["id"] for case in cases]
     assert "conversation-fresh" not in ids
     assert f"conversation-{tier}-replay" in ids
+    assert case_of(results_of(raw), "context-64k")["runs"] == suite.largest_context_runs
     calls = [p for p in server.requests if p.get("stream")]
     seed = next(
         index

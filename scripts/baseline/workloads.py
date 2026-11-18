@@ -19,6 +19,7 @@ FIT_ROUNDS = 8
 # Verified field names; other servers need their own settings supplied with --request-extra.
 THINKING_OFF: dict[str, dict[str, Any]] = {
     "strata": {"reasoning_effort": "none"},
+    "tabbyapi": {"chat_template_kwargs": {"enable_thinking": False}},
     # Live probe 2026-11-15 (Bionic 1.2.0): "none" disables the template's default thinking,
     # "off" answers HTTP 400, and chat_template_kwargs, enable_thinking, and reasoning are
     # accepted but inert. scripts/probe_lmstudio_thinking.sh re-checks all candidates.
@@ -29,6 +30,7 @@ THINKING_OFF: dict[str, dict[str, Any]] = {
 # other case, and the 2026-11-15 probe showed "high" is accepted and produces reasoning.
 THINKING_ON: dict[str, dict[str, Any]] = {
     "strata": {"reasoning_effort": "high"},
+    "tabbyapi": {"chat_template_kwargs": {"enable_thinking": True}},
     "lmstudio": {"reasoning_effort": "high"},
 }
 TOKEN_LIMIT_FIELD = {"strata": "max_completion_tokens"}

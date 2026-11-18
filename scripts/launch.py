@@ -19,12 +19,12 @@ from launcher import (
     lifecycle_command,
     parse_instances,
     prepare_start,
-    record_start_warning,
     refresh_sudo_ticket,
     resolve_launch_options,
     run_command,
     running_command,
     start_command,
+    start_with_facts,
     status_query_command,
 )
 
@@ -204,12 +204,12 @@ def _start(recipe: Recipe, args: argparse.Namespace) -> int:
     command = start_command(recipe, options, groups=gpu_groups(), uid=uid, gid=gid)
     prepare_start(recipe, options)
     refresh_sudo_ticket()
-    warning = record_start_warning(recipe, options)
-    if warning:
-        print(warning, file=sys.stderr)
     print(f"Instance: {name}\nPersistent logs: {options.logs}", flush=True)
     print(f"API address: http://127.0.0.1:{options.port}/v1 (after model loading)", flush=True)
-    return run_command(command)
+    status, warning = start_with_facts(recipe, options, command, run_command)
+    if warning:
+        print(warning, file=sys.stderr)
+    return status
 
 
 def main(argv: list[str] | None = None) -> int:

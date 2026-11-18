@@ -5,6 +5,7 @@ commands, under a dedicated instance name so an instance the user started is nev
 """
 
 import os
+import re
 import shlex
 import time
 from collections.abc import Callable
@@ -56,7 +57,7 @@ class ContainerControl:
         resolve: Callable[[str], host.ContainerInfo] = host.resolve_container,
         gpu_groups: Callable[[], list[int]] = launcher.gpu_groups,
         sleep: Callable[[float], None] = time.sleep,
-        record_facts: Callable[[], dict[str, object]] = dict,
+        record_facts: Callable[[host.ContainerInfo], dict[str, object]] = lambda _: {},
     ) -> None:
         self._recipe = recipe
         self._options = options
@@ -68,7 +69,7 @@ class ContainerControl:
         self._gpu_groups = gpu_groups
         self._sleep = sleep
         self._record_facts = record_facts
-        self._container = "llm-recipes-" + options.name
+        self._container: str | None = None
 
     def preflight(self) -> None:
         """Refuse to start unless the recipe is prepared and the machine is free for it.
@@ -128,15 +129,19 @@ class ContainerControl:
             launcher.prepare_start(self._recipe, self._options)
         except (ValueError, OSError) as error:
             raise LifecycleError(f"Cannot start {self._recipe.name}: {error}") from error
-        try:
-            facts = self._record_facts()
-        except (ValueError, OSError) as error:
-            raise LifecycleError(f"Cannot record the start facts: {error}") from error
         command = _non_interactive(command)
         result = self._slow_run(command)
         if result.returncode:
             raise LifecycleError(f"Docker could not start the server: {result.stderr.strip()}")
-        info = self._wait_for_container()
+        container_id = result.stdout.strip()
+        if not re.fullmatch(r"[0-9a-f]{6,64}", container_id):
+            raise LifecycleError("Docker did not return a container ID for the baseline")
+        self._container = container_id
+        info = self._wait_for_container(container_id)
+        try:
+            facts = self._record_facts(info)
+        except (ValueError, OSError) as error:
+            raise LifecycleError(f"Cannot record the start facts: {error}") from error
         return StartedServer(
             info.cgroup,
             {
@@ -150,37 +155,53 @@ class ContainerControl:
             },
         )
 
-    def _wait_for_container(self) -> host.ContainerInfo:
+    def _wait_for_container(self, container_id: str) -> host.ContainerInfo:
         last = ""
         for _ in range(RESOLVE_ATTEMPTS):
             try:
-                return self._resolve(self._options.name)
+                info = self._resolve(self._options.name)
             except host.HostError as error:
                 last = str(error)
                 self._sleep(0.5)
+            else:
+                if not container_id.startswith(info.container_id):
+                    raise LifecycleError("The baseline instance belongs to a different container")
+                return info
         raise LifecycleError(f"The container did not appear: {last}")
 
     def is_running(self) -> bool:
         """Whether the container is still running."""
+        if self._container is None:
+            return False
         result = self._run(
-            _non_interactive(
-                ["sudo", "docker", "inspect", "--format", "{{.State.Running}}", self._container]
-            )
-        )
-        return result.returncode == 0 and result.stdout.strip() == "true"
-
-    def stop(self) -> None:
-        """Stop the container if it is running; safe to call repeatedly.
-
-        Raises:
-            LifecycleError: Docker could not stop it; the message has the command to run.
-        """
-        if not self.is_running():
-            return
-        result = self._slow_run(
-            _non_interactive(launcher.lifecycle_command("stop", self._options.name))
+            [
+                "sudo",
+                "-n",
+                "docker",
+                "ps",
+                "--no-trunc",
+                "--filter",
+                f"id={self._container}",
+                "--format",
+                "{{.ID}}",
+            ]
         )
         if result.returncode:
+            detail = result.stderr.strip() or "Docker inspection failed"
+            raise LifecycleError(
+                f"Cannot inspect baseline container {self._container}: {detail}. "
+                f"Check sudo or Docker and stop it with: sudo docker stop {self._container}"
+            )
+        return self._container in result.stdout.split()
+
+    def stop(self) -> None:
+        """Stop the owned container if still running."""
+        if self._container is None or not self.is_running():
+            return
+        result = self._slow_run(["sudo", "-n", "docker", "stop", self._container])
+        if result.returncode:
+            if not self.is_running():
+                return
             raise LifecycleError(
                 f"Docker could not stop the server ({result.stderr.strip()}). "
                 f"Stop it yourself with: sudo docker stop {self._container}"

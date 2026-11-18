@@ -3,10 +3,10 @@
 Keep one command per configuration:
 
 ```bash
-python3 scripts/run_baseline.py run <recipe>
+llm-recipes-baseline run <recipe>
 ```
 
-Use the existing launch and desktop attach flows. The runner chooses workloads from the recipe's configured context and writes the comparison metrics into the existing `summary.md` and `results.json`. A container candidate uses the same command from its own worktree. [Baseline runner](../baseline.md#run-a-baseline) · [Candidate runtime workflow](../runtimes/strata.md#compare-a-candidate-runtime)
+Use the existing launch and desktop attach flows. The runner chooses workloads from the recipe's configured context and writes the comparison metrics into the existing `summary.md` and `results.json`. A container candidate uses the checkout entry point from its own worktree. [Baseline runner](../baseline.md#run-a-baseline) · [Candidate runtime workflow](../runtimes/strata.md#compare-a-candidate-runtime)
 
 The baseline answers three questions for a single active user: how long a fresh prompt takes, how long a returning turn takes, and how fast the server generates once it starts. The existing functional checks and active RAM/VRAM measurements provide context for those numbers.
 

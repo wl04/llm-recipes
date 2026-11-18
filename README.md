@@ -15,7 +15,7 @@ Configurations and results from running language models on my own hardware. Each
 
 ## Quick start
 
-Serving needs an AMD Radeon GPU with ROCm support, Docker, Python 3.14 or later, and `sudo` for container access. It runs entirely on your machine.
+Container serving needs Docker, Python 3.14 or later, and `sudo` for container access. The recipes target the RX 9070 XT. ExLlamaV3 requires exactly one visible RX 9070 XT, and the Strata image targets gfx1201. It runs entirely on your machine.
 
 1. Install the `llm-recipes` command from a checkout using the command below. This project does not ship a Python distribution; `pip install .` is not supported. The installer copies a runtime snapshot to `~/.llm-recipes` and symlinks shims into `~/.local/bin`; keep that directory on `PATH`. The installer requests sudo credentials to check for running containers; file installation runs as your regular user. Re-run the same command after updating the repository.
 
@@ -30,6 +30,7 @@ Serving needs an AMD Radeon GPU with ROCm support, Docker, Python 3.14 or later,
 3. Serve the model on localhost and check it:
 
    ```bash
+   sudo -v
    llm-recipes doctor <recipe-id>
    llm-recipes start <recipe-id> --detach
    llm-recipes logs <recipe-id> --follow
@@ -38,7 +39,7 @@ Serving needs an AMD Radeon GPU with ROCm support, Docker, Python 3.14 or later,
 
    The API is OpenAI-compatible at `http://127.0.0.1:<port>/v1` (port per recipe: 8080 Strata, 5000 TabbyAPI). Connect [Pi](docs/clients/pi.md) from the recipe's `config/pi.models.json` or any OpenAI client.
 
-4. Measure a baseline from the checkout: `sudo -v && python3 scripts/run_baseline.py run <recipe-id>`. For a recipe served by a desktop app, start the app and its API server first — the same command opens a guided interview instead. Published measurements live in each recipe's dated experiment folders.
+4. Run `llm-recipes-baseline run <recipe-id>` to measure a baseline. For a recipe served by a desktop app, start the app and its API server first — the same command opens a guided interview instead. Published measurements live in each recipe's dated experiment folders.
 
 More detail: [launcher guide](docs/launcher.md) · [machine roots](docs/project-instructions.md#machine-roots) · [baseline contract](docs/baseline.md)
 

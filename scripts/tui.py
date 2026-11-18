@@ -19,10 +19,10 @@ from launcher import (
     lifecycle_command,
     parse_instances,
     prepare_start,
-    record_start_warning,
     refresh_sudo_ticket,
     resolve_launch_options,
     start_command,
+    start_with_facts,
 )
 from textual import work
 from textual.app import App, ComposeResult
@@ -289,8 +289,7 @@ class LlmRecipesApp(App[None]):
                 recipe, options, groups=gpu_groups(), uid=os.getuid(), gid=os.getgid()
             )
             prepare_start(recipe, options)
-            warning = record_start_warning(recipe, options)
-            status = execute(command)
+            status, warning = start_with_facts(recipe, options, command, execute)
         except Exception as error:  # noqa: BLE001 - the status bar reports worker failures
             self.call_from_thread(self._status, f"Start {name} failed: {error}")
             return

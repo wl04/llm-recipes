@@ -337,6 +337,7 @@ class Plan:
     control: ServerControl | None
     monitoring: monitor.Monitoring
     meta_extra: dict[str, Any] = field(default_factory=dict)
+    model: str | None = None
 
 
 def _system_facts() -> dict[str, object] | None:
@@ -403,11 +404,22 @@ def _managed_plan(
         port=args.port,
         detached=True,
     )
+    model = args.model
+    if model is None and recipe.adapter == "tabbyapi":
+        path = recipe.directory / "config/tabby.yml"
+        try:
+            model = yaml.safe_load(path.read_text())["model"]["model_name"]
+        except (OSError, yaml.YAMLError, TypeError, KeyError) as error:
+            raise ValueError(f"{path}: missing or invalid model.model_name") from error
+        if not isinstance(model, str) or not model.strip():
+            raise ValueError(f"{path}: model.model_name must be a nonempty string")
     control = ContainerControl(
         recipe,
         options,
         gpu_vram_gib=lambda: _gpu_vram_gib(gpu_address),
-        record_facts=lambda: record_start_facts(recipe, options),
+        record_facts=lambda info: record_start_facts(
+            recipe, options, container_id=info.container_id, image_id=info.image_id
+        ),
     )
     launch = {
         "context": options.context,
@@ -423,6 +435,7 @@ def _managed_plan(
         control=control,
         monitoring=monitor.build_monitoring(cgroup=None, gpu_address=gpu_address),
         meta_extra={"launch": launch},
+        model=model,
     )
 
 
@@ -531,7 +544,7 @@ def _run_config(
         recipe=args.recipe,
         kind=plan.kind,
         base_url=plan.base_url,
-        model=args.model,
+        model=plan.model or args.model,
         context_tokens=plan.context,
         suite=suite,
         corpus=corpus,

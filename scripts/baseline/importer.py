@@ -760,6 +760,8 @@ def import_run(
     status = _dig(results, "run", "status")
     if status != "complete":
         raise ValueError(f"{run_dir / RESULTS_NAME}: run status is {status!r}, not complete")
+    if meta.get("problems") or _dig(meta, "run", "status") in {"failed", "interrupted"}:
+        raise ValueError(f"{run_dir / META_NAME}: run has failures or was interrupted")
     schema.validate_results(results)
     recipe = results.get("recipe")
     if not isinstance(recipe, str) or not recipe:

@@ -77,7 +77,7 @@ The default directory is `<models>/logs/<instance>`, with `<models>` the data ro
 
 `logs --follow` reads console output while the container exists. After it exits, read the files in the host log directory. Server-specific filenames, rotation, and retention are documented in the [runtime guides](#shared-runtimes).
 
-Each start also writes `facts.json` into the log directory: the image reference and digests, effective launch options, recipe configuration hashes, runtime descriptor and build-lock hashes, and host facts (CPU, RAM, GPU, driver) read from `/proc` and `/sys` without elevated access. `launch.py start` and the baseline runner record it atomically; the last start wins on restart, and a write failure only warns — the container still starts. `run_baseline.py session <instance>` and `run_baseline.py import` read it; the [session report](baseline.md#report-a-coding-session) uses it to seed experiment profiles.
+After Docker confirms the container, the launcher, dashboard, and baseline runner record its ID, image, effective launch options, configuration hashes, and host facts in `facts.json`. A rejected start preserves the previous file. An ordinary launch warns if facts cannot be written. A baseline run reports the failure and attempts to stop its own container. `run_baseline.py session <instance>` and `run_baseline.py import` read it; the [session report](baseline.md#report-a-coding-session) uses it to seed experiment profiles.
 
 Queries (`list`, `ps`, `status`) accept `--json` for machine-readable output.
 

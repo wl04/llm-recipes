@@ -45,18 +45,15 @@ The manifest defaults to a 4,096-token context, drafting on and vision off; the 
 
 ## Baseline
 
-Run from the repository root:
+Run with the installed command:
 
 ```bash
-sudo -v
-python3 scripts/run_baseline.py run qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
-  --model qwen3.8-27b-exl3-3bpw \
+llm-recipes-baseline run qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
   --context 131072 \
-  --vision on \
-  --request-extra '{"chat_template_kwargs":{"enable_thinking":false}}'
+  --vision on
 ```
 
-The options match the launch command above. The explicit model selects the target from TabbyAPI's available models. The request override disables thinking for the baseline. Results and the server logs go to `~/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
+The options match the launch command above. Results and the server logs go to `~/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
 
 ## Pi
 

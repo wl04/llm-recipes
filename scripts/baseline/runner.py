@@ -191,7 +191,7 @@ class Runner:
         finally:
             self._shutdown(monitoring, interrupted=status == "interrupted")
         if code == ExitCode.OK and self._problems:
-            code = ExitCode.CHECKS_FAILED
+            status, code = "failed", ExitCode.CHECKS_FAILED
         self._meta["run"] = {"id": self._config.run_id, "status": status}
         if error:
             self._meta["run"]["error"] = error
@@ -562,7 +562,9 @@ class Runner:
         if self._config.kind == "tabbyapi":
             body = {
                 "text": body["messages"],
-                "template_vars": self._config.request_extra.get("chat_template_kwargs", {}),
+                "template_vars": workloads.thinking_request(
+                    self._config.kind, self._config.request_extra
+                ).get("chat_template_kwargs", {}),
             }
             count_key = "length"
         try:
@@ -771,7 +773,9 @@ class Runner:
     def _contexts(self) -> None:
         suite = self._config.suite
         plan = workloads.plan_contexts(suite, self._config.context_tokens)
-        largest = max(plan, key=lambda item: item.tokens, default=None)
+        largest = max(
+            (item for item in plan if item.skip is None), key=lambda item: item.tokens, default=None
+        )
         replay = workloads.replay_context(plan, self._config.context_tokens, suite.context_output)
         replay_ran = False
         fallback = "Neither the 64K nor 32K replay fits the configured context."

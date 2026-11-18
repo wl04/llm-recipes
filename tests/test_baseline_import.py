@@ -562,3 +562,11 @@ def test_import_rejects_recipe_symlink_outside_repository(tmp_path: Path) -> Non
     recipe.symlink_to(outside, target_is_directory=True)
     with pytest.raises(ValueError, match="escapes"):
         importer.import_run(_make_run(tmp_path), root)
+
+
+def test_import_rejects_legacy_complete_run_with_recorded_problems(tmp_path: Path) -> None:
+    root = _make_repo(tmp_path)
+    run_dir = _make_run(tmp_path, meta=_meta(problems=["server cleanup failed"]))
+
+    with pytest.raises(ValueError, match="run has failures"):
+        importer.import_run(run_dir, root)
