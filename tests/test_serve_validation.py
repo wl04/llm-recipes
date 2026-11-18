@@ -1,16 +1,105 @@
 """Tests for prepared-model metadata validation in serve.py."""
 
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
+from ruamel.yaml import YAML
 
 RECIPE_SCRIPTS = Path(__file__).resolve().parents[1] / "runtimes" / "exllamav3-tabbyapi" / "scripts"
 sys.path.insert(0, str(RECIPE_SCRIPTS))
 
 import serve  # noqa: E402
+
+
+@pytest.fixture
+def tabby_startup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
+    recipe = tmp_path / "recipe"
+    config = recipe / "config"
+    config.mkdir(parents=True)
+    weights = tmp_path / "weights"
+    model = weights / "target"
+    model.mkdir(parents=True)
+    (model / "config.json").write_text("{}")
+    spec = {"files": ["config.json"]}
+    write_manifest(model, {"source": spec, "sha256": {"config.json": "fixture"}})
+    (config / "launch.json").write_text('{"runtime":"exllamav3-tabbyapi"}')
+    (config / "models.lock.json").write_text(json.dumps({"target": spec}))
+    (config / "tabby.yml").write_text(
+        json.dumps(
+            {"model": {"model_dir": str(weights), "model_name": "target"}, "draft_model": {}}
+        )
+    )
+    runtime = tmp_path / "runtime"
+    (runtime / "container").mkdir(parents=True)
+    image = '{"version":"locked"}'
+    (runtime / "container/versions.lock.json").write_text(image)
+    image_lock = tmp_path / "image.lock.json"
+    image_lock.write_text(image)
+    monkeypatch.setattr(
+        serve,
+        "Path",
+        lambda path: image_lock if path == "/opt/build/versions.lock.json" else Path(path),
+    )
+    monkeypatch.setattr(serve, "RUNTIME", runtime)
+    # The upstream TabbyAPI schema is only installed in the image.
+    monkeypatch.setattr(serve, "validate_sections", lambda _config: None)
+    monkeypatch.setattr(
+        sys, "argv", ["serve.py", "--recipe", str(recipe), "--draft", "off", "--context", "8192"]
+    )
+    return image_lock, model / "prepared.json"
+
+
+def test_main_passes_validated_settings_to_tabby_when_preparation_matches(
+    tabby_startup: tuple[Path, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    instance = tmp_path / "instance"
+    instance.mkdir()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HIP_VISIBLE_DEVICES", "previous")
+    monkeypatch.setattr(
+        subprocess, "check_output", lambda *args, **kwargs: '["Other GPU","AMD RX 9070 XT"]'
+    )
+    monkeypatch.setattr(serve, "prepare_runtime", lambda _source: instance)
+    execv = Mock()
+    monkeypatch.setattr(os, "execv", execv)
+
+    serve.main()
+
+    config_path = instance / "config.yml"
+    execv.assert_called_once_with(
+        sys.executable, [sys.executable, "/opt/src/tabbyAPI/main.py", "--config", str(config_path)]
+    )
+    config = YAML(typ="safe").load(config_path)
+    assert config["model"]["max_seq_len"] == config["model"]["cache_size"] == 8192
+    assert config["draft_model"]["draft_mode"] == "disabled"
+    assert os.environ["HIP_VISIBLE_DEVICES"] == "1"
+
+
+@pytest.mark.parametrize(
+    ("mismatch", "message"),
+    [("image", "Image pins differ"), ("receipt", "prepared model does not match the locked spec")],
+)
+def test_main_refuses_tabby_startup_when_preparation_is_stale(
+    tabby_startup: tuple[Path, Path], mismatch: str, message: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    image_lock, receipt = tabby_startup
+    (image_lock if mismatch == "image" else receipt).write_text('{"source":{},"sha256":{}}')
+    probe = Mock(side_effect=AssertionError("Unexpected GPU probe"))
+    execv = Mock(side_effect=AssertionError("Unexpected engine launch"))
+    monkeypatch.setattr(subprocess, "check_output", probe)
+    monkeypatch.setattr(os, "execv", execv)
+
+    with pytest.raises(RuntimeError, match=message):
+        serve.main()
+
+    probe.assert_not_called()
+    execv.assert_not_called()
 
 
 def write_manifest(directory: Path, manifest: Any) -> Path:

@@ -3,9 +3,14 @@
 import importlib.util
 import json
 import os
+import select
+import signal
+import subprocess
 import sys
+from contextlib import suppress
 from pathlib import Path
 from types import ModuleType
+from unittest.mock import Mock
 
 import pytest
 
@@ -31,6 +36,101 @@ def load_module(name: str, path: Path) -> ModuleType:
 sys.path.insert(0, str(RUNTIME / "scripts"))
 
 serve = load_module("strata_serve", RUNTIME / "scripts/serve.py")
+
+
+@pytest.fixture
+def strata_startup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
+    recipe = tmp_path / "recipe"
+    config = recipe / "config"
+    config.mkdir(parents=True)
+    models = tmp_path / "mounted-models"
+    prepared = models / "recipes" / recipe.name
+    shards = prepared / "models"
+    shards.mkdir(parents=True)
+    for artifact in ("model.gguf", "ple.gguf", "expert.bin"):
+        (shards / artifact).write_bytes(b"x")
+    (shards / "tokenizer.json").write_text("{}")
+    (config / "launch.json").write_text('{"runtime":"strata"}')
+    (config / "strata.json").write_text(
+        json.dumps(
+            {
+                "args": [
+                    "--native",
+                    str(shards / "model.gguf"),
+                    "--ple-gguf",
+                    str(shards / "ple.gguf"),
+                    "--expert-profile",
+                    str(shards / "expert.bin"),
+                    "--max-context",
+                    "131072",
+                    "--kv-resident",
+                    "32768",
+                ],
+                "port": 8080,
+                "tokenizer": str(shards),
+            }
+        )
+    )
+    lock = {"files": [{"path": "model.gguf", "size_bytes": 1}]}
+    (config / "models.lock.json").write_text(json.dumps(lock))
+    runtime = tmp_path / "runtime"
+    (runtime / "container").mkdir(parents=True)
+    image = {"image": "locked"}
+    (runtime / "container/versions.lock.json").write_text(json.dumps(image))
+    image_lock = tmp_path / "image.lock.json"
+    image_lock.write_text(json.dumps(image))
+    receipt = prepared / "prepared.json"
+    receipt.write_text(json.dumps({"models": lock, "image": image}))
+    container_paths = {"/opt/build/versions.lock.json": image_lock, "/models": models}
+    monkeypatch.setattr(serve, "Path", lambda path: container_paths.get(path, Path(path)))
+    monkeypatch.setattr(serve, "RUNTIME", runtime)
+    monkeypatch.setattr(sys, "argv", ["serve.py", "--recipe", str(recipe), "--context", "4096"])
+    return image_lock, receipt
+
+
+def test_serve_passes_validated_settings_to_engine_when_preparation_matches(
+    strata_startup: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(serve.subprocess, "check_output", lambda *args, **kwargs: '{"device":2}')
+
+    def launch(command: list[str], log: Path, environment: dict[str, str]) -> int:
+        config = json.loads(Path(command[command.index("--config") + 1]).read_text())
+        assert command[:5] == [sys.executable, "-m", "serve.server", "--engine", "strata"]
+        assert command[command.index("--port") + 1] == "8080"
+        assert config["args"][config["args"].index("--max-context") + 1] == "4096"
+        assert environment["HIP_VISIBLE_DEVICES"] == "2"
+        assert log == Path("/logs/server.log")
+        return 7
+
+    monkeypatch.setattr(serve, "run_logged", launch)
+
+    assert serve.main() == 7
+
+
+@pytest.mark.parametrize(
+    ("mismatch", "message"),
+    [("image", "Image lock differs"), ("receipt", "Prepared model lock differs")],
+)
+def test_serve_refuses_startup_when_preparation_is_stale(
+    strata_startup: tuple[Path, Path],
+    mismatch: str,
+    message: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    image_lock, receipt = strata_startup
+    (image_lock if mismatch == "image" else receipt).write_text("{}")
+    probe = Mock(side_effect=AssertionError("Unexpected GPU probe"))
+    launch = Mock(side_effect=AssertionError("Unexpected engine launch"))
+    monkeypatch.setattr(serve, "probe_device", probe)
+    monkeypatch.setattr(serve, "run_logged", launch)
+
+    result = serve.main()
+
+    assert result == 1
+    assert message in capsys.readouterr().err
+    probe.assert_not_called()
+    launch.assert_not_called()
 
 
 @pytest.mark.parametrize("manifest", ["[]", "null"])
@@ -152,6 +252,50 @@ def test_run_logged_preserves_output_and_failure(
     assert result == 7
     assert "API started" in capsys.readouterr().out
     assert log.read_text() == "API started\n"
+
+
+def test_run_logged_forwards_sigterm_and_reaps_child_when_stopped(tmp_path: Path) -> None:
+    child = """
+import signal
+import sys
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(23))
+print('ready', flush=True)
+while True:
+    signal.pause()
+"""
+    wrapper = """
+import os
+import sys
+from pathlib import Path
+from serve import run_logged
+raise SystemExit(
+    run_logged([sys.executable, '-c', sys.argv[2]], Path(sys.argv[1]), dict(os.environ))
+)
+"""
+    log = tmp_path / "server.log"
+    with subprocess.Popen(
+        [sys.executable, "-c", wrapper, str(log), child],
+        cwd=RUNTIME / "scripts",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        start_new_session=True,
+    ) as process:
+        try:
+            assert process.stdout is not None
+            ready, _, _ = select.select([process.stdout], [], [], 5)
+            assert ready, "Child did not report readiness"
+            assert process.stdout.readline().strip() == "ready"
+
+            process.send_signal(signal.SIGTERM)
+
+            process.communicate(timeout=5)
+            assert process.returncode == 23
+        except BaseException:
+            with suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
+            raise
+    assert log.read_text() == "ready\n"
 
 
 def test_recipe_paths_keeps_model_data_separate() -> None:
