@@ -3,6 +3,7 @@
 
 import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -66,8 +67,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="report missing or stale screenshots")
     args = parser.parse_args(argv)
+    # Textual and Rich read NO_COLOR separately. Capture the documentation theme in color.
+    no_color = os.environ.pop("NO_COLOR", None)
+    try:
+        screenshots = asyncio.run(capture())
+    finally:
+        if no_color is not None:
+            os.environ["NO_COLOR"] = no_color
     stale = []
-    for name, svg in asyncio.run(capture()).items():
+    for name, svg in screenshots.items():
         path = OUTPUT / name
         content = ("\n".join(line.rstrip() for line in svg.splitlines()) + "\n").encode("utf-8")
         if path.is_file() and path.read_bytes() == content:
