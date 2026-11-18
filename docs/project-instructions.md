@@ -59,9 +59,7 @@ that exists only on one workstation stay advisory: they inform review, and neith
 configuration nor their stored dispositions belong to this repository.
 
 Any check required to fail CI belongs in `scripts/check.sh`. An unanswered scanner lane is
-unconfirmed, not clean. The [diagnostics inventory](diagnostics-inventory.md) records the enforced
-gates, the coverage the configuration trades away, and how advisory findings are read; the
-[validation plan](plans/diagnostics-triage-and-scanner-policy.md) holds the remaining work.
+unconfirmed, not clean.
 
 After editing profiles or adding results, follow [generation instructions](authoring.md#generate-configuration-guides) and commit profiles with generated Markdown. Preserve generated-section markers. Update templates and the authoring guide when changing structure or conventions.
 
