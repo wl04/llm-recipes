@@ -63,17 +63,7 @@ select = [
 [tool.mypy]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/scripts"
 files = [
-    "scripts/generate_configurations.py",
-    "scripts/launch.py",
-    "scripts/launcher.py",
-    "scripts/gpu_access.py",
-    "scripts/tui.py",
-    "scripts/doctor.py",
-    "scripts/paths.py",
-    "scripts/host_facts.py",
-    "scripts/install.py",
-    "scripts/baseline",
-    "scripts/run_baseline.py",
+    "scripts",
     "runtimes/exllamav3-tabbyapi/container",
     "runtimes/exllamav3-tabbyapi/scripts",
     "tests",
