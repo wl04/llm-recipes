@@ -2,6 +2,7 @@
 
 import json
 import shutil
+import tomllib
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -10,10 +11,20 @@ import pytest
 import yaml
 from baseline import schema
 from baseline_data import sample_results
+from install import RUNTIME_REQUIREMENTS
 from launcher import discover_recipes
 
 ROOT = Path(__file__).resolve().parents[1]
 RECIPES = discover_recipes(ROOT / "recipes")
+
+
+def test_runtime_dependencies_match_pins_in_project_installer_and_dev_requirements() -> None:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    development_pins = set((ROOT / "dev-requirements.txt").read_text().splitlines())
+    project_pins = set(project["dependencies"])
+
+    assert project_pins == set(RUNTIME_REQUIREMENTS), "Installer pins must match pyproject.toml"
+    assert project_pins <= development_pins, "Development must use the same runtime pins"
 
 
 @pytest.mark.parametrize("name", sorted(RECIPES))

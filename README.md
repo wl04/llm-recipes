@@ -17,7 +17,7 @@ Configurations and results from running language models on my own hardware. Each
 
 Serving needs an AMD Radeon GPU with ROCm support, Docker, Python 3.14 or later, and `sudo` for container access. It runs entirely on your machine.
 
-1. Install the `llm-recipes` command from a checkout. It copies a runtime snapshot to `~/.llm-recipes` and symlinks shims into `~/.local/bin`; keep that directory on `PATH`. The installer requests sudo credentials to check for running containers; file installation runs as your regular user. Re-run the same command after updating the repository.
+1. Install the `llm-recipes` command from a checkout using the command below. This project does not ship a Python distribution; `pip install .` is not supported. The installer copies a runtime snapshot to `~/.llm-recipes` and symlinks shims into `~/.local/bin`; keep that directory on `PATH`. The installer requests sudo credentials to check for running containers; file installation runs as your regular user. Re-run the same command after updating the repository.
 
    ```bash
    git clone https://github.com/wl04/llm-recipes.git && cd llm-recipes
