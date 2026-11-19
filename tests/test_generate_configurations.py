@@ -887,6 +887,7 @@ def test_run_configuration_uses_recorded_versions_and_serving_settings(tmp_path:
     data["software"] = {
         "engine": "Strata",
         "engine_version": "0.1.62",
+        "engine_source_version": "v0.2.16",
         "rocm_version": "10.2.0",
         "revision": "https://github.com/Niko1221/Strata/commit/" + "a" * 40,
     }
@@ -900,9 +901,9 @@ def test_run_configuration_uses_recorded_versions_and_serving_settings(tmp_path:
     path.write_text(summary)
     index = gen.update_index(result.parent)[2]
 
-    assert "| Runtime | Strata 0.1.62 |" in summary
+    assert "| Runtime | Strata 0.1.62 (v0.2.16) |" in summary
     assert "| GPU stack | ROCm 10.2.0 · Test GPU |" in summary
     assert "| Context and cache | 131,072 tokens · INT8 KV |" in summary
     assert "| Drafting and vision | Vision off |" in summary
-    assert "Strata 0.1.62 / ROCm 10.2.0" in index
+    assert "Strata 0.1.62 (v0.2.16) / ROCm 10.2.0" in index
     assert gen.update_summary(result)[2] == summary

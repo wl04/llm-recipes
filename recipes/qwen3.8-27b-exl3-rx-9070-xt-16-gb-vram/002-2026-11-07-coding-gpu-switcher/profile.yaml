@@ -18,15 +18,16 @@ software:
   harness_version: 1.5.0 (reported workstation version)
   engine: ExLlamaV3
   engine_version: https://github.com/turboderp-org/exllamav3/releases/tag/v1.6.6
-  engine_version_note: https://github.com/turboderp-org/exllamav3/commit/bd1f519172406a9560bd5c90e61000691bb69a07
+  revision: https://github.com/turboderp-org/exllamav3/commit/bd1f519172406a9560bd5c90e61000691bb69a07
   backend: ROCm / HIP
+  rocm_version: 10.1.0
   backend_api_version: HIP 7.16.26385
   gpu_driver: amdgpu
   gpu_driver_version: null
   pytorch: 2.14.0+rocm10.1.0
   python: 3.12.3
   docker: 29.9.3
-  base_image_tag: https://hub.docker.com/r/rocm/pytorch/tags?name=latest
+  base_image_tag: https://hub.docker.com/r/rocm/pytorch/tags?name=rocm10.1.0_ubuntu24.04_py3.12_pytorch_release_2.14.0
   base_image: rocm/pytorch@sha256:099f59a3bee9c436f5cc57db6bc6076fdeda579c57e9e22ae40f856d5905b3e4
   server: TabbyAPI
   server_version: https://github.com/theroyallab/tabbyAPI/commit/8f92fac5d9307bf1e09668c3715b32ff46ad0333

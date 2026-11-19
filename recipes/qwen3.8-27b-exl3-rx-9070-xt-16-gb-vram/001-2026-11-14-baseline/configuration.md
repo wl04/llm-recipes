@@ -39,13 +39,14 @@
 | Harness version | [1a3c7c7a](https://github.com/wl04/llm-recipes/commit/1a3c7c7a934854fb539ccf9beab4a8751818d5b9) |
 | Inference engine | ExLlamaV3 |
 | Engine version | [v1.6.6](https://github.com/turboderp-org/exllamav3/releases/tag/v1.6.6) |
-| Engine version notes | [bd1f5191](https://github.com/turboderp-org/exllamav3/commit/bd1f519172406a9560bd5c90e61000691bb69a07) |
+| Engine source revision | [bd1f5191](https://github.com/turboderp-org/exllamav3/commit/bd1f519172406a9560bd5c90e61000691bb69a07) |
 | Compute backend | ROCm / HIP |
+| ROCm version | 10.1.0 |
 | Backend API version | HIP 7.16.26385 |
 | GPU driver | amdgpu |
 | PyTorch | 2.14.0+rocm10.1.0 |
 | Python | 3.12.3 |
-| Base image tag at preparation | [rocm/pytorch:latest](https://hub.docker.com/r/rocm/pytorch/tags?name=latest) |
+| Base image tag at preparation | [rocm/pytorch:rocm10.1.0_ubuntu24.04_py3.12_pytorch_release_2.14.0](https://hub.docker.com/r/rocm/pytorch/tags?name=rocm10.1.0_ubuntu24.04_py3.12_pytorch_release_2.14.0) |
 | Pinned base image | rocm/pytorch@sha256:099f59a3bee9c436f5cc57db6bc6076fdeda579c57e9e22ae40f856d5905b3e4 |
 | API server | TabbyAPI |
 | API server version / revision | [8f92fac5](https://github.com/theroyallab/tabbyAPI/commit/8f92fac5d9307bf1e09668c3715b32ff46ad0333) |

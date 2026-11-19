@@ -133,7 +133,8 @@ def discover_recipes(directory: Path) -> dict[str, Recipe]:
             runtime = (directory.parent / "runtimes" / data["runtime"]).resolve()
             settings = json.loads((runtime / "runtime.json").read_text())
             required = {"adapter", "engine", "image"}
-            if not isinstance(settings, dict) or set(settings) - {"engine_version"} != required:
+            optional = {"engine_version", "engine_source_version"}
+            if not isinstance(settings, dict) or set(settings) - optional != required:
                 raise ValueError("runtime must define adapter, engine, and image")
             if any(not isinstance(value, str) or not value.strip() for value in settings.values()):
                 raise ValueError("runtime fields must be nonempty strings")

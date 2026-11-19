@@ -6,7 +6,7 @@
 
 | Setting | Value |
 |---|---|
-| Runtime | Strata 0.1.59.1 |
+| Runtime | Strata 0.1.59.1 (v0.2.13 + 95 commits) |
 | GPU stack | ROCm 10.1.0 · Radeon RX 9070/9070 XT/9070 GRE (gfx1201) |
 | Model | Qwen3.8-Flash-Next · Unsloth Dynamic v3.1 UD-IQ3_XXS |
 | Context and cache | 131,072 tokens · INT8 KV · 32,768 GPU-resident cells |

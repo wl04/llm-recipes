@@ -2,5 +2,6 @@
   "adapter": "tabbyapi",
   "engine": "exllamav3",
   "engine_version": "1.0.0",
+  "engine_source_version": "v2.0.0",
   "image": "local/runtime:version"
 }

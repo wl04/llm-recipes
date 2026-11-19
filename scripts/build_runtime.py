@@ -86,6 +86,7 @@ def main(argv: list[str] | None = None) -> int:
                     "checkout": revision,
                     "engine": descriptor["engine"],
                     "engine_version": descriptor.get("engine_version"),
+                    "engine_source_version": descriptor.get("engine_source_version"),
                     "runtime_lock_sha256": digest,
                     "base_image": lock["base_image"],
                     "sources": lock.get("sources"),

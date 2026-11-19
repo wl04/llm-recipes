@@ -39,6 +39,7 @@
 | Harness version | https://github.com/wl04/llm-recipes/commit/2dc098535faaafee44b55ca61fa0e6c077ba5d16 (dirty) |
 | Inference engine | Strata |
 | Engine version | 0.1.59.1 |
+| Engine source version | v0.2.13 + 95 commits |
 | Engine source revision | [dbb2d168](https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0) |
 | Compute backend | ROCm / HIP |
 | ROCm version | 10.1.0 |
@@ -49,6 +50,9 @@
 | API server version / revision | [dbb2d168](https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0) |
 | Host Python | 3.14.8 |
 | Running image ID | sha256:afe7c1bff2f14085879a86bfcdc5729996a66beac14edee40207c08e255feca6 |
+| Vision engine | llama.cpp mtmd (CPU) |
+| Vision engine release | [b11062](https://github.com/ggml-org/llama.cpp/releases/tag/b11062) |
+| Vision revision | [3cf03257](https://github.com/ggml-org/llama.cpp/commit/3cf03257f219afbe7334045ff7c6a06ac68c627d) |
 
 
 ## Model

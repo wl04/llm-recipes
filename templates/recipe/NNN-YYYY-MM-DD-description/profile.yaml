@@ -16,6 +16,7 @@ software:
   harness_version: null
   engine: null
   engine_version: null # Quote a release number such as "0.1.62".
+  engine_source_version: null # Source release or tag distance if distinct from the engine version.
   revision: null # Engine source commit URL.
   backend: null
   rocm_version: null # Quote the container's ROCm version when applicable.

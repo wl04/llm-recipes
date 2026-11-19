@@ -333,6 +333,7 @@ def software_block(
         "harness_version": harness_version,
         "engine": ENGINE_DISPLAY.get(engine or "", engine and engine.title()),
         "engine_version": runtime.get("engine_version"),
+        "engine_source_version": runtime.get("engine_source_version"),
         "revision": engine_revision,
         "rocm_version": rocm,
         "backend": "ROCm / HIP" if rocm else None,

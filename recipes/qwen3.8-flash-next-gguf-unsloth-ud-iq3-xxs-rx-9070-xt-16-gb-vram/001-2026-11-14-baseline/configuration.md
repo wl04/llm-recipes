@@ -41,8 +41,10 @@
 | API server | Strata serve.server |
 | Inference engine | Strata |
 | Engine version | 0.1.59.1 |
+| Engine source version | v0.2.13 + 95 commits |
 | Engine source revision | [dbb2d168](https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0) |
 | Compute backend | ROCm / HIP |
+| ROCm version | 10.1.0 |
 | Base image tag at preparation | [rocm/dev-ubuntu-24.04:10.1.0-full](https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags?name=10.1.0-full) |
 | Pinned base image | rocm/dev-ubuntu-24.04@sha256:5ed1362ea542a928651e4c710b44024ebe98870f74159cb70f0265aec8ef0abe |
 | Vision engine | llama.cpp mtmd (CPU) |

@@ -124,6 +124,7 @@ LABELS: dict[str, str] = {
     "software.server_version": "API server version / revision",
     "software.engine": "Inference engine",
     "software.engine_version": "Engine version",
+    "software.engine_source_version": "Engine source version",
     "software.rocm_version": "ROCm version",
     "software.engine_version_note": "Engine version notes",
     "software.revision": "Engine source revision",
@@ -653,6 +654,9 @@ def _stack(data: Mapping[str, object]) -> tuple[str, str]:
     if version and str(software.get("engine_version_note", "")).startswith("LM Studio-specific"):
         version = f"(LM Studio runtime {version})"
     runtime = " ".join(str(value) for value in (engine, version) if not empty(value))
+    source_version = software.get("engine_source_version")
+    if isinstance(source_version, str) and source_version.strip():
+        runtime += f" ({source_version})" if runtime else source_version
     rocm = software.get("rocm_version") or rocm_version(
         software.get("pytorch"), software.get("base_image_tag"), software.get("rocm_image_release")
     )

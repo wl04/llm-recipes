@@ -4,7 +4,7 @@ Keep the [UD-IQ3_XXS recipe](../../recipes/qwen3.8-flash-next-gguf-unsloth-ud-iq
 
 ## Reference and controls
 
-The [runtime lock](../../runtimes/strata/container/versions.lock.json) pins Strata `dbb2d168` (engine 0.1.59.1). The reference uses HIP MMQ prefill, automatic expert caching, INT8 KV, 131,072 context tokens, 32,768 resident cells, Q2_0 MTP (`--spec 4 --spec-min-p 0.5`), and CPU vision.
+The [runtime lock](../../runtimes/strata/container/versions.lock.json) pins Strata `dbb2d168` (engine 0.1.59.1), [95 commits after v0.2.13](https://github.com/Niko1221/Strata/compare/v0.2.13...dbb2d168cffa8cf793d9325358809d5263c7c6b0). The reference uses HIP MMQ prefill, automatic expert caching, INT8 KV, 131,072 context tokens, 32,768 resident cells, Q2_0 MTP (`--spec 4 --spec-min-p 0.5`), and CPU vision.
 
 - [Baseline 002](../../recipes/qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram/002-2026-11-15-baseline/summary.md): at 119,492 input tokens, first output took 37.10 s and decode reached 85.83 tok/s; peak VRAM was 15.3/15.9 GiB. At 8K, the five-run decode range was 10.6% of the median. Treat those numbers as context, not pass/fail thresholds.
 - [Coding session 003](../../recipes/qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram/003-2026-11-15-coding/summary.md): 1,846 of 1,947 requests were at least 32K tokens and about 97% of prompt tokens were reused. Returning long conversations matter more here than a short, cold prefill record.
