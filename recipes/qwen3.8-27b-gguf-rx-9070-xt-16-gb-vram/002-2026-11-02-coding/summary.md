@@ -1,5 +1,20 @@
 # 002 · 2026-11-02 — Coding workload
 
+<!-- BEGIN GENERATED RUN CONFIGURATION -->
+
+## Run configuration
+
+| Setting | Value |
+|---|---|
+| Runtime | llama.cpp (LM Studio runtime 2.67) |
+| GPU stack | Vulkan · AMD Radeon RX 9070 XT |
+| Model | Qwen3.8-27B · IQ3_XXS |
+| Context and cache | 131,072 tokens · Q8_0 / Q8_0 |
+| Drafting and vision | MTP |
+| Thinking | On |
+
+<!-- END GENERATED RUN CONFIGURATION -->
+
 ## Workload
 
 Development of [gpu-switcher](https://github.com/wl04/gpu-switcher), with growing context, repeated tool calls, and context compaction.

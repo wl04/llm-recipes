@@ -6,10 +6,10 @@ Run Qwen3.8-27B IQ3_XXS GGUF in LM Studio Bionic with the Vulkan backend. Record
 
 ## Experiments
 
-| Experiment | Configuration | Results |
-|---|---|---|
-| 002 · 2026-11-02 — Coding workload | [Configuration](002-2026-11-02-coding/configuration.md) | [Results](002-2026-11-02-coding/summary.md) |
-| 001 · 2026-11-15 — Baseline | [Configuration](001-2026-11-15-baseline/configuration.md) | [Results](001-2026-11-15-baseline/summary.md) |
+| Experiment | Runtime | Configuration | Results |
+|---|---|---|---|
+| 002 · 2026-11-02 — Coding workload | llama.cpp (LM Studio runtime 2.67) / Vulkan | [Configuration](002-2026-11-02-coding/configuration.md) | [Results](002-2026-11-02-coding/summary.md) |
+| 001 · 2026-11-15 — Baseline | llama.cpp (LM Studio runtime 2.73.0) / Vulkan | [Configuration](001-2026-11-15-baseline/configuration.md) | [Results](001-2026-11-15-baseline/summary.md) |
 
 <!-- END GENERATED EXPERIMENTS -->
 

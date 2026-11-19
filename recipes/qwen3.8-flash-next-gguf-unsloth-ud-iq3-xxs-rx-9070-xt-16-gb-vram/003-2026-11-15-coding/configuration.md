@@ -38,12 +38,15 @@
 | Agent / harness | llm-recipes baseline suite |
 | Harness version | https://github.com/wl04/llm-recipes/commit/2dc098535faaafee44b55ca61fa0e6c077ba5d16 (dirty) |
 | Inference engine | Strata |
-| Engine version | Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0 |
+| Engine version | 0.1.59.1 |
+| Engine source revision | [dbb2d168](https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0) |
+| Compute backend | ROCm / HIP |
+| ROCm version | 10.1.0 |
 | GPU driver | amdgpu |
-| Base image tag at preparation | [https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags](https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags) |
+| Base image tag at preparation | [rocm/dev-ubuntu-24.04:10.1.0-full](https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags?name=10.1.0-full) |
 | Pinned base image | rocm/dev-ubuntu-24.04@sha256:5ed1362ea542a928651e4c710b44024ebe98870f74159cb70f0265aec8ef0abe |
 | API server | Strata |
-| API server version / revision | Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0 |
+| API server version / revision | [dbb2d168](https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0) |
 | Host Python | 3.14.8 |
 | Running image ID | sha256:afe7c1bff2f14085879a86bfcdc5729996a66beac14edee40207c08e255feca6 |
 

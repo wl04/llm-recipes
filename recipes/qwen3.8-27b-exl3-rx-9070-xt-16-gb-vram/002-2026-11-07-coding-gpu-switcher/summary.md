@@ -1,5 +1,20 @@
 # 002 · 2026-11-07 — Pi software development: gpu-switcher
 
+<!-- BEGIN GENERATED RUN CONFIGURATION -->
+
+## Run configuration
+
+| Setting | Value |
+|---|---|
+| Runtime | ExLlamaV3 1.6.6 |
+| GPU stack | ROCm 10.1.0 · AMD Radeon RX 9070 XT (gfx1201) |
+| Model | Qwen3.8-27B · SC_3.00bpw_H4 |
+| Context and cache | 131,072 tokens · Q4 KV |
+| Drafting and vision | DFlash2 · Vision on |
+| Thinking | On |
+
+<!-- END GENERATED RUN CONFIGURATION -->
+
 One extended development session generated 660,836 tokens across 898 completed requests. Aggregate generation speed was approximately 57.1 tokens/s with 39.6% DFlash2 acceptance.
 
 ## Workload

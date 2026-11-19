@@ -4,6 +4,8 @@
 
 Build and check the shared [Strata runtime](../../docs/runtimes/strata.md#build-and-check).
 
+[The RX 9070 XT evaluation plan](../../docs/plans/strata-rx-9070-xt-evaluation.md) uses Unsloth for the first v0.2.16 trial and ISTA for shared-runtime validation.
+
 Allow at least **100 GiB free disk space** for approximately 79 GiB of downloads and preparation outputs. The tested configuration uses 16 GB VRAM and 64 GB RAM; its expert arena is 39.97 GiB.
 
 ## Prepare models

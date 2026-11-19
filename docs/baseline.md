@@ -12,7 +12,7 @@ llm-recipes-baseline run <recipe>
 
 For a checkout or candidate worktree, use `.venv/bin/python scripts/run_baseline.py run <recipe>` from its root with the [development environment](project-instructions.md#development-dependencies-and-checks). Use the checkout environment for the import, render, and session examples below.
 
-The runner starts the recipe as instance `baseline`, stops it afterwards, and asks for your sudo password once at start (later Docker commands use noninteractive sudo, so expiring credentials can fail a late operation, including cleanup — re-run to refresh). It refuses to start while another instance runs or the selected GPU holds more than 2 GiB. Recipe defaults can be overridden with `--models`, `--context`, `--draft`, `--vision`, and `--port`.
+The runner starts the recipe as instance `baseline`, stops it afterwards, and asks for your sudo password once at start (later Docker commands use noninteractive sudo, so expiring credentials can fail a late operation, including cleanup — re-run to refresh). It refuses to start while another instance runs or the selected GPU holds more than 2 GiB. Recipe defaults can be overridden with `--models`, `--context`, `--draft`, `--vision`, and `--port`. Use `--runtime-image` to select a candidate built with the checkout’s runtime lock.
 
 Output defaults to `~/llm-recipes/baselines/<recipe>/<date-time>/` (`--output` for another new directory outside the repository); server logs go to `server-logs/` inside the run directory. Ctrl+C preserves partial records and attempts to stop the server. `--keep-running` leaves it running. Cleanup acts on the container ID returned at startup and reports Docker inspection or stop failures.
 

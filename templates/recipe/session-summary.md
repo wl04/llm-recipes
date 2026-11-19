@@ -1,5 +1,9 @@
 # NNN · YYYY-MM-DD — Workload / variant
 
+<!-- BEGIN GENERATED RUN CONFIGURATION -->
+
+<!-- END GENERATED RUN CONFIGURATION -->
+
 <!-- Regenerate the title and session block from profile.yaml and session-results.json:
 .venv/bin/python scripts/generate_configurations.py
 Validate without writing: add --check. Keep the session markers and edit narrative outside them. -->

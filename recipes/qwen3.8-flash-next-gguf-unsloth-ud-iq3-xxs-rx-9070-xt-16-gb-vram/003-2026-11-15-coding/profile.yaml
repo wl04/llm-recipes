@@ -17,18 +17,19 @@ software:
   harness_version: https://github.com/wl04/llm-recipes/commit/2dc098535faaafee44b55ca61fa0e6c077ba5d16
     (dirty)
   engine: Strata
-  engine_version: Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0
-  engine_version_note: null
-  backend: null
+  engine_version: 0.1.59.1
+  revision: https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0
+  backend: ROCm / HIP
+  rocm_version: 10.1.0
   backend_api_version: null
   gpu_driver: amdgpu
   gpu_driver_version: null
   pytorch: null
   python: null
-  base_image_tag: https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags
+  base_image_tag: https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags?name=10.1.0-full
   base_image: rocm/dev-ubuntu-24.04@sha256:5ed1362ea542a928651e4c710b44024ebe98870f74159cb70f0265aec8ef0abe
   server: Strata
-  server_version: Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0
+  server_version: https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0
   host_python: 3.14.8
   running_image_id: sha256:afe7c1bff2f14085879a86bfcdc5729996a66beac14edee40207c08e255feca6
 model:

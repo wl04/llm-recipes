@@ -105,7 +105,7 @@ The launcher discovers `recipes/*/config/launch.json`. The recipe directory supp
 | `draft` | Default `on` or `off` |
 | `vision` | TabbyAPI: `on/off`; Strata: `cpu/off` |
 
-The selected runtime's `runtime.json` defines `adapter`, `engine`, and `image`. Supported pairs are `tabbyapi` / `exllamav3` and `strata` / `strata`. The launcher validates the runtime identifier and serving entry point before constructing a command. The recipe's model data folder is `<data home>/recipes/<recipe-id>/`, derived from the recipe folder name and not configurable. Native server settings remain recipe-local. Keep the native server port equal to the manifest port; `--port` changes only the host mapping. The [container recipe template](../templates/container/config/launch.json) selects the shared ExLlamaV3/TabbyAPI runtime.
+The selected runtime's `runtime.json` defines `adapter`, `engine`, and `image`. Set `engine_version` to the release for the pinned engine source when known. Both `start` and `doctor` accept `--runtime-image` for a candidate image with the selected runtime lock. Supported pairs are `tabbyapi` / `exllamav3` and `strata` / `strata`. The launcher validates the runtime identifier and serving entry point before constructing a command. The recipe's model data folder is `<data home>/recipes/<recipe-id>/`, derived from the recipe folder name and not configurable. Native server settings remain recipe-local. Keep the native server port equal to the manifest port; `--port` changes only the host mapping. The [container recipe template](../templates/container/config/launch.json) selects the shared ExLlamaV3/TabbyAPI runtime.
 
 ## Shared runtimes
 

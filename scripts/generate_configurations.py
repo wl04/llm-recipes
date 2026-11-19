@@ -21,6 +21,8 @@ INDEX_START = "<!-- BEGIN GENERATED EXPERIMENTS -->"
 INDEX_END = "<!-- END GENERATED EXPERIMENTS -->"
 RESULTS_START = "<!-- BEGIN GENERATED RESULTS -->"
 RESULTS_END = "<!-- END GENERATED RESULTS -->"
+RUN_START = "<!-- BEGIN GENERATED RUN CONFIGURATION -->"
+RUN_END = "<!-- END GENERATED RUN CONFIGURATION -->"
 FOLDER_NAME = re.compile(r"(\d{3})-(\d{4}-\d{2}-\d{2})-(.+)")
 
 SETTINGS_GROUPS = ("serving", "sampling", "thinking", "requests", "notes")
@@ -53,6 +55,7 @@ REQUESTS_KEYS = (
 SERVING_KEYS = (
     "served_model_id",
     "speculative_decoding",
+    "draft_method",
     "context_length_tokens",
     "cache_capacity",
     "target_cache",
@@ -121,6 +124,7 @@ LABELS: dict[str, str] = {
     "software.server_version": "API server version / revision",
     "software.engine": "Inference engine",
     "software.engine_version": "Engine version",
+    "software.rocm_version": "ROCm version",
     "software.engine_version_note": "Engine version notes",
     "software.revision": "Engine source revision",
     "software.backend": "Compute backend",
@@ -152,6 +156,7 @@ LABELS: dict[str, str] = {
     "model.vision_projector": "Vision projector",
     "model.preparation": "Model preparation",
     "serving.served_model_id": "Served model id",
+    "serving.draft_method": "Draft method",
     "serving.speculative_decoding": "Speculative decoding",
     "serving.context_length_tokens": "Context length (tokens)",
     "serving.cache_capacity": "Cache capacity",
@@ -617,6 +622,136 @@ def _render_session_block(result: Path, text: str) -> str:
     )
 
 
+def _group(data: Mapping[str, object], key: str) -> Mapping[str, object]:
+    value = data.get(key)
+    return value if isinstance(value, dict) else {}
+
+
+def rocm_version(*labels: object) -> str | None:
+    """Extract a ROCm release from a recorded Torch version or AMD image tag."""
+    for label in labels:
+        if not isinstance(label, str):
+            continue
+        match = re.search(r"rocm(\d+\.\d+\.\d+)", label)
+        if match is None:
+            match = re.search(r"(?:^|[=:])(\d+\.\d+\.\d+)-full(?:$|&)", label)
+        if match:
+            return match[1]
+    return None
+
+
+def _stack(data: Mapping[str, object]) -> tuple[str, str]:
+    software = _group(data, "software")
+    engine = software.get("engine")
+    version = software.get("engine_version")
+    if isinstance(version, str):
+        path = urlsplit(version).path
+        if "/releases/tag/" in path:
+            version = path.rsplit("/", 1)[-1].removeprefix("v")
+        elif "/commit/" in path:
+            version = ""
+    if version and str(software.get("engine_version_note", "")).startswith("LM Studio-specific"):
+        version = f"(LM Studio runtime {version})"
+    runtime = " ".join(str(value) for value in (engine, version) if not empty(value))
+    rocm = software.get("rocm_version") or rocm_version(
+        software.get("pytorch"), software.get("base_image_tag"), software.get("rocm_image_release")
+    )
+    backend = f"ROCm {rocm}" if rocm else str(software.get("backend") or "")
+    return runtime, backend
+
+
+def _with_unit(value: object, unit: str) -> str:
+    if type(value) is int:
+        return f"{value:,} {unit}"
+    if isinstance(value, str) and re.fullmatch(r"[0-9]+", value):
+        return f"{int(value):,} {unit}"
+    return "" if empty(value) else str(value)
+
+
+def _run_configuration(data: Mapping[str, object]) -> str:
+    runtime, backend = _stack(data)
+    hardware = _group(data, "hardware")
+    model = _group(data, "model")
+    settings = _group(data, "settings")
+    serving = _group(settings, "serving")
+    model_name = model.get("name")
+    quantization = model.get("quantization")
+    if isinstance(quantization, str) and quantization in str(model_name):
+        quantization = None
+    cache = serving.get("kv_cache") or serving.get("target_cache")
+    draft = serving.get("speculative_decoding")
+    if draft is True:
+        draft = serving.get("draft_method") or "Drafting on"
+    elif draft is False:
+        draft = "Drafting off"
+    vision = serving.get("vision")
+    if vision == "cpu":
+        vision = "CPU vision"
+    elif type(vision) is bool:
+        vision = "Vision on" if vision else "Vision off"
+    image_limit = serving.get("vision_max_image_tokens")
+    image_budget = _with_unit(image_limit, "image tokens")
+    if image_budget and image_limit != serving.get("vision_min_image_tokens"):
+        image_budget = f"up to {image_budget}"
+    thinking = _group(settings, "thinking").get("enabled")
+    fields = (
+        ("Runtime", (runtime,)),
+        ("GPU stack", (backend, hardware.get("gpu"))),
+        ("Model", (model_name, quantization)),
+        (
+            "Context and cache",
+            (
+                _with_unit(serving.get("context_length_tokens"), "tokens"),
+                f"{str(cache).upper()} KV" if cache else serving.get("kv_cache_quantization"),
+                _with_unit(serving.get("gpu_resident_kv_cells"), "GPU-resident cells"),
+            ),
+        ),
+        (
+            "Drafting and vision",
+            (
+                draft,
+                _with_unit(serving.get("max_draft_tokens"), "draft tokens")
+                if draft and serving.get("speculative_decoding") is not False
+                else None,
+                vision,
+                _with_unit(image_limit, "image tokens")
+                if vision and vision != "Vision off"
+                else None,
+            ),
+        ),
+        ("Thinking", ("On" if thinking else "Off",) if type(thinking) is bool else ()),
+    )
+    lines = []
+    for name, values in fields:
+        parts = [cell(value) for value in values if not empty(value)]
+        if parts:
+            lines.append(f"| {name} | {' · '.join(parts)} |")
+    if not lines:
+        return ""
+    return (
+        "\n\n"
+        + "\n".join(["## Run configuration", "", "| Setting | Value |", "|---|---|", *lines])
+        + "\n\n"
+    )
+
+
+def _update_run_configuration(text: str, data: Mapping[str, object], path: Path) -> str:
+    block = _run_configuration(data)
+    if RUN_START not in text and RUN_END not in text:
+        if not block:
+            return text
+        title, _, body = text.partition("\n")
+        body = body.lstrip("\n")
+        return f"{title}\n\n{RUN_START}{block}{RUN_END}\n\n{body}"
+    if text.count(RUN_START) != 1 or text.count(RUN_END) != 1:
+        raise ValueError(f"{path}: expected exactly one pair of run configuration markers")
+    before, rest = text.split(RUN_START)
+    if RUN_END not in rest:
+        raise ValueError(f"{path}: run configuration markers are out of order")
+    _, after = rest.split(RUN_END)
+    return before + RUN_START + (block or "\n\n") + RUN_END + after
+
+
 def update_summary(result: Path) -> tuple[Path, str, str]:
     """Generate the summary title and the marked baseline or session report."""
     profile = result / "profile.yaml"
@@ -630,6 +765,7 @@ def update_summary(result: Path) -> tuple[Path, str, str]:
         raise ValueError(f"{path}: the first line must be the report title")
     title = expected_title(result, data)
     text = original if first == title else title + separator + rest
+    text = _update_run_configuration(text, data, path)
     baseline = (result / "results.json").is_file()
     session = (result / "session-results.json").is_file()
     if baseline and session:
@@ -649,7 +785,12 @@ def update_index(
     original = path.read_text()
     if original.count(INDEX_START) != 1 or original.count(INDEX_END) != 1:
         raise ValueError(f"{path}: expected exactly one pair of experiment markers")
-    lines = ["## Experiments", "", "| Experiment | Configuration | Results |", "|---|---|---|"]
+    lines = [
+        "## Experiments",
+        "",
+        "| Experiment | Runtime | Configuration | Results |",
+        "|---|---|---|---|",
+    ]
     profiles = list(recipe.glob("*/profile.yaml"))
     if additional is not None:
         profiles.append(additional / "profile.yaml")
@@ -664,8 +805,12 @@ def update_index(
             raise ValueError(f"{summary}: expected one report title")
         if not (result / "configuration.md").is_file():
             raise ValueError(f"{result}: missing configuration.md")
+        data = yaml.safe_load(profile.read_text())
+        if not isinstance(data, dict):
+            raise ValueError(f"{profile}: expected a YAML mapping")
+        stack = " / ".join(filter(None, _stack(data)))
         lines.append(
-            f"| {cell(titles[0])} | "
+            f"| {cell(titles[0])} | {cell(stack or None)} | "
             f"[Configuration]({result.name}/configuration.md) | "
             f"[Results]({result.name}/summary.md) |"
         )

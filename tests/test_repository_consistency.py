@@ -6,6 +6,7 @@ import tomllib
 from pathlib import Path
 from urllib.parse import urlsplit
 
+import build_runtime
 import generate_configurations as gen
 import pytest
 import yaml
@@ -69,7 +70,12 @@ def test_build_matches_locked_base_image_for_runtime(runtime: Path) -> None:
     lock = json.loads((runtime / "container/versions.lock.json").read_text())
     dockerfile = (runtime / "container/Dockerfile").read_text()
 
-    assert f"FROM {lock['base_image']}\n" in dockerfile
+    command = build_runtime.build_command(
+        runtime / "container", lock["base_image"], "test:probe", 4
+    )
+
+    assert "ARG BASE_IMAGE\nFROM ${BASE_IMAGE}\n" in dockerfile
+    assert f"BASE_IMAGE={lock['base_image']}" in command
 
 
 @pytest.mark.parametrize("container", [False, True], ids=["desktop", "container"])

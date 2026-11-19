@@ -41,13 +41,13 @@ Folders sort by sequence in GitHub and file browsers; the recipe index shows the
 
 ## Experiment profile
 
-`profile.yaml` is the single source of truth for `configuration.md`, which is generated output between markers; edit the profile, never the generated block. Structure:
+`profile.yaml` supplies the configuration guide, the Run configuration block in `summary.md`, and the runtime label in the recipe index. Edit the profile and keep the generated markers. Generation uses the recorded fields in a fixed order, with no lookup of active runtime pins. Leave unknown values empty. For a manual session, fill the same software, model and effective serving fields from the running setup.
 
 | Section | Content |
 |---|---|
 | `id` | Model / format / hardware / memory identity; must re-slug to the recipe folder name. |
 | `hardware`, `os` | Measured host facts (CPU, RAM, GPU, driver). |
-| `software` | Harness, engine, server, image pins, revisions. |
+| `software` | Harness, engine release and source revision, server, ROCm release, base image digest, and actual running image ID. |
 | `model` | Identity and quantization from the recipe locks. |
 | `settings.serving` | Context, cache, drafting, vision — what the server was set to. |
 | `settings.sampling` | `mode` preset name and/or explicit sampler parameters. |
@@ -91,7 +91,7 @@ Keep `setup.md` focused on model-specific capacity, preparation and launch comma
 
 For a new runtime, use `templates/runtime/` for its descriptor and `templates/runtime-guide.md` for its guide. Pin the base image digest, source revisions, and build dependencies. Keep engine-specific preparation and native settings in that runtime's integration. Follow [launcher conventions](launcher.md#shared-runtimes).
 
-Link `setup.md` from `recipe.md` and from configuration and summary footers. Record exact engine/server revisions and image identity in each measured profile. A shared runtime update must not rewrite historical version fields. Repository commits preserve earlier build inputs; profiles retain the identities used for those results.
+Link `setup.md` from `recipe.md` and from configuration and summary footers. Record exact engine/server revisions and image identity in each measured profile. The launcher records the runtime descriptor, build lock, and actual Docker image ID at startup. Import the run from a checkout that matches its recorded configuration hashes. For a published candidate, retain the build input commit in the repository so its Dockerfile and patches remain accessible.
 
 ## Shared guides
 

@@ -9,7 +9,7 @@ import sys
 import tempfile
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -101,6 +101,18 @@ def resolve_launch_options(
     )
 
 
+def image_reference(value: str) -> str:
+    """Validate a Docker image argument shared by launch and build commands."""
+    if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_./:@-]*", value):
+        raise ValueError("invalid image reference")
+    return value
+
+
+def select_image(recipe: Recipe, override: str | None) -> Recipe:
+    """Select an image for this invocation without editing the runtime descriptor."""
+    return recipe if override is None else replace(recipe, image=image_reference(override))
+
+
 def discover_recipes(directory: Path) -> dict[str, Recipe]:
     """Read recipe-local manifests; reject malformed or unsupported definitions."""
     recipes = {}
@@ -120,7 +132,8 @@ def discover_recipes(directory: Path) -> dict[str, Recipe]:
                 raise ValueError("invalid runtime identifier")
             runtime = (directory.parent / "runtimes" / data["runtime"]).resolve()
             settings = json.loads((runtime / "runtime.json").read_text())
-            if not isinstance(settings, dict) or set(settings) != {"adapter", "engine", "image"}:
+            required = {"adapter", "engine", "image"}
+            if not isinstance(settings, dict) or set(settings) - {"engine_version"} != required:
                 raise ValueError("runtime must define adapter, engine, and image")
             if any(not isinstance(value, str) or not value.strip() for value in settings.values()):
                 raise ValueError("runtime fields must be nonempty strings")
@@ -129,12 +142,17 @@ def discover_recipes(directory: Path) -> dict[str, Recipe]:
                 ("strata", "strata"),
             }:
                 raise ValueError("supported adapter/engine: tabbyapi/exllamav3 or strata/strata")
-            if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_./:@-]*", settings["image"]):
-                raise ValueError("invalid image reference")
+            image_reference(settings["image"])
             if not (runtime / "scripts/serve.py").is_file():
                 raise ValueError("runtime serving entry point is missing")
             folder = manifest.parent.parent.resolve()
-            recipe = Recipe(folder.name, folder, runtime_directory=runtime, **data, **settings)
+            recipe = Recipe(
+                folder.name,
+                folder,
+                runtime_directory=runtime,
+                **data,
+                **{key: settings[key] for key in required},
+            )
             validate_options(
                 LaunchOptions(
                     recipe.name,
@@ -419,12 +437,16 @@ def start_facts(
     for config in recipe_config_files(recipe):
         if config.is_file():
             config_hashes[config.name] = file_sha256(config)
-    for path in (
-        recipe.runtime_directory / "runtime.json",
-        recipe.runtime_directory / "container/versions.lock.json",
+    runtime_inputs: dict[str, object] = {}
+    for key, relative_path in (
+        ("descriptor", "runtime.json"),
+        ("versions", "container/versions.lock.json"),
     ):
+        path = recipe.runtime_directory / relative_path
         if path.is_file():
-            config_hashes[path.name] = file_sha256(path)
+            contents = path.read_bytes()
+            config_hashes[path.name] = hashlib.sha256(contents).hexdigest()
+            runtime_inputs[key] = json.loads(contents)
     return {
         "started_at": started_at,
         "instance": options.name,
@@ -448,6 +470,7 @@ def start_facts(
             "logs": str(options.logs),
         },
         "config_sha256": config_hashes,
+        "runtime_inputs": runtime_inputs,
         "host": host,
     }
 

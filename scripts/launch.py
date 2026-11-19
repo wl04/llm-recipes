@@ -23,6 +23,7 @@ from launcher import (
     resolve_launch_options,
     run_command,
     running_command,
+    select_image,
     start_command,
     start_with_facts,
     status_query_command,
@@ -49,6 +50,7 @@ def parser() -> argparse.ArgumentParser:
     doctor.add_argument("--json", action="store_true", help="machine-readable output")
     doctor.add_argument("recipe", help="recipe directory name; see list")
     doctor.add_argument("--models", type=Path, default=paths.data_home())
+    doctor.add_argument("--runtime-image", help="Use a local image with the selected runtime lock")
     start = commands.add_parser("start")
     start.add_argument("recipe", help="recipe directory name; see list")
     start.add_argument("--name", help="instance name (default: recipe directory name)")
@@ -59,6 +61,7 @@ def parser() -> argparse.ArgumentParser:
     start.add_argument("--context", type=int)
     start.add_argument("--port", type=int)
     start.add_argument("--models", type=Path, default=paths.data_home())
+    start.add_argument("--runtime-image", help="Use a local image with the selected runtime lock")
     start.add_argument(
         "--logs", type=Path, help="persistent directory (default: per-instance state)"
     )
@@ -232,9 +235,10 @@ def main(argv: list[str] | None = None) -> int:
             return _list(recipes, args)
         if args.recipe not in recipes:
             raise ValueError(f"Unknown recipe: {args.recipe}. Use 'list' to see available recipes.")
+        recipe = select_image(recipes[args.recipe], args.runtime_image)
         if args.action == "doctor":
-            return _doctor(recipes[args.recipe], args)
-        return _start(recipes[args.recipe], args)
+            return _doctor(recipe, args)
+        return _start(recipe, args)
     except ValueError as error:
         cli.error(str(error))
     except OSError as error:

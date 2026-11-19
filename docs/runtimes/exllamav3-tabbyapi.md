@@ -7,17 +7,16 @@ The shared runtime builds ExLlamaV3 against AMD's ROCm/PyTorch image and serves 
 Use Ubuntu x86_64, Docker, and working AMD `/dev/kfd` and `/dev/dri` devices. From the repository root:
 
 ```bash
-sudo docker build --progress=plain --build-arg MAX_JOBS=4 \
-  -t llm-recipes/exl3-rdna4:probe runtimes/exllamav3-tabbyapi/container
-sudo docker run --rm --device=/dev/kfd --device=/dev/dri \
-  llm-recipes/exl3-rdna4:probe
+python3 scripts/build_runtime.py exllamav3-tabbyapi --check
 ```
 
-Lower `MAX_JOBS` if compiler memory use is excessive. The image check verifies engine imports and GPU matrix multiplication.
+Lower `--max-jobs` if compiler memory use is excessive. The image check verifies engine imports and GPU matrix multiplication.
 
 [`versions.lock.json`](../../runtimes/exllamav3-tabbyapi/container/versions.lock.json) pins the ROCm/PyTorch image digest and upstream ExLlamaV3 and TabbyAPI sources with archive hashes. Python dependencies are pinned with hashes in the same directory. The base supplies Torch, the ROCm SDK, and Triton. ExLlamaV3 is compiled against that Torch with build isolation disabled. Source licenses remain under `/opt/src`.
 
 The image name and API-server/engine pairing live in [`runtime.json`](../../runtimes/exllamav3-tabbyapi/runtime.json). Reuse the image while its lock matches; rebuild after changing build inputs or pins. Serving and draft conversion compare the image's build lock with the runtime lock.
+
+For a separate image, pass `--tag candidate` to the builder. Use `--runtime-image llm-recipes/exl3-rdna4:candidate` with the launcher or baseline and set `LLM_RECIPES_RUNTIME_IMAGE=llm-recipes/exl3-rdna4:candidate` for the preparation commands. If the lock differs, prepare the draft in a separate data root.
 
 ## Preparation
 

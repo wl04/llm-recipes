@@ -142,6 +142,8 @@ def test_start_dry_run_leaves_directories_absent_without_gpu(
             str(models),
             "--logs",
             str(logs),
+            "--runtime-image",
+            "llm-recipes/test:candidate",
             "--dry-run",
         ],
         capture_output=True,
@@ -151,6 +153,7 @@ def test_start_dry_run_leaves_directories_absent_without_gpu(
 
     assert result.returncode == 0, result.stderr
     assert "sudo docker run" in result.stdout
+    assert "llm-recipes/test:candidate" in result.stdout
     assert not models.exists()
     assert not logs.exists()
 

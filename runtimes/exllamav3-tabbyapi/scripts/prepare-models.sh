@@ -9,6 +9,11 @@ scripts_dir=$(cd -- "$runtime_dir/../../scripts" && pwd)
 recipe_dir=$(cd -- "$1" && pwd)
 action=$2
 image=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["image"])' "$runtime_dir/runtime.json")
+image=${LLM_RECIPES_RUNTIME_IMAGE:-$image}
+if [[ ! $image =~ ^[a-zA-Z0-9][a-zA-Z0-9_./:@-]*$ ]]; then
+    echo "Invalid runtime image reference: $image" >&2
+    exit 2
+fi
 model_dir=${3:-$(python3 "$scripts_dir/paths.py")}
 for mount_path in "$runtime_dir" "$recipe_dir" "$model_dir"; do
     if [[ "$mount_path" == *","* || "$mount_path" == *$'\n'* ]]; then

@@ -27,6 +27,7 @@ from launcher import (
     record_start_facts,
     refresh_sudo_ticket,
     resolve_launch_options,
+    select_image,
 )
 
 from baseline import (
@@ -68,6 +69,7 @@ def _parser() -> argparse.ArgumentParser:
         help="New directory outside the repository (default: <models>/baselines/<recipe>/<time>)",
     )
     run.add_argument("--models", type=Path, help="Model directory (default: the data home)")
+    run.add_argument("--runtime-image", help="Use a local image with the selected runtime lock")
     run.add_argument("--context", type=int, help="Context length (default: the recipe's)")
     run.add_argument("--draft", choices=("on", "off"), help="Drafting (default: the recipe's)")
     run.add_argument(
@@ -469,6 +471,8 @@ def _argument_refusal(args: argparse.Namespace, recipe: Recipe | None, recipes: 
             "Container recipes are started by the runner; --pid and --base-url are for desktop "
             "recipes"
         )
+    if recipe is None and args.runtime_image is not None:
+        return _usage("--runtime-image belongs to container recipes")
     if recipe is not None and args.yes:
         return _usage("--yes belongs to the guided desktop setup")
     return None
@@ -589,6 +593,11 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
     refusal = _argument_refusal(args, recipe, recipes)
     if refusal is not None:
         return refusal
+    if recipe is not None:
+        try:
+            recipe = select_image(recipe, args.runtime_image)
+        except ValueError as error:
+            return _usage(str(error))
     models = models_dir(args.models)
     output = args.output or default_output(models, args.recipe)
     if output.resolve().is_relative_to(root.resolve()):

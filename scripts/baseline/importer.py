@@ -304,33 +304,47 @@ def software_block(
         source = _obj(sources.get(key))
         if not source:
             return None
-        return f"{source.get('repository')}/commit/{source.get('revision')}"
+        repository = source.get("repository")
+        revision = source.get("revision")
+        if not isinstance(repository, str) or not isinstance(revision, str):
+            return None
+        if not repository.startswith(("https://", "http://")):
+            repository = f"https://github.com/{repository}"
+        return f"{repository.rstrip('/')}/commit/{revision}"
 
-    engine_version = source_url(engine)
+    engine_revision = source_url(engine)
     image = _obj(facts.get("image") if facts else None)
     base_image_digest = lock.get("base_image")
+    base_tag = lock.get("base_tag")
+    base_image_url = None
+    if isinstance(base_image_digest, str) and "@" in base_image_digest:
+        reference = base_image_digest.split("@", 1)[0].removeprefix("docker.io/")
+        image_repository, separator, embedded_tag = reference.rpartition(":")
+        if separator and "/" not in embedded_tag:
+            reference = image_repository
+            base_tag = base_tag or embedded_tag
+        if reference.startswith("rocm/"):
+            base_image_url = f"https://hub.docker.com/r/{reference}/tags"
+            if isinstance(base_tag, str) and re.fullmatch(r"[\w][\w.-]{0,127}", base_tag):
+                base_image_url += f"?name={base_tag}"
+    rocm = generator.rocm_version(lock.get("torch_version"), base_tag)
     return {
         "harness": HARNESS,
         "harness_version": harness_version,
         "engine": ENGINE_DISPLAY.get(engine or "", engine and engine.title()),
-        "engine_version": engine_version,
-        "engine_version_note": None,
-        "backend": "ROCm / HIP"
-        if isinstance(lock.get("torch_version"), str) and "+rocm" in str(lock["torch_version"])
-        else None,
+        "engine_version": runtime.get("engine_version"),
+        "revision": engine_revision,
+        "rocm_version": rocm,
+        "backend": "ROCm / HIP" if rocm else None,
         "backend_api_version": None,
         "gpu_driver": _dig(system, "gpu", "driver"),
         "gpu_driver_version": None,
         "pytorch": lock.get("torch_version"),
         "python": lock.get("python_version"),
-        "base_image_tag": (
-            f"https://hub.docker.com/r/{str(base_image_digest).split('@')[0]}/tags"
-            if isinstance(base_image_digest, str) and "@" in base_image_digest
-            else None
-        ),
+        "base_image_tag": base_image_url,
         "base_image": base_image_digest,
         "server": SERVER_DISPLAY.get(adapter or "", adapter and adapter.title()),
-        "server_version": source_url("tabbyAPI") if adapter == "tabbyapi" else engine_version,
+        "server_version": source_url("tabbyAPI") if adapter == "tabbyapi" else engine_revision,
         "host_python": _dig(meta, "host", "python"),
         "running_image_id": image.get("image_id") or _dig(meta, "container", "image_id"),
     }
@@ -364,6 +378,27 @@ def model_block(recipe_dir: Path, format_part: str) -> dict[str, Any]:
         if isinstance(target.get("repo_id"), str) and isinstance(target.get("revision"), str)
         else None,
     }
+    if isinstance(lock.get("repository"), str):
+        repository = f"https://huggingface.co/{lock['repository']}"
+        model["repository"] = repository
+        if isinstance(lock.get("revision"), str):
+            model["revision"] = f"{repository}/commit/{lock['revision']}"
+        model["artifacts"] = [
+            item["path"]
+            for item in _seq(lock.get("files"))
+            if isinstance(item, Mapping) and isinstance(item.get("path"), str)
+        ]
+        for artifact in model["artifacts"]:
+            path = Path(artifact)
+            if len(path.parts) > 1 and re.search(r"-00001-of-\d{5}\.gguf$", path.name):
+                model["quantization"] = path.parent.name
+                break
+        mtp = _obj(lock.get("mtp"))
+        if isinstance(mtp.get("repository"), str):
+            model["draft_repository"] = f"https://huggingface.co/{mtp['repository']}"
+            if isinstance(mtp.get("revision"), str):
+                model["draft_revision"] = f"{model['draft_repository']}/commit/{mtp['revision']}"
+        model["draft_quantization"] = mtp.get("expert_quantization")
     if draft:
         model["draft_repository"] = (
             f"https://huggingface.co/{draft['repo_id']}"
@@ -461,6 +496,8 @@ def _effective_serving(
             serving["gpu_resident_kv_cells"] = min(context, 32768)
     if isinstance(draft, str):
         serving["speculative_decoding"] = draft == "on"
+        if draft == "on" and adapter == "strata":
+            serving["draft_method"] = "MTP"
         if adapter == "strata" and draft == "off":
             serving["max_draft_tokens"] = 0
     if isinstance(vision, str):
@@ -608,14 +645,18 @@ def build_profile(
     launch_json = recipe_dir / "config" / "launch.json"
     runtime_name = _first(_dig(facts, "runtime"), _dig(_read_optional(launch_json), "runtime"))
     runtime_dir = recipe_dir.parents[1] / "runtimes" / str(runtime_name) if runtime_name else None
-    runtime = (
+    runtime: Mapping[str, Any] = (
         read_json(runtime_dir / "runtime.json")
         if runtime_dir is not None and (runtime_dir / "runtime.json").is_file()
         else {}
     )
     adapter = _first(_dig(facts, "adapter"), runtime.get("adapter"))
     lock_path = runtime_dir / "container" / "versions.lock.json" if runtime_dir else None
-    lock = read_json(lock_path) if lock_path is not None and lock_path.is_file() else {}
+    lock: Mapping[str, Any] = (
+        read_json(lock_path) if lock_path is not None and lock_path.is_file() else {}
+    )
+    runtime = _obj(_dig(facts, "runtime_inputs", "descriptor")) or runtime
+    lock = _obj(_dig(facts, "runtime_inputs", "versions")) or lock
     _, format_part, _, _ = experiment_identity(recipe_dir.name)
     return {
         "id": recipe_identity(recipe_dir),
@@ -672,7 +713,7 @@ def session_profile(
     }
     runtime_name = facts.get("runtime")
     runtime_dir = recipe_dir.parents[1] / "runtimes" / str(runtime_name) if runtime_name else None
-    runtime = (
+    runtime: Mapping[str, Any] = (
         read_json(runtime_dir / "runtime.json")
         if runtime_dir is not None and (runtime_dir / "runtime.json").is_file()
         else {}
@@ -680,7 +721,11 @@ def session_profile(
     adapter_value = facts.get("adapter")
     adapter = adapter_value if isinstance(adapter_value, str) else runtime.get("adapter")
     lock_path = runtime_dir / "container" / "versions.lock.json" if runtime_dir else None
-    lock = read_json(lock_path) if lock_path is not None and lock_path.is_file() else {}
+    lock: Mapping[str, Any] = (
+        read_json(lock_path) if lock_path is not None and lock_path.is_file() else {}
+    )
+    runtime = _obj(_dig(facts, "runtime_inputs", "descriptor")) or runtime
+    lock = _obj(_dig(facts, "runtime_inputs", "versions")) or lock
     _, format_part, _, _ = experiment_identity(recipe_dir.name)
     options = _obj(facts.get("options"))
     serving: dict[str, Any] = {}

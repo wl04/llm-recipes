@@ -168,6 +168,7 @@ def prepare(recipe: Path, root: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--runtime-image", help="Local image with the selected runtime lock")
     parser.add_argument("--models", type=Path, default=Path.home() / "llm-recipes")
     parser.add_argument("--recipe", type=Path, required=True, help="recipe directory")
     parser.add_argument("--inside-container", action="store_true", help=argparse.SUPPRESS)
@@ -184,6 +185,9 @@ def main() -> int:
         models.mkdir(parents=True, exist_ok=True)
         (models / ".cache").mkdir(exist_ok=True)
         manifest = json.loads((RUNTIME / "runtime.json").read_text())
+        image = manifest["image"] if args.runtime_image is None else args.runtime_image
+        if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_./:@-]*", image):
+            raise ValueError("invalid image reference")
         command = [
             "sudo",
             "docker",
@@ -204,7 +208,7 @@ def main() -> int:
             f"type=bind,src={models},dst=/models",
             "--mount",
             f"type=bind,src={models / '.cache'},dst=/cache",
-            manifest["image"],
+            image,
             "python3",
             "/runtime/scripts/prepare_models.py",
             "--recipe",

@@ -1,5 +1,20 @@
 # 001 · 2026-11-15 — Baseline
 
+<!-- BEGIN GENERATED RUN CONFIGURATION -->
+
+## Run configuration
+
+| Setting | Value |
+|---|---|
+| Runtime | llama.cpp (LM Studio runtime 2.73.0) |
+| GPU stack | Vulkan · AMD Radeon RX 9070 XT |
+| Model | Qwen3.8-27B · IQ3_XXS |
+| Context and cache | 131,072 tokens · Q8_0 / Q8_0 |
+| Drafting and vision | MTP · true — vision adapter mmproj-Qwen3.8-27B-BF16.gguf loaded |
+| Thinking | Off |
+
+<!-- END GENERATED RUN CONFIGURATION -->
+
 <!-- BEGIN GENERATED RESULTS -->
 
 ## Baseline results

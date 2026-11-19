@@ -1,5 +1,20 @@
 # 001 · 2026-11-14 — Baseline
 
+<!-- BEGIN GENERATED RUN CONFIGURATION -->
+
+## Run configuration
+
+| Setting | Value |
+|---|---|
+| Runtime | ExLlamaV3 1.6.6 |
+| GPU stack | ROCm 10.1.0 · AMD Radeon RX 9070 XT (gfx1201) |
+| Model | Qwen3.8-27B · SC_3.00bpw_H4 |
+| Context and cache | 131,072 tokens · Q4 KV |
+| Drafting and vision | DFlash2 enabled · Vision on |
+| Thinking | Off |
+
+<!-- END GENERATED RUN CONFIGURATION -->
+
 <!-- BEGIN GENERATED RESULTS -->
 
 ## Baseline results

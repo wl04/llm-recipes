@@ -243,6 +243,7 @@ def test_start_facts_records_runtime_descriptor_and_build_lock(tmp_path: Path) -
         recipe, make_options(tmp_path), host=HOST, image=IMAGE, started_at="2026-11-16"
     )
 
+    assert facts["runtime_inputs"] == {"descriptor": {}, "versions": {"version": 1}}
     assert facts["config_sha256"]["runtime.json"] == hashlib.sha256(b"{}").hexdigest()
     assert (
         facts["config_sha256"]["versions.lock.json"]

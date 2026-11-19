@@ -4,7 +4,7 @@
 
 ## Build and check
 
-State supported OS/GPU architecture and prerequisites. Link to `runtimes/<runtime>/container/` build inputs, source/dependency locks, and `runtime.json`. Provide build and image-check commands, and explain when a rebuild is required.
+State supported OS/GPU architecture and prerequisites. Link to `runtimes/<runtime>/container/` build inputs, source/dependency locks, and `runtime.json`. Use `python3 scripts/build_runtime.py <runtime> --check` and explain when a rebuild is required. Use `--tag` for candidate images.
 
 ## Model preparation
 

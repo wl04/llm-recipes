@@ -1,5 +1,19 @@
 # 003 · 2026-11-15 — Coding
 
+<!-- BEGIN GENERATED RUN CONFIGURATION -->
+
+## Run configuration
+
+| Setting | Value |
+|---|---|
+| Runtime | Strata 0.1.59.1 |
+| GPU stack | ROCm 10.1.0 · Radeon RX 9070/9070 XT/9070 GRE (gfx1201) |
+| Model | Qwen3.8-Flash-Next UD-IQ3_XXS · Strata |
+| Context and cache | 131,072 tokens · INT8 KV · 32,768 GPU-resident cells |
+| Drafting and vision | Drafting on · 4 draft tokens · CPU vision · 1,024 image tokens |
+
+<!-- END GENERATED RUN CONFIGURATION -->
+
 <!-- `run_baseline.py session --create` replaces the title line; if you copy this
 template by hand, replace the placeholder so it matches the folder. -->
 

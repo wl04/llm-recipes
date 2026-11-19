@@ -878,3 +878,31 @@ def test_main_reports_incomplete_session_as_validation_error(
     path.write_text(json.dumps(document))
 
     assert run_main(monkeypatch, tmp_path) == 2
+
+
+def test_run_configuration_uses_recorded_versions_and_serving_settings(tmp_path: Path) -> None:
+    result = write_baseline_experiment(tmp_path, BASELINE_SUMMARY)
+    profile = result / "profile.yaml"
+    data = yaml.safe_load(profile.read_text())
+    data["software"] = {
+        "engine": "Strata",
+        "engine_version": "0.1.62",
+        "rocm_version": "10.2.0",
+        "revision": "https://github.com/Niko1221/Strata/commit/" + "a" * 40,
+    }
+    data["settings"] = {
+        "serving": {"context_length_tokens": 131072, "kv_cache": "int8", "vision": False},
+        "thinking": {"enabled": False},
+    }
+    profile.write_text(yaml.safe_dump(data))
+
+    path, _, summary = gen.update_summary(result)
+    path.write_text(summary)
+    index = gen.update_index(result.parent)[2]
+
+    assert "| Runtime | Strata 0.1.62 |" in summary
+    assert "| GPU stack | ROCm 10.2.0 · Test GPU |" in summary
+    assert "| Context and cache | 131,072 tokens · INT8 KV |" in summary
+    assert "| Drafting and vision | Vision off |" in summary
+    assert "Strata 0.1.62 / ROCm 10.2.0" in index
+    assert gen.update_summary(result)[2] == summary

@@ -1,5 +1,20 @@
 # 001 · 2026-11-14 — Baseline
 
+<!-- BEGIN GENERATED RUN CONFIGURATION -->
+
+## Run configuration
+
+| Setting | Value |
+|---|---|
+| Runtime | Strata 0.1.59.1 |
+| GPU stack | ROCm 10.1.0 · AMD Radeon RX 9070 XT (gfx1201) |
+| Model | Qwen3.8-Flash-Next · Unsloth Dynamic v3.1 UD-IQ3_XXS |
+| Context and cache | 131,072 tokens · INT8 K AND V KV · 32,768 GPU-resident cells |
+| Drafting and vision | MTP enabled · 4 draft tokens · CPU; 8 threads · 1,024 image tokens |
+| Thinking | Off |
+
+<!-- END GENERATED RUN CONFIGURATION -->
+
 <!-- BEGIN GENERATED RESULTS -->
 
 ## Baseline results

@@ -155,7 +155,12 @@ def _make_repo(tmp_path: Path) -> Path:
     (runtime / "container").mkdir(parents=True)
     (runtime / "runtime.json").write_text(
         json.dumps(
-            {"adapter": "tabbyapi", "engine": "exllamav3", "image": "llm-recipes/exl3:probe"}
+            {
+                "adapter": "tabbyapi",
+                "engine": "exllamav3",
+                "engine_version": "1.6.6",
+                "image": "llm-recipes/exl3:probe",
+            }
         )
     )
     (runtime / "container" / "versions.lock.json").write_text(
@@ -211,7 +216,11 @@ def test_import_creates_a_complete_experiment_folder(
     assert profile["os"]["version"] == "26.10"
     assert profile["software"]["harness"] == importer.HARNESS
     assert profile["software"]["harness_version"].endswith("/commit/abc123def")
-    assert profile["software"]["base_image_tag"].endswith("/tags")
+    assert profile["software"]["engine_version"] == "1.6.6"
+    assert profile["software"]["rocm_version"] == "7.1.0"
+    assert profile["software"]["base_image_tag"] == (
+        "https://hub.docker.com/r/rocm/pytorch/tags?name=rocm7.10.0_ubuntu24.04_py3.12"
+    )
     assert profile["software"]["server_version"].endswith(
         "/commit/2222222222222222222222222222222222222222"
     )

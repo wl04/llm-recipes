@@ -38,12 +38,15 @@
 | Agent / harness | llm-recipes baseline suite |
 | Harness version | [35c6bec2](https://github.com/wl04/llm-recipes/commit/35c6bec29fd5d81efd7aedcffa8fdbb7a2ed634c) |
 | Inference engine | Strata |
-| Engine version | Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0 |
+| Engine version | 0.1.59.1 |
+| Engine source revision | [dbb2d168](https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0) |
+| Compute backend | ROCm / HIP |
+| ROCm version | 10.1.0 |
 | GPU driver | amdgpu |
-| Base image tag at preparation | [https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags](https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags) |
+| Base image tag at preparation | [rocm/dev-ubuntu-24.04:10.1.0-full](https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags?name=10.1.0-full) |
 | Pinned base image | rocm/dev-ubuntu-24.04@sha256:5ed1362ea542a928651e4c710b44024ebe98870f74159cb70f0265aec8ef0abe |
 | API server | Strata |
-| API server version / revision | Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0 |
+| API server version / revision | [dbb2d168](https://github.com/Niko1221/Strata/commit/dbb2d168cffa8cf793d9325358809d5263c7c6b0) |
 | Host Python | 3.14.8 |
 | Running image ID | sha256:afe7c1bff2f14085879a86bfcdc5729996a66beac14edee40207c08e255feca6 |
 
@@ -53,8 +56,14 @@
 
 | Setting | Value |
 |---|---|
-| Model name | Qwen3.8-Flash-Next UD-IQ3_XXS · Strata |
+| Model name | Qwen3.8-Flash-Next |
 | Model format | GGUF Unsloth UD IQ3 XXS |
+| Weight quantization | Unsloth Dynamic v3.1 UD-IQ3_XXS |
+| Model repository | [https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF](https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF) |
+| Model revision | [084c631a](https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF/commit/084c631ac221016019d6e0a863afe92d90edd3b0) |
+| Draft repository | [https://huggingface.co/Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) |
+| Draft revision | [de4b8e4d](https://huggingface.co/Qwen/Qwen3.8-Flash-Next/commit/de4b8e4d43b917e7706784d8bb445c9af86a3540) |
+| Draft quantization | Q2_0 |
 
 
 ## Serving
@@ -63,6 +72,7 @@
 |---|---|
 | Served model id | qwen3.8-flash-next-ud-iq3_xxs |
 | Speculative decoding | True |
+| Draft method | MTP |
 | Context length (tokens) | 131072 |
 | KV cache | int8 |
 | GPU resident KV cells | 32768 |

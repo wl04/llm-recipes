@@ -4,6 +4,8 @@
 
 Build and check the shared [Strata runtime](../../docs/runtimes/strata.md#build-and-check).
 
+[Try the upstream v0.2.16 package with the Unsloth model](../../docs/runtimes/strata.md#try-strata-v0216).
+
 Allow at least **110 GiB additional free disk space** for 78.7 GiB of downloads — target shards, the projector, and MTP files — plus preparation outputs. That is about **7.3 GiB** more than the ISTA setup, and it needs that much more memory headroom. With 64 GB RAM, close memory-heavy applications and watch RAM, swap, and VRAM during loading and long-context checks.
 
 ## Prepare models

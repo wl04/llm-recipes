@@ -1,5 +1,9 @@
 # NNN · YYYY-MM-DD — Workload / variant
 
+<!-- BEGIN GENERATED RUN CONFIGURATION -->
+
+<!-- END GENERATED RUN CONFIGURATION -->
+
 Fill in the information available and remove unused sections.
 
 ## Workload

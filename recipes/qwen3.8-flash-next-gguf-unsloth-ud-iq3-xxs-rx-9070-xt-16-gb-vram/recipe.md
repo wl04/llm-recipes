@@ -8,11 +8,11 @@ Prepared configuration for Unsloth Dynamic v3.1 UD-IQ3_XXS with Strata HIP, Q2_0
 
 ## Experiments
 
-| Experiment | Configuration | Results |
-|---|---|---|
-| 003 · 2026-11-15 — Coding | [Configuration](003-2026-11-15-coding/configuration.md) | [Results](003-2026-11-15-coding/summary.md) |
-| 002 · 2026-11-15 — Baseline | [Configuration](002-2026-11-15-baseline/configuration.md) | [Results](002-2026-11-15-baseline/summary.md) |
-| 001 · 2026-11-14 — Baseline | [Configuration](001-2026-11-14-baseline/configuration.md) | [Results](001-2026-11-14-baseline/summary.md) |
+| Experiment | Runtime | Configuration | Results |
+|---|---|---|---|
+| 003 · 2026-11-15 — Coding | Strata 0.1.59.1 / ROCm 10.1.0 | [Configuration](003-2026-11-15-coding/configuration.md) | [Results](003-2026-11-15-coding/summary.md) |
+| 002 · 2026-11-15 — Baseline | Strata 0.1.59.1 / ROCm 10.1.0 | [Configuration](002-2026-11-15-baseline/configuration.md) | [Results](002-2026-11-15-baseline/summary.md) |
+| 001 · 2026-11-14 — Baseline | Strata 0.1.59.1 / ROCm 10.1.0 | [Configuration](001-2026-11-14-baseline/configuration.md) | [Results](001-2026-11-14-baseline/summary.md) |
 
 <!-- END GENERATED EXPERIMENTS -->
 

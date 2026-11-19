@@ -1,5 +1,20 @@
 # 002 · 2026-11-12 — Long coding session in Pi
 
+<!-- BEGIN GENERATED RUN CONFIGURATION -->
+
+## Run configuration
+
+| Setting | Value |
+|---|---|
+| Runtime | Strata 0.1.59.1 |
+| GPU stack | ROCm 10.1.0 · AMD Radeon RX 9070 XT (gfx1201) |
+| Model | Qwen3.8-Flash-Next · GSQ-RCO IQ3_XXS |
+| Context and cache | 131,072 tokens · INT8 K AND V KV · 32,768 GPU-resident cells |
+| Drafting and vision | MTP enabled · 4 draft tokens · CPU · 1,024 image tokens |
+| Thinking | On |
+
+<!-- END GENERATED RUN CONFIGURATION -->
+
 ## Workload
 
 Interactive software development in Pi using Strata with IQ3_XXS weights, MTP drafting, CPU vision enabled, and a 131,072-token context allocation. The session contains 846 completed coding requests. The six preceding text, tool, vision, and synthetic long-context checks are excluded from these measurements.

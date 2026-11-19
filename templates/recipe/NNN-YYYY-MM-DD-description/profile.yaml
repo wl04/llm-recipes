@@ -1,34 +1,51 @@
 id: Model / Format / Hardware / Memory
 hardware:
   cpu: CPU model
-  platform: Platform name
-  kernel: Kernel version
-  ram_gb: 32
-  motherboard: Motherboard name
-  bios: BIOS version and mode
   gpu: GPU model
-  vram_gb: 12
-  driver_stack: Driver stack
-  driver_version: Driver version
+  memory:
+    system_ram_gib: null
+    dedicated_vram_gib: null
+    unified_memory_gib: null
 os:
-  distribution: Distro
-  version: Version
-  container_engine: Podman
-  container_engine_version: "12.0.0"
-  filesystem: ext4
+  name: OS name
+  version: null
+  kernel: null
+  kernel_driver: null
+software:
+  harness: null
+  harness_version: null
+  engine: null
+  engine_version: null # Quote a release number such as "0.1.62".
+  revision: null # Engine source commit URL.
+  backend: null
+  rocm_version: null # Quote the container's ROCm version when applicable.
+  server: null
+  server_version: null
+  base_image_tag: null # Exact tag or Docker Hub tag link.
+  base_image: null # Image reference with digest.
+  running_image_id: null
 model:
-  path: model-path
+  name: Model name
   format: Format name
-  quantization: Quantization name
-  context_length: 8192
-  size_gib: 8.0
-  preparation: Preparation summary
+  quantization: null
+  repository: null
+  revision: null
+  draft_repository: null
+  draft_revision: null
+  draft_quantization: null
 # Engine settings in five canonical groups. Keys are snake_case; the generator
 # validates sampling/thinking/requests against a whitelist and drops sections
 # that are absent or empty.
 settings:
   serving:
     speculative_decoding: null
+    draft_method: null
+    max_draft_tokens: null
+    context_length_tokens: null
+    kv_cache: null
+    gpu_resident_kv_cells: null
+    vision: null
+    vision_max_image_tokens: null
   sampling:
     # Only these keys are allowed. A named preset (e.g. conservative) can
     # stand alone; explicit parameters may be listed instead or alongside.
