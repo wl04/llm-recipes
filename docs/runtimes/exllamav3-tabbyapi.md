@@ -16,7 +16,7 @@ Lower `--max-jobs` if compiler memory use is excessive. The image check verifies
 
 The image name and API-server/engine pairing live in [`runtime.json`](../../runtimes/exllamav3-tabbyapi/runtime.json). Reuse the image while its lock matches; rebuild after changing build inputs or pins. Serving and draft conversion compare the image's build lock with the runtime lock.
 
-For an existing `:probe` image built from the current lock, run `sudo docker image tag llm-recipes/exl3-rdna4:probe llm-recipes/exl3-rdna4:v1.6.6-tabby-8f92fac5` once. Normal builds use the descriptor’s versioned tag.
+Normal builds and launches use `llm-recipes/exl3-rdna4:v1.6.6-tabby-8f92fac5` from the runtime descriptor.
 
 For a separate image, pass `--tag candidate` to the builder. Use `--runtime-image llm-recipes/exl3-rdna4:candidate` with the launcher or baseline and set `LLM_RECIPES_RUNTIME_IMAGE=llm-recipes/exl3-rdna4:candidate` for the preparation commands. If the lock differs, prepare the draft in a separate data root.
 

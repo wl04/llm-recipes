@@ -1,6 +1,6 @@
 # Strata runtime
 
-The shared runtime uses Strata's HIP engine and its own API server, with a CPU vision encoder. It targets `gfx1201`, including the RX 9070 XT. Recipes provide the model lock, native `strata.json`, Pi metadata, and an external data-directory name.
+The shared runtime uses Strata's HIP engine and its own API server, with a CPU vision encoder. It targets `gfx1201`, including the RX 9070 XT. Recipes provide the model lock, native `strata.json`, Pi metadata, and a data directory derived from the recipe folder name.
 
 [Upgrade Strata on the RX 9070 XT](#upgrade-strata-on-the-rx-9070-xt)
 
@@ -16,13 +16,7 @@ Lower `--max-jobs` if compiler memory use is excessive. The image check exercise
 
 [`versions.lock.json`](../../runtimes/strata/container/versions.lock.json) pins AMD's ROCm development image and exact Strata and llama.cpp revisions. Source archives are verified before extraction. Python dependencies use hashes; Ubuntu dependencies use a dated snapshot. Strata uses vendored GGML and HIP kernels with MMQ prefill enabled. The separate CPU vision executable uses llama.cpp mtmd at the locked revision; portable CPU builds use AVX2.
 
-The image name and API-server/engine pairing are declared in [`runtime.json`](../../runtimes/strata/runtime.json). Reuse the image while its lock matches; rebuild after changing build inputs or pins. Preparation and serving check the image's lock against this runtime's lock.
-
-A normal build uses the versioned tag in the runtime descriptor. Preparation, serving and baseline runs use that tag by default. For an existing `:probe` image that matches the current lock, give it the descriptor tag once:
-
-```bash
-sudo docker image tag llm-recipes/strata-rdna4:probe llm-recipes/strata-rdna4:v0.2.13-95-gdbb2d168
-```
+The builder, preparation helper, launcher and baseline runner default to `llm-recipes/strata-rdna4:v0.2.13-95-gdbb2d168` from [runtime.json](../../runtimes/strata/runtime.json). Reuse your existing image for this checkout. Rebuild when its inputs change. Preparation and serving verify the runtime lock embedded in the image.
 
 ## Preparation
 
@@ -69,7 +63,7 @@ candidate_root="${models_root}-strata-${tag}"
 git worktree add -b "strata-${tag}" "$candidate" HEAD
 ```
 
-Use the reference checkout’s versioned image and original models root for the reference run. If the workstation has only the matching `:probe` image, follow [Build and check](#build-and-check) first.
+Keep the reference checkout, its versioned image, and the original models root together for comparison and rollback. Run the remaining steps in the same Bash shell so the path variables stay available.
 
 ### 2. Pin the inputs and port the integration
 
@@ -94,7 +88,7 @@ sudo docker buildx imagetools inspect rocm/dev-ubuntu-24.04:10.2.0-full
 | ROCm base | `rocm/dev-ubuntu-24.04:10.2.0-full` at `sha256:21801c0ba1bc4aba31f81ab11fe576c43daa7f2c7f42bac7baaa4d2f75273f86` |
 | Engine and target | 0.1.63, HIP `gfx1201` |
 
-Update the Strata revision and archive hash in [versions.lock.json](../../runtimes/strata/container/versions.lock.json), plus the base tag and digest when changing ROCm. Set `engine_version` and `engine_source_version` in [runtime.json](../../runtimes/strata/runtime.json) to the engine version and source release. Set the descriptor’s image tag to the candidate release (here `llm-recipes/strata-rdna4:v0.2.17`); each checkout then builds and launches its own version by default. For parallel builds of the same release, use distinct tags such as `v0.2.17-rocm10.2` and select the variant with `--runtime-image`. Keep model, projector and MTP locks fixed for the comparison.
+Update the Strata revision and archive hash in [versions.lock.json](../../runtimes/strata/container/versions.lock.json), plus the base tag and digest when changing ROCm. Set `engine_version` and `engine_source_version` in [runtime.json](../../runtimes/strata/runtime.json) to the engine version and source release. Set the descriptor’s image tag to the candidate release (here `llm-recipes/strata-rdna4:v0.2.17`); each checkout then builds and launches its own version by default. For a second build of the same release, use the builder’s `--tag v0.2.17-rocm10.2` option and pass the full image name `--runtime-image llm-recipes/strata-rdna4:v0.2.17-rocm10.2` to preparation, doctor, start and baseline run. Keep model, projector and MTP locks fixed for the comparison.
 
 For each release, check its CMake targets, server imports, preparation tools and effective launch arguments against the candidate checkout. The port from the current pin to **v0.2.17** needs these edits:
 
@@ -104,7 +98,7 @@ For each release, check its CMake targets, server imports, preparation tools and
 
 ### 3. Build and prepare the candidate
 
-Create the [checkout development environment](../project-instructions.md#development-dependencies-and-checks) in the candidate worktree. Run these commands there. A separate models root keeps each pack and its `prepared.json` paired with the runtime lock that produced it. On filesystems without reflinks, allow about 78 GiB for the copied Unsloth model files, plus room for the new pack and image.
+Set up the [checkout development environment](../project-instructions.md#development-dependencies-and-checks) in both worktrees used for baseline runs. Run these commands there. A separate models root keeps each pack and its `prepared.json` paired with the runtime lock that produced it. On filesystems without reflinks, allow about 78 GiB for the copied Unsloth model files, plus room for the new pack and image.
 
 ```bash
 cd "$candidate"
@@ -120,7 +114,7 @@ python3 scripts/launch.py doctor "$recipe" --models "$candidate_root"
 
 ### 4. Measure the upgrade
 
-Stop the active server. Run the same suite from each checkout with the same model, sampling, MTP, CPU vision at 1,024 image tokens, and INT8 KV with 32,768 resident cells. For **v0.2.17**, leave `STRATA_ROUTE_TAIL_SKIP` unset on the candidate (default off). For a matched comparison, temporarily set `"env": {"STRATA_ROUTE_TAIL_SKIP": "0"}` in the reference recipe’s native config, preserving other environment entries. Restore your reference config after recording the run. Baseline 002 used suite v2; use suite v3 on both arms for comparable returning-turn measurements.
+Stop the active server. Run the same suite from each checkout with the same model, sampling, MTP, CPU vision at 1,024 image tokens, and INT8 KV with 32,768 resident cells. For **v0.2.17**, leave `STRATA_ROUTE_TAIL_SKIP` unset on the candidate (default off). For a matched comparison, temporarily set `"env": {"STRATA_ROUTE_TAIL_SKIP": "0"}` in the reference recipe’s native config, preserving other environment entries. If importing the reference run, import it from that checkout before restoring the native config so the recorded hashes match. Baseline 002 used suite v2; use suite v3 on both arms for comparable returning-turn measurements.
 
 ```bash
 (cd "$reference" && .venv/bin/python scripts/run_baseline.py run "$recipe" \
@@ -147,19 +141,16 @@ Import the successful candidate run from the matching candidate checkout before 
 (cd "$reference" && python3 scripts/launch.py start "$recipe" --models "$models_root")
 ```
 
-For a shared rollout, merge the validated integration and lock, use the tested versioned image, prepare the serving data against that lock, and refresh the installed launcher with `python3 scripts/install.py install`. Retain the reference image and data until the installed command serves the expected model.
+For a shared rollout, merge the validated integration and lock, then refresh the installed launcher from the merged checkout with `python3 scripts/install.py install`. Start with `llm-recipes start "$recipe" --models "$candidate_root"` to reuse the tested image and prepared candidate data. Keep the original models root for rollback.
 
 ### Optional upstream package trial
 
 Use this for a quick functional check before porting the Docker build. The upstream launcher selects its own preparation and placement defaults. Run in a separate shell using the release tag selected in step 1.
 
-```bash
-tag=v0.2.17
-```
-
 Stop the recipe container to free the GPU. Use a fresh trial directory and a copy of the prepared Unsloth GGUFs and projector. Set `models_root` to the data root that contains your `recipes/` folder. On filesystems without reflinks, the copy needs about 78 GiB, plus space for packages and preparation.
 
 ```bash
+tag=v0.2.17
 models_root="${LLM_RECIPES_HOME:-$HOME/llm-recipes}"
 recipe=qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram
 trial=$(mktemp -d "$HOME/strata-${tag}.XXXXXX")
