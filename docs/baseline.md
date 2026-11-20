@@ -93,6 +93,8 @@ With `--logs`, `facts.json` may be absent (LM Studio logs are one such case); th
 
 Use the same suite version and replay tier when comparing results.
 
+For the first v3 workstation runs, use Strata and a second server such as LM Studio. Check that both reports show the same client timing fields. Where the server reports cached tokens, check the cold seed for zero reuse and the replay for prefix reuse. Compare total suite time against v2 on the same configuration and record the time spent on the follow-ups, especially when the replay misses the cache.
+
 ## What a run measures
 
 Container phases, sampled separately in `results.json`: idle 30 s (warn above 10% system CPU) → load (served model up to 30 min) → settle (CPU quiet for 10 s, up to 120 s) → loaded idle 10 s → suite → unload → after-unload 10 s (RAM/VRAM deltas; these alone do not establish a leak). Desktop runs record settle, loaded idle, and the suite.
