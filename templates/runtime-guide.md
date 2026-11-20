@@ -4,7 +4,7 @@
 
 ## Build and check
 
-State supported OS/GPU architecture and prerequisites. Link to `runtimes/<runtime>/container/` build inputs, source/dependency locks, and `runtime.json`. Use `python3 scripts/build_runtime.py <runtime> --check` and explain when a rebuild is required. Use `--tag` for candidate images.
+State supported OS/GPU architecture and prerequisites. Link to `runtimes/<runtime>/container/` build inputs, source/dependency locks, and `runtime.json`. Use `python3 scripts/build_runtime.py <runtime> --check` and explain when a rebuild is required. Set the descriptor’s image tag to the pinned source release (or nearest release, commit count and Git SHA). Include the API server revision when pinned separately. Use a distinct tag when comparing builds of the same sources, such as a ROCm or patch variant.
 
 ## Model preparation
 
