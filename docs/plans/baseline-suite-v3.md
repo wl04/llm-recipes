@@ -6,7 +6,7 @@ Keep one command per configuration:
 llm-recipes-baseline run <recipe>
 ```
 
-Use the existing launch and desktop attach flows. The runner chooses workloads from the recipe's configured context and writes the comparison metrics into the existing `summary.md` and `results.json`. A container candidate uses the checkout entry point from its own worktree. [Baseline runner](../baseline.md#run-a-baseline) · [Candidate runtime workflow](../runtimes/strata.md#compare-a-candidate-runtime)
+Use the existing launch and desktop attach flows. The runner chooses workloads from the recipe's configured context and writes the comparison metrics into the existing `summary.md` and `results.json`. A container candidate uses the checkout entry point from its own worktree. [Baseline runner](../baseline.md#run-a-baseline) · [Candidate runtime workflow](../runtimes/strata-upgrade.md#4-measure-the-upgrade)
 
 The baseline answers three questions for a single active user: how long a fresh prompt takes, how long a returning turn takes, and how fast the server generates once it starts. The existing functional checks and active RAM/VRAM measurements provide context for those numbers.
 
@@ -30,4 +30,4 @@ The documented Strata coding session puts 1,846 of 1,947 requests at 32K or more
 
 1. Run v3 on Strata and one other API path, such as TabbyAPI or LM Studio. Verify the seed was fresh and check reuse where the server reports it. Confirm both reports expose the same client fields.
 2. Compare total suite time with v2. Check how much time the follow-ups add on engines that miss the cache.
-3. Use the [Strata reference and candidate](strata-rx-9070-xt-evaluation.md) as the first A/B. Match replay tier, suite version, model, quantization, actual token counts, request policy, and hardware. Repeat in alternating order when the difference is within observed variation. Compare client latency on equivalent tasks alongside token rates when tokenizers differ.
+3. Use the [Strata reference and candidate](../runtimes/strata-upgrade.md) as the first A/B. Match replay tier, suite version, model, quantization, actual token counts, request policy, and hardware. Repeat in alternating order when the difference is within observed variation. Compare client latency on equivalent tasks alongside token rates when tokenizers differ.
