@@ -16,17 +16,17 @@ Lower `--max-jobs` if compiler memory use is excessive. The image check exercise
 
 The image name and API-server/engine pairing are declared in [`runtime.json`](../../runtimes/strata/runtime.json). Reuse the image while its lock matches; rebuild after changing build inputs or pins. Preparation and serving check the image's lock against this runtime's lock.
 
-## Try Strata v0.2.16
+## Try Strata v0.2.17
 
-The [upstream Linux Terminal package](https://github.com/Niko1221/Strata/releases/tag/v0.2.16) supports a standalone trial of engine 0.1.62. Use the trial to check startup, CPU vision, and Pi tool calls. Follow the [evaluation plan](../plans/strata-rx-9070-xt-evaluation.md#1-engine-0162-and-native-cpu-vision) for the controlled container comparison.
+The [upstream Linux Terminal package](https://github.com/Niko1221/Strata/releases/tag/v0.2.17) supports a standalone trial of engine 0.1.63. Use the trial to check startup, CPU vision, and Pi tool calls. Follow the [evaluation plan](../plans/strata-rx-9070-xt-evaluation.md#1-engine-0163-and-native-cpu-vision) for the controlled container comparison.
 
 Stop the recipe container to free the GPU. Use a fresh trial directory and a copy of the prepared Unsloth GGUFs and projector. Set `models_root` to the data root that contains your `recipes/` folder. On filesystems without reflinks, the copy needs about 78 GiB, plus space for packages and preparation.
 
 ```bash
 models_root="${LLM_RECIPES_HOME:-$HOME/llm-recipes}"
 recipe=qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram
-trial=$(mktemp -d "$HOME/strata-v0.2.16.XXXXXX")
-feed=https://github.com/Niko1221/Strata/releases/download/v0.2.16
+trial=$(mktemp -d "$HOME/strata-v0.2.17.XXXXXX")
+feed=https://github.com/Niko1221/Strata/releases/download/v0.2.17
 models="$models_root/recipes/$recipe/models"
 
 mkdir -p "$trial/gguf"
@@ -48,7 +48,7 @@ STRATA_FEED="$feed" sh "$trial/install.sh"
   --access local --port 8082 --yes --no-tui
 ```
 
-Keep the same shell open for the trial commands. Confirm the startup identifies engine 0.1.62 on the RX 9070 XT, MTP and CPU vision. Run `curl -fsS http://127.0.0.1:8082/v1/models` for the model ID. Use that ID and `http://127.0.0.1:8082/v1` in a separate local Pi provider. The upstream launcher selects its own defaults and preparation outputs, so use these results as a functional check. Stop the trial with `"$trial/bin/strata" launch --stop`.
+Keep the same shell open for the trial commands. Confirm the startup identifies engine 0.1.63 on the RX 9070 XT, MTP and CPU vision. Run `curl -fsS http://127.0.0.1:8082/v1/models` for the model ID. Use that ID and `http://127.0.0.1:8082/v1` in a separate local Pi provider. The upstream launcher selects its own defaults and preparation outputs, so use these results as a functional check. Stop the trial with `"$trial/bin/strata" launch --stop`.
 
 ## Compare a candidate runtime
 
