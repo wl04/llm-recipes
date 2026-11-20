@@ -51,7 +51,7 @@ Use this guide to try a Strata release with Qwen3.8-Flash-Next Unsloth UD-IQ3_XX
 
 ### 1. Select the release and preserve the reference
 
-Start at the repository root on the workstation. Use a clean reference checkout and a fresh worktree for the candidate. Set the tag once per upgrade.
+Start at the repository root on the workstation. Use a clean reference checkout and a fresh worktree for the candidate. Set the tag once per upgrade. Choose a fresh candidate data directory dedicated to this trial.
 
 ```bash
 tag=v0.2.17
@@ -143,6 +143,31 @@ Import the successful candidate run from the matching candidate checkout before 
 
 For a shared rollout, merge the validated integration and lock, then refresh the installed launcher from the merged checkout with `python3 scripts/install.py install`. Start with `llm-recipes start "$recipe" --models "$candidate_root"` to reuse the tested image and prepared candidate data. Keep the original models root for rollback.
 
+### 6. Clean up the container trial
+
+**After adopting the candidate**, keep its image and `$candidate_root`: the installed launcher uses them for serving. Once the integration and experiment are merged and the installed launcher works, remove the development worktree using the Git commands below.
+
+**After rolling back**, stop the candidate instance before starting the reference. Import any baseline you want to keep from the matching worktree and save any trial logs you need. To reclaim space from a discarded v0.2.17 trial, remove its specific image tag and dedicated data directory:
+
+```bash
+sudo docker image rm llm-recipes/strata-rdna4:v0.2.17
+if [[ -n ${models_root:-} && -n ${tag:-} && ${candidate_root:-} == "${models_root}-strata-${tag}" ]]; then
+  du -sh -- "$candidate_root" && rm -rI -- "$candidate_root"
+fi
+```
+
+For another release or build variant, substitute its actual candidate image tag. Keep the original models root, which also holds other recipes and baseline reports.
+
+**Remove the worktree** once you have finished using it. Commit anything you want to retain, including imported results. Review the status before removal. The local branch retains committed work and can be deleted after it is merged.
+
+```bash
+cd "${reference:?}"
+git -C "${candidate:?}" status --short
+git worktree remove "$candidate"
+# After merging the candidate into the reference branch:
+git branch -d "strata-${tag:?}"
+```
+
 ### Optional upstream package trial
 
 Use this for a quick functional check before porting the Docker build. The upstream launcher selects its own preparation and placement defaults. Run in a separate shell using the release tag selected in step 1.
@@ -176,7 +201,13 @@ STRATA_FEED="$feed" sh "$trial/install.sh"
   --access local --port 8082 --yes --no-tui
 ```
 
-Keep the same shell open for the trial commands. Confirm the startup identifies the selected engine version on the RX 9070 XT, MTP and CPU vision. Run `curl -fsS http://127.0.0.1:8082/v1/models` for the model ID. Use that ID and `http://127.0.0.1:8082/v1` in a separate local Pi provider. The upstream launcher selects its own defaults and preparation outputs, so use these results as a functional check. Stop the trial with `"$trial/bin/strata" launch --stop`.
+Keep the same shell open for the trial commands. Confirm the startup identifies the selected engine version on the RX 9070 XT, MTP and CPU vision. Run `curl -fsS http://127.0.0.1:8082/v1/models` for the model ID. Use that ID and `http://127.0.0.1:8082/v1` in a separate local Pi provider. The upstream launcher selects its own defaults and preparation outputs, so use these results as a functional check. To discard the package trial, stop it from the same trial shell. The directory contains the copied GGUFs, prepared model, installer and isolated Strata state. After cleanup, close that shell to clear its exported paths.
+
+```bash
+if [[ -n ${tag:-} && ${trial:-} == "$HOME/strata-${tag}."?????? ]]; then
+  "$trial/bin/strata" launch --stop && rm -rI -- "$trial"
+fi
+```
 
 ---
 
