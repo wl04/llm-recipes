@@ -1,0 +1,7 @@
+{
+  "adapter": "strata",
+  "engine": "strata",
+  "engine_version": "0.1.64",
+  "engine_source_version": "v0.2.18",
+  "image": "llm-recipes/strata-rdna4:v0.2.18"
+}
