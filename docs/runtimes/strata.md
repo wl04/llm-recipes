@@ -47,14 +47,16 @@ Pi uses OpenAI-compatible chat completions. The frontend supports streaming, too
 
 ## Upgrade Strata on the RX 9070 XT
 
-Use this guide to try a Strata release with Qwen3.8-Flash-Next Unsloth UD-IQ3_XXS and Pi. The worked candidate is **v0.2.17 / engine 0.1.63 / ROCm 10.2**. The checked-in Docker build still targets **engine 0.1.59.1 / ROCm 10.1**. Complete the source integration in step 2 before building the candidate.
+Use this guide to try a Strata release with Qwen3.8-Flash-Next Unsloth UD-IQ3_XXS and Pi. Upgrade directly from the checked-in **v0.2.13 + 95 commits / engine 0.1.59.1 / ROCm 10.1** to the **v0.2.18 / engine 0.1.64 / ROCm 10.2** candidate. You can skip v0.2.17. Complete step 2 in the candidate worktree before building.
+
+For Qwen on the RX 9070 XT, the upstream Linux package is `strata-engine-0.1.64-linux-x86_64-hip-rx9070.tar.gz`. The release’s 62 tok/s figure on RDNA4 applies to Tencent Hy4-Flash running on the separate `strata-hy4` engine. Measure Qwen with the existing Unsloth weights and MTP configuration in step 4. [v0.2.18 release notes and packages](https://github.com/Niko1221/Strata/releases/tag/v0.2.18)
 
 ### 1. Select the release and preserve the reference
 
 Start at the repository root on the workstation. Use a clean reference checkout and a fresh worktree for the candidate. Set the tag once per upgrade. Choose a fresh candidate data directory dedicated to this trial.
 
 ```bash
-tag=v0.2.17
+tag=v0.2.18
 recipe=qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram
 reference=$(git rev-parse --show-toplevel)
 candidate="${reference}-strata-${tag}"
@@ -81,20 +83,20 @@ cd "$candidate"
 sudo docker buildx imagetools inspect rocm/dev-ubuntu-24.04:10.2.0-full
 ```
 
-| Candidate input | Verified v0.2.17 value |
+| Candidate input | Verified v0.2.18 value |
 | --- | --- |
-| Strata source | [12d491da4a6904eb49aaa6f2f63ec4b1a17582e3](https://github.com/Niko1221/Strata/commit/12d491da4a6904eb49aaa6f2f63ec4b1a17582e3) |
-| Source archive SHA-256 | `52fc7f215b1e4f38a2ac7659dd0e32a9bc34cd211444c30814da8ad6d6ebc1db` |
+| Strata source | [6e38f588a646c0ee6948a74afbe670eb75896106](https://github.com/Niko1221/Strata/commit/6e38f588a646c0ee6948a74afbe670eb75896106) |
+| Source archive SHA-256 | `10fe4a637d87e6fb3f8f09b424b3661eee14c20b34f0fb0158a4255309bfb823` |
 | ROCm base | `rocm/dev-ubuntu-24.04:10.2.0-full` at `sha256:21801c0ba1bc4aba31f81ab11fe576c43daa7f2c7f42bac7baaa4d2f75273f86` |
-| Engine and target | 0.1.63, HIP `gfx1201` |
+| Engine and target | 0.1.64, HIP `gfx1201` |
 
-Update the Strata revision and archive hash in [versions.lock.json](../../runtimes/strata/container/versions.lock.json), plus the base tag and digest when changing ROCm. Set `engine_version` and `engine_source_version` in [runtime.json](../../runtimes/strata/runtime.json) to the engine version and source release. Set the descriptor’s image tag to the candidate release (here `llm-recipes/strata-rdna4:v0.2.17`); each checkout then builds and launches its own version by default. For a second build of the same release, use the builder’s `--tag v0.2.17-rocm10.2` option and pass the full image name `--runtime-image llm-recipes/strata-rdna4:v0.2.17-rocm10.2` to preparation, doctor, start and baseline run. Keep model, projector and MTP locks fixed for the comparison.
+Update the Strata revision and archive hash in [versions.lock.json](../../runtimes/strata/container/versions.lock.json), plus the base tag and digest when changing ROCm. Set `engine_version` and `engine_source_version` in [runtime.json](../../runtimes/strata/runtime.json) to the engine version and source release. Set the descriptor’s image tag to the candidate release (here `llm-recipes/strata-rdna4:v0.2.18`); each checkout then builds and launches its own version by default. For a second build of the same release, use the builder’s `--tag v0.2.18-rocm10.2` option and pass the full image name `--runtime-image llm-recipes/strata-rdna4:v0.2.18-rocm10.2` to preparation, doctor, start and baseline run. Keep model, projector and MTP locks fixed for the comparison.
 
-For each release, check its CMake targets, server imports, preparation tools and effective launch arguments against the candidate checkout. The port from the current pin to **v0.2.17** needs these edits:
+For each release, check its CMake targets, server imports, preparation tools and effective launch arguments against the candidate checkout. The port from the current pin to **v0.2.18** needs these edits:
 
-- In the Dockerfile build HIP from `engine/` and CPU vision from `terminal/tools/vision/`. Remove the legacy MMQ option and vision’s external `LLAMA_DIR`. Keep the llama.cpp pin while pack preparation uses its GGUF Python library. [Engine build](https://github.com/Niko1221/Strata/blob/v0.2.17/engine/CMakeLists.txt) · [Vision build](https://github.com/Niko1221/Strata/blob/v0.2.17/terminal/tools/vision/CMakeLists.txt)
+- In the Dockerfile build HIP from `engine/` and CPU vision from `terminal/tools/vision/`. Remove the legacy MMQ option and vision’s external `LLAMA_DIR`. Keep the llama.cpp pin while pack preparation uses its GGUF Python library. [Engine build](https://github.com/Niko1221/Strata/blob/v0.2.18/engine/CMakeLists.txt) · [Vision build](https://github.com/Niko1221/Strata/blob/v0.2.18/terminal/tools/vision/CMakeLists.txt)
 - Point the image probe, Python search path, server and preparation tools at the `terminal/` layout. Verify the expert profile, draft vocabulary and MTP fetcher locations. Check that the fetcher’s pinned MTP revision matches the model lock. [Serving helper](../../runtimes/strata/scripts/serve.py) · [Preparation helper](../../runtimes/strata/scripts/prepare_models.py)
-- Map launcher draft on/off to native `drafting: mtp/off` and keep `--spec 0` for off. Write the resolved `--kv-resident` value to both `args` and `user_args` so VRAM fitting respects the cap at shorter contexts. Test both drafting modes and a shorter context. [Draft policy](https://github.com/Niko1221/Strata/blob/v0.2.17/terminal/strata_control/drafting.py) · [VRAM fitting](https://github.com/Niko1221/Strata/blob/v0.2.17/terminal/strata_control/vram_fit.py)
+- Map launcher draft on/off to native `drafting: mtp/off` and keep `--spec 0` for off. Write the resolved `--kv-resident` value to both `args` and `user_args` so VRAM fitting respects the cap at shorter contexts. Test both drafting modes and a shorter context. [Draft policy](https://github.com/Niko1221/Strata/blob/v0.2.18/terminal/strata_control/drafting.py) · [VRAM fitting](https://github.com/Niko1221/Strata/blob/v0.2.18/terminal/strata_control/vram_fit.py)
 
 ### 3. Build and prepare the candidate
 
@@ -114,7 +116,7 @@ python3 scripts/launch.py doctor "$recipe" --models "$candidate_root"
 
 ### 4. Measure the upgrade
 
-Stop the active server. Run the same suite from each checkout with the same model, sampling, MTP, CPU vision at 1,024 image tokens, and INT8 KV with 32,768 resident cells. For **v0.2.17**, leave `STRATA_ROUTE_TAIL_SKIP` unset on the candidate (default off). For a matched comparison, temporarily set `"env": {"STRATA_ROUTE_TAIL_SKIP": "0"}` in the reference recipe’s native config, preserving other environment entries. If importing the reference run, import it from that checkout before restoring the native config so the recorded hashes match. Baseline 002 used suite v2; use suite v3 on both arms for comparable returning-turn measurements.
+Stop the active server. Run the same suite from each checkout with the same model, sampling, MTP, CPU vision at 1,024 image tokens, and INT8 KV with 32,768 resident cells. For **v0.2.18**, leave `STRATA_ROUTE_TAIL_SKIP` unset on the candidate (default off). For a matched comparison, temporarily set `"env": {"STRATA_ROUTE_TAIL_SKIP": "0"}` in the reference recipe’s native config, preserving other environment entries. If importing the reference run, import it from that checkout before restoring the native config so the recorded hashes match. Baseline 002 used suite v2; use suite v3 on both arms for comparable returning-turn measurements.
 
 ```bash
 (cd "$reference" && .venv/bin/python scripts/run_baseline.py run "$recipe" \
@@ -125,7 +127,7 @@ Stop the active server. Run the same suite from each checkout with the same mode
 
 Compare cold prefill, warm time to first visible output at the same replay tier, decode, draft acceptance, peak RAM/VRAM, and swap during startup. Repeat in alternating order if differences are within run variability. For interactive checks, run `scripts/launch.py start` in the candidate checkout with the same recipe and models root. At Pi medium effort, test a multiline edit containing literal `</parameter>`, a tool result followed by another call, and retrieval of an early instruction in a long conversation. Check the edited file and the standard vision screenshot. Returning turns matter here. The [recorded Pi session](../../recipes/qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram/003-2026-11-15-coding/summary.md) reused about 97% of its prompt tokens.
 
-**v0.2.17 tuning.** Keep automatic expert caching, WMMA, PCIe miss split and PLE placement. Keep Q2_0 MTP at `--spec 4 --spec-min-p 0.5`. The upstream 47 GiB resident budget applies to larger Unsloth quants. Rank 7 tail skipping changed output on gfx1201. Trial it separately only if decode warrants it, checking the engine’s missed-experts-skipped counter and Pi edit fidelity. For a cold-prefill regression, record the loaded hipBLASLt version and tuning table. The shipped gfx1201 table for 1.5.0 was calibrated on a nightly build. To separate engine and ROCm effects, compare the same candidate source on both base images. [Release measurements](https://github.com/Niko1221/Strata/releases/tag/v0.2.17) · [RDNA4 defaults](https://github.com/Niko1221/Strata/blob/v0.2.17/docs/AMD_HIP.md#rdna4-gfx1201)
+**v0.2.18 tuning.** Keep automatic expert caching, WMMA, PCIe miss split and PLE placement. Keep Q2_0 MTP at `--spec 4 --spec-min-p 0.5`. The upstream 47 GiB resident budget applies to larger Unsloth quants. Rank 7 tail skipping changed output on gfx1201. Trial it separately only if decode warrants it, checking the engine’s missed-experts-skipped counter and Pi edit fidelity. For a cold-prefill regression, record the loaded hipBLASLt version and tuning table. The shipped gfx1201 table for 1.5.0 was calibrated on a nightly build. To separate engine and ROCm effects, compare the same candidate source on both base images. [v0.2.17 Qwen tuning measurements](https://github.com/Niko1221/Strata/releases/tag/v0.2.17) · [RDNA4 defaults](https://github.com/Niko1221/Strata/blob/v0.2.18/docs/AMD_HIP.md#rdna4-gfx1201)
 
 **Optional memory tuning.** If returning turns are limited by KV reads, compare 32,768, 65,536 and 131,072 resident cells at fixed context. The serving helper currently caps residency at 32,768, so first implement and test a recipe-configurable cap in the candidate worktree. Track expert-cache slots and hits alongside KV reads, latency, swap and 120K retrieval. Trial `--kv k8v4` separately if memory remains limiting. Recheck upstream status before considering [CPU IQ kernels](https://github.com/Niko1221/Strata/pull/6085) or [q4u32 KV](https://github.com/Niko1221/Strata/pull/6176).
 
@@ -147,10 +149,10 @@ For a shared rollout, merge the validated integration and lock, then refresh the
 
 **After adopting the candidate**, keep its image and `$candidate_root`: the installed launcher uses them for serving. Once the integration and experiment are merged and the installed launcher works, remove the development worktree using the Git commands below.
 
-**After rolling back**, stop the candidate instance before starting the reference. Import any baseline you want to keep from the matching worktree and save any trial logs you need. To reclaim space from a discarded v0.2.17 trial, remove its specific image tag and dedicated data directory:
+**After rolling back**, stop the candidate instance before starting the reference. Import any baseline you want to keep from the matching worktree and save any trial logs you need. To reclaim space from a discarded v0.2.18 trial, remove its specific image tag and dedicated data directory:
 
 ```bash
-sudo docker image rm llm-recipes/strata-rdna4:v0.2.17
+sudo docker image rm llm-recipes/strata-rdna4:v0.2.18
 if [[ -n ${models_root:-} && -n ${tag:-} && ${candidate_root:-} == "${models_root}-strata-${tag}" ]]; then
   du -sh -- "$candidate_root" && rm -rI -- "$candidate_root"
 fi
@@ -175,7 +177,7 @@ Use this for a quick functional check before porting the Docker build. The upstr
 Stop the recipe container to free the GPU. Use a fresh trial directory and a copy of the prepared Unsloth GGUFs and projector. Set `models_root` to the data root that contains your `recipes/` folder. On filesystems without reflinks, the copy needs about 78 GiB, plus space for packages and preparation.
 
 ```bash
-tag=v0.2.17
+tag=v0.2.18
 models_root="${LLM_RECIPES_HOME:-$HOME/llm-recipes}"
 recipe=qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram
 trial=$(mktemp -d "$HOME/strata-${tag}.XXXXXX")
