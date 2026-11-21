@@ -57,8 +57,5 @@ Timestamps: unavailable — this engine logs no per-line times; wall-clock span 
 | 32,768-131,071 tokens | 1,846 | 137,772,316 | 1,153,154 |
 <!-- END GENERATED SESSION -->
 
-<!-- If ../setup.md exists, use this footer instead:
-[Recipe](../recipe.md) · [Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)
--->
 ---
-[Recipe](../recipe.md) · [Configuration](configuration.md) · [Profile YAML](profile.yaml)
+[Recipe](../recipe.md) · [Configuration](configuration.md) · [Build and run](../setup.md) · [Profile YAML](profile.yaml)

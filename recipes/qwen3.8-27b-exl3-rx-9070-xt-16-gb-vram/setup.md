@@ -2,7 +2,7 @@
 
 Run the 3 bpw target with a 3 bpw DFlash2 draft, optional GPU vision, and TabbyAPI. Tested on RX 9070 XT (16 GB VRAM), Ryzen 7 9800X3D, and 64 GB RAM.
 
-## Runtime
+## Runtime and capacity
 
 Build and check the shared [ExLlamaV3 / TabbyAPI runtime](../../docs/runtimes/exllamav3-tabbyapi.md#build-and-check).
 

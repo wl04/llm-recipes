@@ -63,7 +63,7 @@ def parser() -> argparse.ArgumentParser:
     start.add_argument("--models", type=Path, default=paths.data_home())
     start.add_argument("--runtime-image", help="Use a local image with the selected runtime lock")
     start.add_argument(
-        "--logs", type=Path, help="persistent directory (default: per-instance state)"
+        "--logs", type=Path, help="persistent directory (default: <models root>/logs/<instance>)"
     )
     start.add_argument("--detach", action="store_true")
     start.add_argument("--dry-run", action="store_true")

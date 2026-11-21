@@ -31,17 +31,28 @@ The [launch defaults](config/launch.json) are 131,072 context tokens, MTP on and
 
 Unsloth uses BF16 conversion for small tensors and keeps experts in their published formats. Its native config sets `STRATA_ROUTE_TAIL_SKIP=7`, which speeds up draft verification by skipping some low-ranked experts and can change the output.
 
+## Baseline
+
+Run with the installed command:
+
+```bash
+llm-recipes-baseline run "$recipe"
+```
+
+## Pi
+
 For Pi, follow [client setup](../../docs/clients/pi.md#configure-a-recipe) with [this recipe’s model entry](config/pi.models.json) and select `strata-unsloth` with `/model`.
 
-## Logs and baseline
+## Logs and stopping
 
 ```bash
 llm-recipes logs "$recipe" --follow
 # Press Ctrl+C to leave the log viewer.
 llm-recipes stop "$recipe"
-llm-recipes-baseline run "$recipe"
 ```
+
+See [launcher controls](../../docs/launcher.md#foreground-and-background-execution) and [Strata file logs](../../docs/runtimes/strata.md#serving).
 
 ---
 
-[Recipe](recipe.md) · [Runtime](../../docs/runtimes/strata.md) · [Baseline guide](../../docs/baseline.md)
+[Recipe](recipe.md) · [Runtime](../../docs/runtimes/strata.md)

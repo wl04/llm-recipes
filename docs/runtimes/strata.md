@@ -63,4 +63,4 @@ Deletion removes the trial worktree, image tag and version-specific preparations
 
 ---
 
-[All recipes](../../README.md) · [Launcher](../launcher.md) · [Baseline](../baseline.md)
+[All recipes](../../README.md) · [Launcher](../launcher.md) · [Authoring](../authoring.md)
