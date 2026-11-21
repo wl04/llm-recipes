@@ -29,7 +29,7 @@ curl --retry 90 --retry-delay 2 --retry-all-errors -fsS http://127.0.0.1:8080/he
 
 The [launch defaults](config/launch.json) are 131,072 context tokens, MTP on and CPU vision. The OpenAI-compatible API is at `http://127.0.0.1:8080/v1`. See [native settings](config/strata.json) and [launch overrides](../../docs/launcher.md#launch-options).
 
-Unsloth uses BF16 conversion for small tensors and keeps experts in their published formats. Its native config sets `STRATA_ROUTE_TAIL_SKIP=7`, which speeds up draft verification by skipping some low-ranked experts and can change the output.
+Unsloth uses BF16 conversion for small tensors and keeps experts in their published formats. With `STRATA_ROUTE_TAIL_SKIP=0`, Strata includes all routed experts during draft verification, even on a GPU cache miss.
 
 ## Baseline
 

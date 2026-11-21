@@ -50,6 +50,6 @@
     "presence_penalty": 0
   },
   "env": {
-    "STRATA_ROUTE_TAIL_SKIP": "7"
+    "STRATA_ROUTE_TAIL_SKIP": "0"
   }
 }
