@@ -29,12 +29,23 @@ def main() -> None:
     lock = json.loads(Path("/opt/build/versions.lock.json").read_text())
     for name, source in lock["sources"].items():
         url = f"https://codeload.github.com/{source['repository']}/tar.gz/{source['revision']}"
+        modern = name == "strata" and lock.get("layout") == "engine-terminal"
+        destination = Path("/opt/src") / ("strata-source" if modern else name)
         with tempfile.TemporaryDirectory() as temporary:
             archive = Path(temporary) / "source.tar.gz"
             # The lock supplies only the path segment; scheme and host stay literal.
             with urllib.request.urlopen(url, timeout=120) as response, archive.open("wb") as output:
                 shutil.copyfileobj(response, output)
-            extract_verified(archive, Path("/opt/src") / name, source["sha256"])
+            extract_verified(archive, destination, source["sha256"])
+        if modern:
+            Path("/opt/src/strata").symlink_to(destination / "terminal", target_is_directory=True)
+    options = lock.get("engine_options", {})
+    Path("/opt/build/engine-options.cmake").write_text(
+        "".join(
+            f'set({key} {"ON" if value else "OFF"} CACHE BOOL "")\n'
+            for key, value in options.items()
+        )
+    )
     Path("/opt/src/strata/BUILD_ID").write_text(lock["sources"]["strata"]["revision"][:9] + "\n")
 
 

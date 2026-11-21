@@ -312,3 +312,19 @@ def test_validate_model_files_rejects_missing_middle_shard(tmp_path: Path) -> No
             (tmp_path / "models" / str(item["path"])).write_bytes(b"x")
     with pytest.raises(ValueError, match="00002"):
         serve.validate_model_files(tmp_path, {"files": files})
+
+
+@pytest.mark.parametrize(
+    ("mode", "context", "resident"), [("on", 131072, "32768"), ("off", 4096, "4096")]
+)
+def test_configure_sets_native_drafting_and_kv_override_for_modern_engine(
+    mode: str, context: int, resident: str
+) -> None:
+    original = json.loads((RECIPE / "config/strata.json").read_text())
+    original["user_args"] = ["--kv-resident", "512"]
+
+    config = serve.configure(original, context, mode, "cpu", modern=True)
+
+    assert config["drafting"] == ("mtp" if mode == "on" else "off")
+    assert config["user_args"] == ["--kv-resident", resident]
+    assert original["user_args"] == ["--kv-resident", "512"]

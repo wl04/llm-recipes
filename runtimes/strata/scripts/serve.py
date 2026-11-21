@@ -17,7 +17,9 @@ from recipe_config import recipe_paths
 RUNTIME = Path(__file__).resolve().parents[1]
 
 
-def configure(source: dict[str, Any], context: int, draft: str, vision: str) -> dict[str, Any]:
+def configure(
+    source: dict[str, Any], context: int, draft: str, vision: str, *, modern: bool = False
+) -> dict[str, Any]:
     """Return an independent native config with requested context, MTP, and CPU vision."""
     if context < 1024 or context % 256 or context > 999999999:
         raise ValueError("context must be at least 1024, a multiple of 256, and at most 9 digits")
@@ -27,6 +29,14 @@ def configure(source: dict[str, Any], context: int, draft: str, vision: str) -> 
     args = config["args"]
     args[args.index("--max-context") + 1] = str(context)
     args[args.index("--kv-resident") + 1] = str(min(context, 32768))
+    if modern:
+        config["drafting"] = "mtp" if draft == "on" else "off"
+        user = config.setdefault("user_args", [])
+        resident = args[args.index("--kv-resident") + 1]
+        if "--kv-resident" in user:
+            user[user.index("--kv-resident") + 1] = resident
+        else:
+            user.extend(["--kv-resident", resident])
     if draft == "off":
         args[args.index("--spec") + 1] = "0"
         index = args.index("--mtp")
@@ -135,6 +145,7 @@ def main() -> int:
             options.context,
             options.draft,
             options.vision,
+            modern=built.get("layout") == "engine-terminal",
         )
         receipt = json.loads((Path("/models") / folder / "prepared.json").read_text())
         models = json.loads((config_dir / "models.lock.json").read_text())

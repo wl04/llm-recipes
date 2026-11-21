@@ -1,0 +1,6 @@
+{
+  "base_tag": "10.2.0-full",
+  "max_jobs": 4,
+  "image_suffix": "",
+  "engine_options": {}
+}

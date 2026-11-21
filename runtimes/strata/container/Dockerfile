@@ -40,15 +40,19 @@ RUN set -eux; \
 
 RUN set -eux; command -v hipcc; hipcc --version
 
-RUN set -eux; cmake -S /opt/src/strata -B /opt/build/engine -G Ninja \
+RUN set -eux; engine=/opt/src/strata; set -- -DSTRATA_PREFILL_MMQ=ON; \
+    if [ -d /opt/src/strata-source/engine ]; then engine=/opt/src/strata-source/engine; set --; fi; \
+    cmake -S "$engine" -C /opt/build/engine-options.cmake -B /opt/build/engine -G Ninja \
        -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/rocm \
        -DSTRATA_ENABLE_HIP=ON -DSTRATA_ENABLE_CUDA=OFF \
        -DCMAKE_HIP_ARCHITECTURES=gfx1201 -DSTRATA_BUILD_TESTS=OFF \
-       -DSTRATA_PREFILL_MMQ=ON -DSTRATA_PORTABLE=ON \
+       "$@" -DSTRATA_PORTABLE=ON \
     && cmake --build /opt/build/engine --target strata --parallel "$MAX_JOBS"
 
-RUN set -eux; cmake -S /opt/src/strata/tools/vision -B /opt/build/vision -G Ninja \
-       -DCMAKE_BUILD_TYPE=Release -DLLAMA_DIR=/opt/src/llama_cpp \
+RUN set -eux; set -- -DLLAMA_DIR=/opt/src/llama_cpp; \
+    if [ -d /opt/src/strata-source/engine ]; then set --; fi; \
+    cmake -S /opt/src/strata/tools/vision -B /opt/build/vision -G Ninja \
+       -DCMAKE_BUILD_TYPE=Release "$@" \
        -DSTRATA_VISION_CUDA=OFF -DSTRATA_VISION_HIP=OFF -DSTRATA_PORTABLE=ON \
     && cmake --build /opt/build/vision --target strata-vision --parallel "$MAX_JOBS"
 
