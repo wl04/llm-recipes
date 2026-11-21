@@ -42,6 +42,8 @@ Readiness: `curl -f http://127.0.0.1:8080/health`. The API is `http://127.0.0.1:
 
 [Launch defaults](config/launch.json): 131,072 context tokens, MTP on, CPU vision. To change them for one launch, pass the matching options to `start`; edit the manifest to change them persistently ([launch options](../../docs/launcher.md#launch-options)). [Native settings](config/strata.json) contain sampling, cache, and image-token settings; restart the instance after editing them.
 
+Strata v0.2.18 uses `STRATA_ROUTE_TAIL_SKIP=7` for this recipe. It can skip a low-ranked expert on a cache miss during draft verification, improving decode speed and potentially changing the output.
+
 ## Baseline
 
 Run with the installed command:
