@@ -10,6 +10,7 @@ Prepared configuration for Unsloth Dynamic v3.1 UD-IQ3_XXS with Strata HIP, Q2_0
 
 | Experiment | Runtime | Configuration | Results |
 |---|---|---|---|
+| 005 · 2026-11-21 — Baseline | Strata 0.1.64 (v0.2.18) / ROCm 10.2.0 | [Configuration](005-2026-11-21-baseline/configuration.md) | [Results](005-2026-11-21-baseline/summary.md) |
 | 004 · 2026-11-21 — Baseline tail skip off | Strata 0.1.64 (v0.2.18) / ROCm 10.2.0 | [Configuration](004-2026-11-21-baseline-tail-skip-off/configuration.md) | [Results](004-2026-11-21-baseline-tail-skip-off/summary.md) |
 | 003 · 2026-11-15 — Coding | Strata 0.1.59.1 (v0.2.13 + 95 commits) / ROCm 10.1.0 | [Configuration](003-2026-11-15-coding/configuration.md) | [Results](003-2026-11-15-coding/summary.md) |
 | 002 · 2026-11-15 — Baseline | Strata 0.1.59.1 (v0.2.13 + 95 commits) / ROCm 10.1.0 | [Configuration](002-2026-11-15-baseline/configuration.md) | [Results](002-2026-11-15-baseline/summary.md) |
