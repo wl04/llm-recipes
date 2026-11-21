@@ -498,11 +498,6 @@ def manage_trial(key: str, delete: bool, guards: ExitStack) -> None:
             ):
                 continue
             raise ValueError(f"Modified trial file: {path}")
-    selections = {name: local_selections(name) for name in names}
-    for stack in selections.values():
-        if str(candidate) in stack and stack[-1] != str(candidate):
-            raise ValueError("A newer trial is active; roll it back first")
-    active = {name for name, stack in selections.items() if str(candidate) in stack}
     previous_ids = state.get("previous", {})
     if isinstance(previous_ids, list) and len(names) == 1:
         previous_ids = {names[0]: previous_ids}
@@ -528,6 +523,16 @@ def manage_trial(key: str, delete: bool, guards: ExitStack) -> None:
             subprocess.run(
                 [sys.executable, str(ROOT / "scripts/install.py"), "install"], check=True
             )
+    # Serialize selection changes with snapshot installation, after any installer subprocess.
+    runtime_prefix().mkdir(parents=True, exist_ok=True)
+    install_lock = guards.enter_context((runtime_prefix() / ".install.lock").open("a"))
+    fcntl.flock(install_lock, fcntl.LOCK_EX)
+    selections = {name: local_selections(name) for name in names}
+    for stack in selections.values():
+        if str(candidate) in stack and stack[-1] != str(candidate):
+            raise ValueError("A newer trial is active; roll it back first")
+    active = {name for name, stack in selections.items() if str(candidate) in stack}
+    if not delete:
         installed = discover_recipes(app / "recipes")
         for name in names:
             if name in active:

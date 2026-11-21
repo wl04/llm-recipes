@@ -401,3 +401,77 @@ def test_running_instances_reports_missing_docker(monkeypatch: pytest.MonkeyPatc
     )
     with pytest.raises(RuntimeError, match="docker: command not found"):
         install_module.running_instances()
+
+
+def test_reinstall_selects_published_build_per_recipe(
+    roots: dict[str, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    checkout, trial = tmp_path / "main", tmp_path / "trial"
+    prefix = roots["runtime"]
+    selections = prefix / "selections"
+    selections.mkdir(parents=True)
+    release = "strata/releases/v0.2.18"
+    for root in (checkout, trial):
+        make_checkout(root)
+        scripts = root / "runtimes/strata/scripts"
+        scripts.mkdir(parents=True)
+        (scripts / "serve.py").touch()
+        for name in ("published", "different-release", "different-lock"):
+            pin = release
+            if name == "different-release" and root == checkout:
+                pin = "strata/releases/v0.2.13"
+            if name == "different-lock":
+                pin += "-variant"
+            runtime = root / "runtimes" / pin
+            (runtime / "container").mkdir(parents=True, exist_ok=True)
+            (runtime / "runtime.json").write_text(
+                json.dumps({"adapter": "strata", "engine": "strata", "image": "strata:trial"})
+            )
+            lock = {"revision": "old" if name == "different-lock" and root == checkout else "new"}
+            (runtime / "container/versions.lock.json").write_text(json.dumps(lock))
+            config = root / "recipes" / name / "config"
+            config.mkdir(parents=True)
+            (config / "launch.json").write_text(
+                json.dumps(
+                    {"runtime": pin, "port": 8080, "context": 4096, "draft": "on", "vision": "cpu"}
+                )
+            )
+            (config / "strata.json").write_text(
+                '{"env":{}}' if root == trial else '{"env":{"STRATA_ROUTE_TAIL_SKIP":"7"}}'
+            )
+            (selections / f"{name}.json").write_text(json.dumps([str(checkout), str(trial)]))
+    for _ in range(2):
+        assert install(checkout, prefix, force=True, with_dependencies=False) == 0
+        recipes = discover_recipes(prefix / "app/recipes")
+        assert recipes["published"].directory == prefix / "app/recipes/published"
+        for name in ("different-release", "different-lock"):
+            assert recipes[name].directory == trial / "recipes" / name
+    assert capsys.readouterr().out.count("published: using installed") == 1
+
+
+def test_failed_selection_switch_restores_snapshot_and_selections(
+    roots: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    prefix = roots["runtime"]
+    checkout = tmp_path / "main"
+    make_checkout(checkout)
+    install(checkout, prefix, force=True, with_dependencies=False)
+    (checkout / "scripts/launch.py").write_text("updated")
+    install_module.build_snapshot(checkout, prefix / "app.new")
+    directory = prefix / "selections"
+    directory.mkdir()
+    first, second = directory / "first.json", directory / "second.json"
+    first.write_text('["/trial"]')
+    second.write_text('["/trial"]')
+    rename = Path.rename
+
+    def fail_second(path: Path, target: Path) -> Path:
+        if path == second:
+            raise OSError("cannot move selection")
+        return rename(path, target)
+
+    monkeypatch.setattr(Path, "rename", fail_second)
+    with pytest.raises(OSError, match="cannot move selection"):
+        install_module.activate_snapshot(prefix, [first, second])
+    assert first.read_text() == second.read_text() == '["/trial"]'
+    assert (prefix / "app/scripts/launch.py").read_text() == "print('launch')\n"

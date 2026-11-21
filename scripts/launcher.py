@@ -117,9 +117,9 @@ def select_image(recipe: Recipe, override: str | None) -> Recipe:
     return recipe if override is None else replace(recipe, image=image_reference(override))
 
 
-def local_selections(recipe: str) -> list[str]:
+def local_selections(recipe: str, *, prefix: Path | None = None) -> list[str]:
     """Return locally adopted checkout paths, oldest first."""
-    path = paths.runtime_prefix() / "selections" / (recipe + ".json")
+    path = (prefix or paths.runtime_prefix()) / "selections" / (recipe + ".json")
     if not path.exists():
         return []
     values = json.loads(path.read_text())

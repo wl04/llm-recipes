@@ -49,7 +49,7 @@ To select the tested candidate locally, run this from the main checkout:
 python3 scripts/upgrade_strata.py "$tag" --adopt
 ```
 
-Adoption verifies the prepared recipes, commits their release selections and pins in the candidate branch, and points the installed launcher at that worktree. A local selection takes precedence over the installed snapshot, including after reinstall. Keep the worktree while it is selected. To publish, use the push command printed by the script and merge the branch through your usual review workflow. Other machines can then pull and reinstall.
+Adoption verifies the prepared recipes, commits their release selections and pins in the candidate branch, and points the installed launcher at that worktree. Keep the worktree while it is selected. Reinstalling switches a recipe to the installed settings when its release and build lock match the active trial. A different release or build lock keeps the trial active. To publish, use the push command printed by the script and merge the branch through your usual review workflow. Other machines can then pull and reinstall.
 
 ### Discard or roll back
 

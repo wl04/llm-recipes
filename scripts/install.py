@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import paths
-from launcher import refresh_sudo_ticket
+from launcher import discover_recipes, local_selections, refresh_sudo_ticket
 
 RUNTIME_INCLUDES = ("scripts", "recipes", "runtimes", "assets", "templates")
 RUNTIME_REQUIREMENTS = ("PyYAML==6.0.3", "textual==8.2.8")
@@ -157,7 +157,36 @@ def write_shims(prefix: Path) -> None:
         link.symlink_to(bin_dir / shim)
 
 
-def activate_snapshot(prefix: Path) -> None:
+def published_selections(staging: Path, prefix: Path) -> list[Path]:
+    """Find active Strata trials whose release and build lock the snapshot now ships."""
+    matches: list[Path] = []
+    selections = sorted((prefix / "selections").glob("*.json"))
+    if not selections:
+        return matches
+    recipes = discover_recipes(staging / "recipes", local=False)
+    for selection in selections:
+        recipe = recipes.get(selection.stem)
+        if not recipe or not recipe.runtime.startswith("strata/releases/"):
+            continue
+        stack = local_selections(recipe.name, prefix=prefix)
+        if not stack:
+            continue
+        checkout = Path(stack[-1])
+        manifest = checkout / recipe.data_subpath / "config/launch.json"
+        lock = Path("container/versions.lock.json")
+        try:
+            if json.loads(manifest.read_text())["runtime"] != recipe.runtime:
+                continue
+            trial = json.loads((checkout / "runtimes" / recipe.runtime / lock).read_text())
+            incoming = json.loads((recipe.runtime_directory / lock).read_text())
+            if isinstance(incoming, dict) and incoming and incoming == trial:
+                matches.append(selection)
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            log(f"{recipe.name}: keeping adopted selection; cannot verify build: {error}")
+    return matches
+
+
+def activate_snapshot(prefix: Path, selections: list[Path]) -> None:
     """Publish staged code and shims, restoring the active installation on failure."""
     app, previous = prefix / "app", prefix / "app.prev"
     bin_dir = prefix / "bin"
@@ -178,7 +207,13 @@ def activate_snapshot(prefix: Path) -> None:
         try:
             (prefix / "app.new").rename(app)
             write_shims(prefix)
+            for selection in selections:
+                selection.rename(Path(temporary) / selection.name)
         except BaseException:  # Roll back interruptions as well as errors, then re-raise.
+            for selection in selections:
+                saved = Path(temporary) / selection.name
+                if saved.exists():
+                    saved.rename(selection)
             if app.exists():
                 shutil.rmtree(app)
             if had_app:
@@ -219,10 +254,13 @@ def install(root: Path, prefix: Path, *, force: bool, with_dependencies: bool) -
                     runtime_environment(prefix), target_is_directory=True
                 )
             stamp = json.loads((staging / "VERSION").read_text())
-            activate_snapshot(prefix)
+            selections = published_selections(staging, prefix)
+            activate_snapshot(prefix, selections)
         finally:
             if staging.exists():
                 shutil.rmtree(staging)
+        for selection in selections:
+            log(f"{selection.stem}: using installed configuration (adopted build matches)")
         revision = stamp["repo_commit"] or "unknown commit"
         log(f"installed snapshot of {revision} into {prefix / 'app'}")
         return 0
@@ -253,7 +291,7 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
-    except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as error:
         print(f"install: {error}", file=sys.stderr)
         return 1
 
