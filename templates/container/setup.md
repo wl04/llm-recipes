@@ -4,7 +4,7 @@
 
 ## Runtime and capacity
 
-Link to `docs/runtimes/<runtime>.md#build-and-check`. State model-specific RAM, VRAM, and disk needs, distinguishing tested hardware from requirements.
+Link to `docs/runtimes/<runtime>.md#build-and-check`. For a versioned runtime, give the build command that follows the recipe manifest. State model-specific RAM, VRAM, and disk needs, distinguishing tested hardware from requirements.
 
 ## Prepare models
 

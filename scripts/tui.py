@@ -392,7 +392,7 @@ class LlmRecipesApp(App[None]):
         for recipe in recipes.values():
             table.add_row(
                 recipe.name,
-                recipe.runtime,
+                recipe.runtime.partition("/")[0],
                 recipe.engine,
                 str(recipe.port),
                 "checking…",

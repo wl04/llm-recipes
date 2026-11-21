@@ -2,7 +2,11 @@
 
 ## Runtime and capacity
 
-Build and check the shared [Strata runtime](../../docs/runtimes/strata.md#build-and-check).
+Build the image selected by this recipe from the repository root. See the [Strata runtime guide](../../docs/runtimes/strata.md#build-and-check) for prerequisites.
+
+```bash
+python3 scripts/build_runtime.py strata --recipe qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram --check
+```
 
 [Upgrade Strata with the Unsloth model](../../docs/runtimes/strata.md#upgrade-strata-on-the-rx-9070-xt).
 

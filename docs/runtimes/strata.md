@@ -9,14 +9,15 @@ The shared runtime uses Strata's HIP engine and its own API server, with a CPU v
 From the repository root, on Ubuntu x86_64 with Docker and AMD `/dev/kfd` and `/dev/dri` devices:
 
 ```bash
-python3 scripts/build_runtime.py strata --check
+recipe=qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram
+python3 scripts/build_runtime.py strata --recipe "$recipe" --check
 ```
 
 Lower `--max-jobs` if compiler memory use is excessive. The image check exercises binary startup, API imports, and a HIP kernel on the selected GPU. Success ends with `Strata binaries, API imports, and HIP kernel: PASS`.
 
 [`versions.lock.json`](../../runtimes/strata/container/versions.lock.json) pins AMD's ROCm development image and exact Strata and llama.cpp revisions. Source archives are verified before extraction. Python dependencies use hashes; Ubuntu dependencies use a dated snapshot. The CPU vision build uses a portable AVX2 baseline.
 
-The builder, preparation helper, launcher and baseline runner read the checkout’s default image tag from [runtime.json](../../runtimes/strata/runtime.json). Reuse your existing image for this checkout. Rebuild when its inputs change. Preparation and serving verify the runtime lock embedded in the image.
+The shared [runtime descriptor](../../runtimes/strata/runtime.json) supplies the default image. For a recipe selecting `strata/releases/<version>`, build its pinned image with `python3 scripts/build_runtime.py strata --version <version> --check`. Preparation, serving and baseline runs follow the recipe selection. Reuse your existing image for this checkout. Rebuild when its inputs change. Preparation and serving verify the runtime lock embedded in the image.
 
 ## Preparation
 
@@ -68,98 +69,46 @@ Pi uses OpenAI-compatible chat completions. The frontend supports streaming, too
 
 ## Upgrade Strata on the RX 9070 XT
 
-From your reference checkout on the workstation, run the following with Python 3.14+, Git, Docker and access to GitHub and Docker Hub:
+Run these commands from your reference checkout. Set `LLM_RECIPES_HOME` if your existing models live outside `~/llm-recipes`. Stop the instance using the GPU before the image check. The script discovers Strata recipes with weights in your data home and prints their names. An incomplete local weight set is reported before the build. Catalog entries without local weights are skipped.
 
 ```bash
 python3 scripts/upgrade_strata.py v0.2.18
 ```
 
-Use the new upstream tag on subsequent runs. The command resolves the exact commit, hashes its source archive, checks the engine and CPU vision targets, server and preparation files, and compares the upstream MTP revision to the Unsloth model lock. It resolves the ROCm tag to a Linux amd64 manifest digest and prints the versions before building. For v0.2.18 the expected engine is 0.1.64.
+The script resolves the upstream tag and ROCm Linux amd64 digest, checks upstream compatibility, and creates or resumes a sibling Git worktree. It compares the local image’s embedded build lock before running the HIP check. Matching inputs reuse the image, including an existing v0.2.18 build. A conflicting tag stops the command. Use `--prepare-only` to inspect the Git inputs before building or preparing data.
 
-The command creates or reuses a sibling worktree named `<checkout>-strata-<tag>` on branch `strata-<tag>`. It writes the runtime descriptor and lock there, builds the version-tagged image and runs the HIP smoke check. On a repeat run it checks the existing image against the candidate lock and reruns the probe. Your reference checkout, installed launcher and prepared weights remain available throughout. To inspect the candidate inputs before using Docker:
+Each trial records its selected recipes so retries, adoption and cleanup use the same set. One image serves all selected recipes. The script reuses the published shards and projector under `recipes/<recipe>/models/` in the data home. Each trial prepares its pack, tokenizer, MTP files and receipt under `recipes/<recipe>/prepared/<version>/`. A completed matching preparation is reused. The shared runtime continues to read its original pack and receipt directly under the recipe data directory.
 
-```bash
-python3 scripts/upgrade_strata.py v0.2.18 --prepare-only
-```
+The script prints launch and baseline commands for each selected recipe. Run one model at a time. Stop its interactive server before starting its baseline.
 
-The [upgrade configuration](../../runtimes/strata/upgrade.json) selects the ROCm tag, build parallelism, optional image suffix and additional Boolean Strata engine CMake options. The default is ROCm 10.2.0-full, four compiler jobs and upstream engine defaults for gfx1201. For a second build of the same release, give it a suffix so the worktree, data root and image tag are separate:
+### Adopt and publish
 
 ```bash
-python3 - <<'PYCONFIG'
-import json
-from pathlib import Path
-config = json.loads(Path("runtimes/strata/upgrade.json").read_text())
-config.update(image_suffix="-trial", max_jobs=2)
-Path("/tmp/strata-trial.json").write_text(json.dumps(config, indent=2))
-PYCONFIG
-python3 scripts/upgrade_strata.py v0.2.18 --config /tmp/strata-trial.json
+python3 scripts/upgrade_strata.py v0.2.18 --adopt
 ```
 
-### Try the candidate
+Adoption verifies the prepared files and image, commits the selected recipe manifests and shared release pins together, and activates the worktree for those recipes. The script installs or refreshes the launcher if needed. The new selection applies on the next start. Keep the worktree while it is selected locally.
 
-After the image check passes, run the printed commands to copy the reference GGUFs, prepare the candidate pack, run doctor and start the Unsloth recipe. Stop any instance using the card first (`llm-recipes ps`, then `llm-recipes stop <instance>`). The trial uses the recipe’s model, MTP, CPU vision, and 131,072-token context. Allow about 78 GiB for the GGUF copy on filesystems without reflinks, plus room for the image and pack.
-
-For the default v0.2.18 trial, the following commands run suite v3 on the candidate. Run them from the reference checkout after stopping the interactive candidate:
+To share those exact inputs, push the adoption commit and merge the branch through your usual review workflow. The script prints the push command for your checkout:
 
 ```bash
-tag=v0.2.18
-recipe=qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram
-reference=$(git rev-parse --show-toplevel)
-candidate="${reference}-strata-$tag"
-models_root="${LLM_RECIPES_HOME:-$HOME/llm-recipes}"
-trial_root="${models_root}-strata-$tag"
-cd "$candidate"
-python3 scripts/launch.py stop "$recipe"
-uv venv --python 3.14 .venv
-uv pip install -p .venv -r dev-requirements.txt
-.venv/bin/python scripts/run_baseline.py run "$recipe" --models "$trial_root"
+git -C "$(git rev-parse --show-toplevel)-strata-v0.2.18" push -u origin strata-v0.2.18
 ```
 
-Compare returning-turn latency, prefill, decode, and peak RAM/VRAM against the same suite run on the reference checkout. The 62 tok/s figure in the v0.2.18 release notes applies to Tencent Hy4-Flash. [Baseline measurements and import](../baseline.md) · [v0.2.18 release](https://github.com/Niko1221/Strata/releases/tag/v0.2.18)
+After merging, other machines can pull, build the recipe’s selected image, prepare their models, and run `python3 scripts/install.py install`. Docker images and generated model data stay on each machine.
 
-### Adopt or roll back
+### Discard or roll back
 
-To adopt after validation, commit the generated inputs, fast-forward the reference and reinstall. Import any baseline from the matching candidate checkout first.
+Stop the candidate instance, then run:
 
 ```bash
-cd "$candidate"
-git add -- runtimes/strata/runtime.json runtimes/strata/container/versions.lock.json
-git commit -m "Use Strata $tag on gfx1201"
-cd "$reference"
-git merge --ff-only "strata-$tag"
-python3 scripts/install.py install
-llm-recipes start "$recipe" --models "$trial_root" --detach
+python3 scripts/upgrade_strata.py v0.2.18 --delete
 ```
 
-To return to the reference during the trial, stop any active candidate and use the installed launcher with the reference data:
+For a locally adopted trial, deletion verifies every active recipe’s predecessor before restoring their selections. It removes the trial worktree, verified image tag and version-specific preparation. Unmerged adoption commits remain available on the branch. Shared weights, original preparation, logs and baseline results remain available. Roll back multiple local adoptions newest first. If the reference checkout or installed defaults already select the published release, revert the selection in Git and refresh the installed launcher before deleting that release.
 
-```bash
-cd "$reference"
-llm-recipes start "$recipe" --models "$models_root" --detach
-```
-
-For a discarded trial, review `git -C "$candidate" status --short` and save any results first. The following removes the two generated inputs’ changes, then removes the worktree and the candidate image. Git stops worktree removal if it finds other pending changes.
-
-```bash
-(
-  set -eu
-  cd "${reference:?}"
-  test "$(git -C "${candidate:?}" branch --show-current)" = "strata-${tag:?}"
-  git -C "$candidate" restore -- runtimes/strata/runtime.json runtimes/strata/container/versions.lock.json
-  git worktree remove "$candidate"
-  git branch -d "strata-$tag"
-  sudo docker image rm "llm-recipes/strata-rdna4:$tag"
-)
-```
-
-To reclaim the separate candidate model data after rollback, check its size and confirm interactive removal:
-
-```bash
-if [[ -n ${models_root:-} && -n ${tag:-} && ${trial_root:-} == "${models_root}-strata-$tag" ]]; then
-  du -sh -- "$trial_root" && rm -rI -- "$trial_root"
-fi
-```
+For later releases, substitute the new tag. The [upgrade configuration](../../runtimes/strata/upgrade.json) controls the base tag, build parallelism, extra Boolean engine CMake options and an optional image suffix. For two builds of one release, use distinct suffixes and pass the same `--config <file>` to prepare, adopt and delete each variant.
 
 ---
 
-[All recipes](../../README.md) · [Launcher](../launcher.md) · [Authoring](../authoring.md)
+[All recipes](../../README.md) · [Launcher](../launcher.md) · [Baseline](../baseline.md)

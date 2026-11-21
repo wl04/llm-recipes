@@ -12,7 +12,7 @@ from pathlib import Path
 from types import FrameType
 from typing import Any
 
-from recipe_config import recipe_paths
+from recipe_config import recipe_paths, release_key
 
 RUNTIME = Path(__file__).resolve().parents[1]
 
@@ -137,7 +137,9 @@ def main() -> int:
     try:
         config_dir, folder = recipe_paths(recipe)
         built = json.loads(Path("/opt/build/versions.lock.json").read_text())
-        expected = json.loads((RUNTIME / "container/versions.lock.json").read_text())
+        key = release_key(config_dir)
+        pins = RUNTIME / "releases" / key if key else RUNTIME
+        expected = json.loads((pins / "container/versions.lock.json").read_text())
         if built != expected:
             raise ValueError("Image lock differs from the runtime; rebuild the image")
         config = configure(
@@ -147,7 +149,17 @@ def main() -> int:
             options.vision,
             modern=built.get("layout") == "engine-terminal",
         )
-        receipt = json.loads((Path("/models") / folder / "prepared.json").read_text())
+        root = Path("/models") / folder
+        prepared = root / "prepared" / key if key else root
+        if key:
+            for flag in ("--pack", "--mtp"):
+                if flag in config["args"]:
+                    index = config["args"].index(flag) + 1
+                    config["args"][index] = str(
+                        prepared / Path(config["args"][index]).relative_to(root)
+                    )
+            config["tokenizer"] = str(prepared / Path(config["tokenizer"]).relative_to(root))
+        receipt = json.loads((prepared / "prepared.json").read_text())
         models = json.loads((config_dir / "models.lock.json").read_text())
         if receipt != {"models": models, "image": expected}:
             raise ValueError("Prepared model lock differs; rerun prepare_models.py")

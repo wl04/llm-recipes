@@ -74,7 +74,7 @@ def build_snapshot(root: Path, destination: Path) -> None:
     stamp = {
         "repo_commit": repository_commit(root),
         "installed_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        "version": "1",
+        "version": "2",
     }
     (destination / "VERSION").write_text(json.dumps(stamp, indent=2) + "\n")
 

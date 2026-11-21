@@ -93,7 +93,8 @@ def _check_strata_preparation(
     lock: dict[str, Any], versions: dict[str, Any], root: Path, recipe: Recipe
 ) -> None:
     """Verify the strata receipt, the locked weight sizes, and the pack layout."""
-    if read_json(root / "prepared.json") != {"models": lock, "image": versions}:
+    prepared = root / "prepared" / recipe.runtime_directory.name if "/" in recipe.runtime else root
+    if read_json(prepared / "prepared.json") != {"models": lock, "image": versions}:
         raise ValueError("Preparation receipt differs from model or runtime lock")
     for item in lock["files"]:
         path = root / "models" / item["path"]
@@ -101,7 +102,7 @@ def _check_strata_preparation(
         if path.stat().st_size != item["size_bytes"]:
             raise ValueError(f"Size differs from model lock: {path}")
     for filename in _strata_required_files(recipe.draft == "on"):
-        require_file(root / filename)
+        require_file(prepared / filename)
 
 
 def _check_gguf_preparation(

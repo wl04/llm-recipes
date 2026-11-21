@@ -34,6 +34,10 @@ class Recipe:
     vision: str
 
     @property
+    def runtime_source(self) -> Path:
+        return self.runtime_directory.parents[1] if "/" in self.runtime else self.runtime_directory
+
+    @property
     def data_subpath(self) -> Path:
         """Data folder of this recipe under the models root; mirrors recipes/."""
         return paths.RECIPES_SUBPATH / self.name
@@ -113,12 +117,30 @@ def select_image(recipe: Recipe, override: str | None) -> Recipe:
     return recipe if override is None else replace(recipe, image=image_reference(override))
 
 
-def discover_recipes(directory: Path) -> dict[str, Recipe]:
+def local_selections(recipe: str) -> list[str]:
+    """Return locally adopted checkout paths, oldest first."""
+    path = paths.runtime_prefix() / "selections" / (recipe + ".json")
+    if not path.exists():
+        return []
+    values = json.loads(path.read_text())
+    if not isinstance(values, list) or not all(
+        isinstance(x, str) and Path(x).is_absolute() for x in values
+    ):
+        raise ValueError(f"Invalid local recipe selection: {path}")
+    return values
+
+
+def discover_recipes(directory: Path, *, local: bool = True) -> dict[str, Recipe]:
     """Read recipe-local manifests; reject malformed or unsupported definitions."""
     recipes = {}
     fields = {"runtime", "port", "context", "draft", "vision"}
-    for manifest in sorted(directory.glob("*/config/launch.json")):
+    for default_manifest in sorted(directory.glob("*/config/launch.json")):
+        manifest = default_manifest
         try:
+            if local and directory.resolve() == (paths.runtime_prefix() / "app/recipes").resolve():
+                selected = local_selections(manifest.parents[1].name)
+                if selected:
+                    manifest = Path(selected[-1]) / manifest.relative_to(directory.parent)
             data = json.loads(manifest.read_text())
             if not isinstance(data, dict) or set(data) != fields:
                 raise ValueError(f"expected fields: {', '.join(sorted(fields))}")
@@ -128,9 +150,11 @@ def discover_recipes(directory: Path) -> dict[str, Recipe]:
             for key in ("port", "context"):
                 if type(data[key]) is not int:
                     raise ValueError(f"{key} must be an integer")
-            if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", data["runtime"]):
+            if not re.fullmatch(
+                r"(?:[a-z0-9][a-z0-9-]*|strata/releases/v[0-9][A-Za-z0-9.-]*)", data["runtime"]
+            ):
                 raise ValueError("invalid runtime identifier")
-            runtime = (directory.parent / "runtimes" / data["runtime"]).resolve()
+            runtime = (manifest.parents[3] / "runtimes" / data["runtime"]).resolve()
             settings = json.loads((runtime / "runtime.json").read_text())
             required = {"adapter", "engine", "image"}
             optional = {"engine_version", "engine_source_version"}
@@ -144,7 +168,8 @@ def discover_recipes(directory: Path) -> dict[str, Recipe]:
             }:
                 raise ValueError("supported adapter/engine: tabbyapi/exllamav3 or strata/strata")
             image_reference(settings["image"])
-            if not (runtime / "scripts/serve.py").is_file():
+            source = runtime.parents[1] if "/" in data["runtime"] else runtime
+            if not (source / "scripts/serve.py").is_file():
                 raise ValueError("runtime serving entry point is missing")
             folder = manifest.parent.parent.resolve()
             recipe = Recipe(
@@ -255,7 +280,7 @@ def start_command(
     ):
         command += ["--env", setting]
     command += mount(recipe.directory, f"/recipes/{recipe.name}", readonly=True)
-    command += mount(recipe.runtime_directory, "/runtime", readonly=True)
+    command += mount(recipe.runtime_source, "/runtime", readonly=True)
     command += mount(models, "/models", readonly=True)
     command += mount(models / ".cache", "/cache")
     command += mount(logs, "/logs")
@@ -284,7 +309,7 @@ def prepare_start(recipe: Recipe, options: LaunchOptions) -> None:
     validate_options(options, recipe.adapter)
     if not options.models.is_dir():
         raise ValueError(f"Model directory does not exist: {options.models}")
-    if not (recipe.runtime_directory / "scripts/serve.py").is_file():
+    if not (recipe.runtime_source / "scripts/serve.py").is_file():
         raise ValueError(f"Missing serving entry point in {recipe.directory}")
     (options.models / ".cache").mkdir(exist_ok=True)
     options.logs.mkdir(parents=True, exist_ok=True)
@@ -465,7 +490,7 @@ def start_facts(
         },
         "mounts": {
             "recipe": str(recipe.directory),
-            "runtime": str(recipe.runtime_directory),
+            "runtime": str(recipe.runtime_source),
             "models": str(options.models),
             "cache": str(options.models / ".cache"),
             "logs": str(options.logs),

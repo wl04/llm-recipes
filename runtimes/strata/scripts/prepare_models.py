@@ -14,7 +14,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from recipe_config import recipe_paths
+from recipe_config import recipe_paths, release_key
 
 RUNTIME = Path(__file__).resolve().parents[1]
 
@@ -78,12 +78,17 @@ def pinned_mtp_revision(source: Path) -> str:
     raise ValueError("Pinned MTP revision missing from the image")
 
 
-def pack_arguments(lock: dict[str, Any], root: Path) -> list[str]:
+def pack_arguments(lock: dict[str, Any], root: Path, output: Path | None = None) -> list[str]:
     """Select the first shard for any split count and the locked conversion options."""
     first = [item for item in lock["files"] if re.search(r"-00001-of-\d{5}\.gguf$", item["path"])]
     if len(first) != 1:
         raise ValueError("Model lock must contain exactly one first shard")
-    args = ["--gguf", str(root / "models" / first[0]["path"]), "--out", str(root / "packs/iq3_xxs")]
+    args = [
+        "--gguf",
+        str(root / "models" / first[0]["path"]),
+        "--out",
+        str((output or root) / "packs/iq3_xxs"),
+    ]
     if lock.get("pack", {}).get("compat_bf16", False):
         args.append("--compat-bf16")
     return args
@@ -93,7 +98,9 @@ def prepare(recipe: Path, root: Path) -> None:
     """Prepare the locked target, CPU projector, tokenizer, and Q2_0 MTP runtime."""
     config, _ = recipe_paths(recipe)
     lock = json.loads((config / "models.lock.json").read_text())
-    versions = json.loads((RUNTIME / "container/versions.lock.json").read_text())
+    key = release_key(config)
+    pins = RUNTIME / "releases" / key if key else RUNTIME
+    versions = json.loads((pins / "container/versions.lock.json").read_text())
     if json.loads(Path("/opt/build/versions.lock.json").read_text()) != versions:
         raise ValueError("Image lock differs from the runtime; rebuild the image")
     tools = Path("/opt/src/strata/tools")
@@ -102,7 +109,36 @@ def prepare(recipe: Path, root: Path) -> None:
     root.mkdir(parents=True, exist_ok=True)
     with (root / ".prepare.lock").open("w") as guard:
         fcntl.flock(guard, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        receipt = root / "prepared.json"
+        final = root / "prepared" / key if key else root
+        if key and final.exists():
+            validate_outputs(final)
+            if json.loads((final / "prepared.json").read_text()) != {
+                "models": lock,
+                "image": versions,
+            }:
+                raise ValueError(f"Conflicting preparation at {final}")
+            for item in lock["files"]:
+                if (root / "models" / item["path"]).stat().st_size != item["size_bytes"]:
+                    raise ValueError(f"Invalid shared GGUF: {item['path']}")
+            print(f"Reusing {final}", flush=True)
+            return
+        output = final.with_name("." + key + ".partial") if key else root
+        if key and (output.resolve() != output or final.resolve() != final):
+            raise ValueError(
+                "Versioned preparation directory must be inside the recipe data directory"
+            )
+        if key:
+            marker = output / "preparing.json"
+            inputs = {"models": lock, "image": versions}
+            if output.exists():
+                if json.loads(marker.read_text()) != inputs:
+                    raise ValueError(f"Different preparation already in progress at {output}")
+            else:
+                output.mkdir(parents=True)
+                marker.write_text(json.dumps(inputs) + "\n")
+        else:
+            output.mkdir(parents=True, exist_ok=True)
+        receipt = output / "prepared.json"
         receipt.unlink(missing_ok=True)
         for item in lock["files"]:
             url = (
@@ -124,9 +160,8 @@ def prepare(recipe: Path, root: Path) -> None:
                 [sys.executable, str(tools / script), *args], env=environment, check=True
             )
 
-        pack = root / "packs/iq3_xxs"
-        run("iq_pack.py", *pack_arguments(lock, root))
-        mtp = root / "mtp"
+        run("iq_pack.py", *pack_arguments(lock, root, output))
+        mtp = output / "mtp"
         run("mtp_fetch.py", "fetch", "--out", str(mtp))
         run("mtp_fetch.py", "verify", "--out", str(mtp))
         intermediate = mtp / "mtp-q2_0.gguf"
@@ -143,27 +178,36 @@ def prepare(recipe: Path, root: Path) -> None:
         shutil.copyfile(
             tools.parent / "data" / lock["mtp"]["draft_vocabulary"], mtp / "rt/draft_vocab.bin"
         )
-        required = [
-            pack / "native_experts.txt",
-            pack / "index.txt",
-            pack / "dense.bin",
-            pack / "tokenizer/chat_template.jinja",
-            pack / "tokenizer/vocab.json",
-            pack / "tokenizer/tokenizer.json",
-            mtp / "rt/experts.bin",
-            mtp / "rt/dense.bin",
-            mtp / "rt/dense.txt",
-            mtp / "rt/draft_vocab.bin",
-        ]
-        for path in required:
-            if not path.is_file() or path.stat().st_size == 0:
-                raise ValueError(f"Missing preparation output: {path}")
+        validate_outputs(output)
         temporary = receipt.with_suffix(".tmp")
         temporary.write_text(json.dumps({"models": lock, "image": versions}, indent=2) + "\n")
         temporary.replace(receipt)
+        if key:
+            output.rename(final)
+            (final / "preparing.json").unlink(missing_ok=True)
         print(
             f"Prepared Strata model, tokenizer, MTP, and CPU vision files under {root}", flush=True
         )
+
+
+def validate_outputs(root: Path) -> None:
+    pack = root / "packs/iq3_xxs"
+    mtp = root / "mtp"
+    required = [
+        pack / "native_experts.txt",
+        pack / "index.txt",
+        pack / "dense.bin",
+        pack / "tokenizer/chat_template.jinja",
+        pack / "tokenizer/vocab.json",
+        pack / "tokenizer/tokenizer.json",
+        mtp / "rt/experts.bin",
+        mtp / "rt/dense.bin",
+        mtp / "rt/dense.txt",
+        mtp / "rt/draft_vocab.bin",
+    ]
+    for path in required:
+        if not path.is_file() or path.stat().st_size == 0:
+            raise ValueError(f"Missing preparation output: {path}")
 
 
 def main() -> int:
@@ -175,7 +219,7 @@ def main() -> int:
     args = parser.parse_args()
     recipe = args.recipe.expanduser().resolve()
     try:
-        _, folder = recipe_paths(recipe)
+        config, folder = recipe_paths(recipe)
         if args.inside_container:
             prepare(recipe, Path("/models") / folder)
             return 0
@@ -184,7 +228,9 @@ def main() -> int:
             raise ValueError("Mount paths must not contain commas or newlines")
         models.mkdir(parents=True, exist_ok=True)
         (models / ".cache").mkdir(exist_ok=True)
-        manifest = json.loads((RUNTIME / "runtime.json").read_text())
+        key = release_key(config)
+        pins = RUNTIME / "releases" / key if key else RUNTIME
+        manifest = json.loads((pins / "runtime.json").read_text())
         image = manifest["image"] if args.runtime_image is None else args.runtime_image
         if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_./:@-]*", image):
             raise ValueError("invalid image reference")

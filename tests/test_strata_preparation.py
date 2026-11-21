@@ -98,7 +98,10 @@ def test_pack_command_preserves_two_shard_ista_defaults() -> None:
     assert "--compat-bf16" not in args
 
 
-def test_prepare_records_selected_lock_without_touching_baseline(tmp_path: Path) -> None:
+@pytest.mark.parametrize("versioned", [False, True])
+def test_prepare_records_selected_lock_without_touching_baseline(
+    tmp_path: Path, versioned: bool
+) -> None:
     import json
     import subprocess
 
@@ -108,6 +111,18 @@ def test_prepare_records_selected_lock_without_touching_baseline(tmp_path: Path)
     baseline.write_text("baseline receipt")
     lock = json.loads((UNSLOTH / "config/models.lock.json").read_text())
     versions = json.loads((RUNTIME / "container/versions.lock.json").read_text())
+    recipe = tmp_path / "recipe"
+    config = recipe / "config"
+    config.mkdir(parents=True)
+    selected = "strata/releases/v0.2.18" if versioned else "strata"
+    (config / "launch.json").write_text(json.dumps({"runtime": selected}))
+    for item in lock["files"]:
+        item["size_bytes"] = len(b"fixture")
+    (config / "models.lock.json").write_text(json.dumps(lock))
+    runtime = tmp_path / "runtimes/strata"
+    lock_path = tmp_path / "runtimes" / selected / "container/versions.lock.json"
+    lock_path.parent.mkdir(parents=True)
+    lock_path.write_text(json.dumps(versions))
     original_read = Path.read_text
     calls: list[list[str]] = []
     urls: list[str] = []
@@ -135,7 +150,7 @@ def test_prepare_records_selected_lock_without_touching_baseline(tmp_path: Path)
                 "tokenizer/chat_template.jinja",
             ]
         elif Path(command[1]).name == "mtp_rt.py":
-            folder = root / "mtp/rt"
+            folder = Path(command[command.index("--out") + 1])
             outputs = ["experts.bin", "dense.bin", "dense.txt"]
         else:
             return subprocess.CompletedProcess(command, 0)
@@ -150,14 +165,20 @@ def test_prepare_records_selected_lock_without_touching_baseline(tmp_path: Path)
 
     with (
         patch.object(Path, "read_text", read),
+        patch.object(prepare, "RUNTIME", runtime),
         patch.object(prepare, "pinned_mtp_revision", return_value=lock["mtp"]["revision"]),
         patch.object(prepare, "download", download),
         patch.object(prepare.subprocess, "run", run),
         patch.object(prepare.shutil, "copyfile", copy),
     ):
-        prepare.prepare(UNSLOTH, root)
+        prepare.prepare(recipe, root)
+        if versioned:
+            with patch.object(prepare.subprocess, "run") as rerun:
+                prepare.prepare(recipe, root)
+            rerun.assert_not_called()
 
-    assert json.loads((root / "prepared.json").read_text()) == {"models": lock, "image": versions}
+    output = root / "prepared/v0.2.18" if versioned else root
+    assert json.loads((output / "prepared.json").read_text()) == {"models": lock, "image": versions}
     assert baseline.read_text() == "baseline receipt"
     assert len(urls) == 5
     assert all("unsloth/Qwen3.8-Flash-Next-GGUF/resolve/084c631" in url for url in urls[:4])
@@ -190,3 +211,19 @@ def test_prepare_host_mounts_runtime_and_selected_recipe(tmp_path: Path) -> None
         f"/recipes/{UNSLOTH.name}",
         "--inside-container",
     ]
+
+
+def test_release_preparation_uses_shared_weights_and_versioned_outputs(tmp_path: Path) -> None:
+    args = prepare.pack_arguments(
+        {
+            "files": [
+                {
+                    "path": "weights-00001-of-00002.gguf",
+                }
+            ]
+        },
+        tmp_path,
+        tmp_path / "prepared/v0.2.18",
+    )
+    assert args[1] == str(tmp_path / "models/weights-00001-of-00002.gguf")
+    assert args[3] == str(tmp_path / "prepared/v0.2.18/packs/iq3_xxs")

@@ -5,11 +5,13 @@ import argparse
 import hashlib
 import json
 import re
+import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 from baseline.host import repository_revision
-from launcher import file_sha256, gpu_access_args, gpu_groups, image_reference
+from launcher import discover_recipes, file_sha256, gpu_access_args, gpu_groups, image_reference
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -44,19 +46,32 @@ def main(argv: list[str] | None = None) -> int:
             p.name for p in (ROOT / "runtimes").iterdir() if (p / "runtime.json").is_file()
         ),
     )
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--recipe", help="Build the image selected by this recipe")
+    selection.add_argument("--version", help="Build the selected Strata release lock")
     parser.add_argument("--tag", help="Override the image tag, for example v0.2.16-rocm10.2")
     parser.add_argument("--max-jobs", type=int, default=4)
     parser.add_argument("--check", action="store_true", help="Run the image's GPU smoke check")
     args = parser.parse_args(argv)
     runtime = ROOT / "runtimes" / args.runtime
     context = runtime / "container"
-    lock_path = context / "versions.lock.json"
+    pins = runtime
+    if args.version:
+        if args.runtime != "strata" or not re.fullmatch(r"v[0-9][A-Za-z0-9.-]*", args.version):
+            parser.error("--version requires a Strata release identifier")
+        pins = runtime / "releases" / args.version
     try:
+        if args.recipe:
+            recipe = discover_recipes(ROOT / "recipes", local=False)[args.recipe]
+            if recipe.runtime_source != runtime:
+                parser.error("--recipe must select the requested runtime")
+            pins = recipe.runtime_directory
+        lock_path = pins / "container/versions.lock.json"
         contents = lock_path.read_bytes()
         digest = hashlib.sha256(contents).hexdigest()
         lock = json.loads(contents)
         revision = repository_revision(ROOT)
-        descriptor = json.loads((runtime / "runtime.json").read_text())
+        descriptor = json.loads((pins / "runtime.json").read_text())
         image = descriptor["image"]
         if args.tag is not None:
             if not re.fullmatch(r"[\w][\w.-]{0,127}", args.tag, re.ASCII):
@@ -64,9 +79,17 @@ def main(argv: list[str] | None = None) -> int:
             if "@" in image:
                 raise ValueError("a digest-pinned runtime image cannot be retagged with --tag")
             image = re.sub(r":[^/:]+$", "", image) + ":" + args.tag
-        build = subprocess.run(
-            build_command(context, lock["base_image"], image, args.max_jobs), check=False
-        )
+        with tempfile.TemporaryDirectory() as temporary:
+            if pins != runtime:
+                context = shutil.copytree(
+                    context,
+                    Path(temporary) / "container",
+                    ignore=shutil.ignore_patterns("__pycache__"),
+                )
+                (context / "versions.lock.json").write_bytes(contents)
+            build = subprocess.run(
+                build_command(context, lock["base_image"], image, args.max_jobs), check=False
+            )
         if build.returncode:
             return build.returncode
         if file_sha256(lock_path) != digest:
