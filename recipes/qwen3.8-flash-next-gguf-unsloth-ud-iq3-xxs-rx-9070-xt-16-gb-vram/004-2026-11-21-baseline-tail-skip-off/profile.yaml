@@ -1,0 +1,74 @@
+id: Qwen3.8-Flash-Next / GGUF Unsloth UD-IQ3_XXS / RX 9070 XT / 16 GB VRAM
+hardware:
+  gpu: Radeon RX 9070/9070 XT/9070 GRE (gfx1201)
+  cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+  memory:
+    architecture: discrete
+    dedicated_vram_gib: 16
+    system_ram_gib: 59
+    unified_memory_gib: null
+os:
+  name: Ubuntu
+  version: '26.10'
+  kernel: 7.3.0-11-generic
+  kernel_driver: amdgpu
+software:
+  harness: llm-recipes baseline suite
+  harness_version: null
+  engine: Strata
+  engine_version: 0.1.64
+  engine_source_version: v0.2.18
+  revision: https://github.com/Niko1221/Strata/commit/6e38f588a646c0ee6948a74afbe670eb75896106
+  rocm_version: 10.2.0
+  backend: ROCm / HIP
+  backend_api_version: null
+  gpu_driver: amdgpu
+  gpu_driver_version: null
+  pytorch: null
+  python: null
+  base_image_tag: https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags?name=10.2.0-full
+  base_image: rocm/dev-ubuntu-24.04@sha256:21801c0ba1bc4aba31f81ab11fe576c43daa7f2c7f42bac7baaa4d2f75273f86
+  server: Strata
+  server_version: https://github.com/Niko1221/Strata/commit/6e38f588a646c0ee6948a74afbe670eb75896106
+  host_python: 3.14.8
+  running_image_id: sha256:3802d63e9bae0c08a027ea336952d5313b987f576baf1ed90c7218bdca22f2ce
+model:
+  name: Qwen3.8-Flash-Next UD-IQ3_XXS · Strata
+  format: GGUF Unsloth UD IQ3 XXS
+  quantization: UD-IQ3_XXS
+  repository: https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF
+  artifacts:
+  - UD-IQ3_XXS/Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00004.gguf
+  - UD-IQ3_XXS/Qwen3.8-Flash-Next-UD-IQ3_XXS-00002-of-00004.gguf
+  - UD-IQ3_XXS/Qwen3.8-Flash-Next-UD-IQ3_XXS-00003-of-00004.gguf
+  - UD-IQ3_XXS/Qwen3.8-Flash-Next-UD-IQ3_XXS-00004-of-00004.gguf
+  - mmproj-Qwen3.8-Flash-Next-BF16.gguf
+  revision: https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF/commit/084c631ac221016019d6e0a863afe92d90edd3b0
+  draft_repository: https://huggingface.co/Qwen/Qwen3.8-Flash-Next
+  draft_revision: https://huggingface.co/Qwen/Qwen3.8-Flash-Next/commit/de4b8e4d43b917e7706784d8bb445c9af86a3540
+  draft_quantization: q2_0
+settings:
+  serving:
+    served_model_id: qwen3.8-flash-next-ud-iq3_xxs
+    expert_cache: auto
+    prefill: auto
+    max_draft_tokens: '4'
+    min_draft_probability: '0.5'
+    kv_cache: int8
+    gpu_resident_kv_cells: 32768
+    vision: cpu
+    vision_min_image_tokens: 1024
+    vision_max_image_tokens: 1024
+    context_length_tokens: 131072
+    speculative_decoding: true
+    draft_method: MTP
+  sampling: null
+  thinking:
+    enabled: false
+    control: reasoning_effort=none
+  requests:
+    endpoint: /v1/chat/completions
+    token_counting: /v1/messages/count_tokens
+    streaming: Performance requests streamed
+    concurrency: 1
+  notes: Route tail skipping was off (the Strata v0.2.18 default).
