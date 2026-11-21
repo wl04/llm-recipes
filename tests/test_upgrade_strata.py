@@ -1,4 +1,5 @@
 import json
+import shlex
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -85,7 +86,7 @@ def test_candidate_resumes_generated_inputs_after_reference_update(tmp_path: Pat
 
 
 def test_adoption_selects_installed_strata_models_and_delete_restores_each(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     import shutil
 
@@ -153,6 +154,13 @@ def test_adoption_selects_installed_strata_models_and_delete_restores_each(
         upgrade.upgrade(tag, options, False)
     probe.assert_called_once()
     assert prepared_recipes == ["recipes/first-model", "recipes/second-model"]
+    summary = capsys.readouterr().out.split("Strata v0.2.18 preparation complete\n")[1]
+    for index, name in enumerate(installed_names, 1):
+        section = summary.split(f"[{index}/2] {name}\n")[1].split("\n[")[0].splitlines()
+        assert section[0].strip() == "Start an interactive server"
+        assert shlex.split(section[1])[-5:] == ["start", name, "--models", str(models), "--detach"]
+        assert section[2].strip() == "Run the baseline"
+        assert shlex.split(section[3])[-4:] == ["run", name, "--models", str(models)]
     candidate = tmp_path / "reference-strata-v0.2.18"
     old = discover_recipes(app / "recipes")
     trials = discover_recipes(candidate / "recipes")

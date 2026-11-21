@@ -31,13 +31,24 @@ python3 runtimes/strata/scripts/prepare_models.py --recipe "recipes/$recipe" --m
 
 Preparation resumes partial downloads, verifies the locked hashes, builds the pack and Q2_0 MTP draft, and writes a receipt matching the model and runtime locks. For Unsloth, `pack.compat_bf16` records converted tensors in `packs/iq3_xxs/conversions.json`; experts retain their published formats.
 
+Strata shares the BF16 MTP source at `<models root>/.cache/strata/mtp/<repository>/<revision>/`. On first use it can import the tensors from a completed preparation, including another recipe or release with the same checkpoint pin. Import copies the raw tensors once (about 4.86 GiB for Qwen3.8-Flash-Next) and checks every file against the SHA-256 table in the selected engine. If no existing preparation can seed an empty cache, preparation downloads the pinned tensors. A corrupt published cache entry stops preparation with a verification error. Concurrent preparations share one fetch. Each recipe builds its own quantized draft from the verified source.
+
+To reclaim raw tensor copies from older completed preparations, run these commands from the updated checkout after preparation finishes:
+
+```bash
+python3 tools/compact_strata_mtp.py          # Preview verified duplicates
+python3 tools/compact_strata_mtp.py --apply  # Keep one shared source
+```
+
+Cleanup uses the checkout’s local Strata image offline. If the cache is empty, allow 4.86 GiB of temporary free space for the verified import. Each recipe keeps its generated draft, pack, tokenizer and receipt.
+
 Prepared files under the recipe's data folder:
 
 ```text
 models/              # Published GGUF shards and projector
 prepared/<version>/
   packs/iq3_xxs/     # Native pack, tokenizer, optional conversion report
-  mtp/               # Verified source, converted GGUF and rt/ runtime
+  mtp/               # Converted draft GGUF and rt/ runtime
   prepared.json      # Completion record matching model and runtime locks
 ```
 

@@ -166,6 +166,8 @@ def test_prepare_records_selected_lock_without_touching_baseline(
     with (
         patch.object(Path, "read_text", read),
         patch.object(prepare, "RUNTIME", runtime),
+        patch.object(prepare, "shared_source", return_value=tmp_path / "shared-source"),
+        patch.object(prepare, "tensor_hashes", return_value={}),
         patch.object(prepare, "pinned_mtp_revision", return_value=lock["mtp"]["revision"]),
         patch.object(prepare, "download", download),
         patch.object(prepare.subprocess, "run", run),
@@ -180,6 +182,8 @@ def test_prepare_records_selected_lock_without_touching_baseline(
     output = root / "prepared/v0.2.18" if versioned else root
     assert json.loads((output / "prepared.json").read_text()) == {"models": lock, "image": versions}
     assert baseline.read_text() == "baseline receipt"
+    pack_mtp = next(command for command in calls if Path(command[1]).name == "mtp_pack.py")
+    assert pack_mtp[pack_mtp.index("--src") + 1] == str(tmp_path / "shared-source")
     assert len(urls) == 5
     assert all("unsloth/Qwen3.8-Flash-Next-GGUF/resolve/084c631" in url for url in urls[:4])
     assert "ISTA-DASLab/" in urls[-1]

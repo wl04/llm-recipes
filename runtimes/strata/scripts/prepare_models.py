@@ -14,6 +14,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from mtp_source import shared_source, tensor_hashes
 from recipe_config import recipe_paths, release_key
 
 RUNTIME = Path(__file__).resolve().parents[1]
@@ -162,13 +163,19 @@ def prepare(recipe: Path, root: Path) -> None:
 
         run("iq_pack.py", *pack_arguments(lock, root, output))
         mtp = output / "mtp"
-        run("mtp_fetch.py", "fetch", "--out", str(mtp))
-        run("mtp_fetch.py", "verify", "--out", str(mtp))
+        source = shared_source(
+            root.parents[1],
+            lock["mtp"]["repository"],
+            lock["mtp"]["revision"],
+            tensor_hashes(tools / "mtp_fetch.py"),
+            lambda partial: run("mtp_fetch.py", "fetch", "--out", str(partial)),
+        )
+        mtp.mkdir(exist_ok=True)
         intermediate = mtp / "mtp-q2_0.gguf"
         run(
             "mtp_pack.py",
             "--src",
-            str(mtp),
+            str(source),
             "--experts",
             lock["mtp"]["expert_quantization"],
             "--out",

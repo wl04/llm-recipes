@@ -333,7 +333,8 @@ def upgrade(tag: str, config: dict[str, Any], prepare_only: bool) -> None:
     build_or_check(candidate, image, lock, config["max_jobs"])
     image_id = output("sudo", "docker", "image", "inspect", "--format", "{{.Id}}", image)
     save(record, {**prior, **state, "image_id": image_id})
-    for name in names:
+    for index, name in enumerate(names, 1):
+        print(f"\nPreparing recipe {index}/{len(names)}  {name}", flush=True)
         subprocess.run(
             [
                 sys.executable,
@@ -346,32 +347,36 @@ def upgrade(tag: str, config: dict[str, Any], prepare_only: bool) -> None:
             cwd=candidate,
             check=True,
         )
-    for name in names:
-        print(
-            shlex.join(
-                [
-                    sys.executable,
-                    str(candidate / "scripts/launch.py"),
-                    "start",
-                    name,
-                    "--models",
-                    str(models),
-                    "--detach",
-                ]
-            )
+    print(f"\nStrata {key} preparation complete")
+    print(f"Candidate checkout  {candidate}")
+    print(f"Models root         {models}")
+    print("\nChoose one recipe and one action. The baseline starts its own server.")
+    print("Stop any interactive server before running a baseline or switching recipes.")
+    for index, name in enumerate(names, 1):
+        launch = shlex.join(
+            [
+                sys.executable,
+                str(candidate / "scripts/launch.py"),
+                "start",
+                name,
+                "--models",
+                str(models),
+                "--detach",
+            ]
         )
-        print(
-            shlex.join(
-                [
-                    str(ROOT / ".venv/bin/python"),
-                    str(candidate / "scripts/run_baseline.py"),
-                    "run",
-                    name,
-                    "--models",
-                    str(models),
-                ]
-            )
+        baseline = shlex.join(
+            [
+                str(ROOT / ".venv/bin/python"),
+                str(candidate / "scripts/run_baseline.py"),
+                "run",
+                name,
+                "--models",
+                str(models),
+            ]
         )
+        print(f"\n[{index}/{len(names)}] {name}")
+        print(f"  Start an interactive server\n    {launch}")
+        print(f"  Run the baseline\n    {baseline}")
 
 
 def manifest_path(name: str) -> Path:
