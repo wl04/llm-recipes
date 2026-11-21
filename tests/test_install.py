@@ -448,6 +448,15 @@ def test_reinstall_selects_published_build_per_recipe(
             assert recipes[name].directory == trial / "recipes" / name
     assert capsys.readouterr().out.count("published: using installed") == 1
 
+    (trial / "recipes/different-release/config/launch.json").unlink()
+    assert install(checkout, prefix, force=True, with_dependencies=False) == 0
+    recipes = discover_recipes(prefix / "app/recipes")
+    assert recipes["different-release"].directory == prefix / "app/recipes/different-release"
+    assert recipes["different-lock"].directory == trial / "recipes/different-lock"
+    messages = capsys.readouterr()
+    assert "launcher will use installed configuration" in messages.out
+    assert "using installed recipe" in messages.err
+
 
 def test_failed_selection_switch_restores_snapshot_and_selections(
     roots: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch

@@ -175,7 +175,12 @@ def published_selections(staging: Path, prefix: Path) -> list[Path]:
         manifest = checkout / recipe.data_subpath / "config/launch.json"
         lock = Path("container/versions.lock.json")
         try:
-            if json.loads(manifest.read_text())["runtime"] != recipe.runtime:
+            try:
+                contents = manifest.read_text()
+            except FileNotFoundError:
+                log(f"{recipe.name}: missing {manifest}; launcher will use installed configuration")
+                continue
+            if json.loads(contents)["runtime"] != recipe.runtime:
                 continue
             trial = json.loads((checkout / "runtimes" / recipe.runtime / lock).read_text())
             incoming = json.loads((recipe.runtime_directory / lock).read_text())
