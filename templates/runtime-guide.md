@@ -4,7 +4,7 @@
 
 ## Build and check
 
-State supported OS/GPU architecture and prerequisites. Link to `runtimes/<runtime>/container/` build inputs, source/dependency locks, and `runtime.json`. Use `python3 scripts/build_runtime.py <runtime> --check` and explain when a rebuild is required. Set the descriptor’s image tag to the pinned source release (or nearest release, commit count and Git SHA). Include the API server revision when pinned separately. Use a distinct tag when comparing builds of the same sources, such as a ROCm or patch variant.
+State supported OS/GPU architecture and prerequisites. Link to `runtimes/<runtime>/container/` build inputs, source/dependency locks, and `runtime.json`. For a runtime with per-recipe release pins, put the concrete `python3 scripts/build_runtime.py <runtime> --recipe <recipe-id> --check` command in each recipe setup page. Otherwise use `python3 scripts/build_runtime.py <runtime> --check`. Set the descriptor’s image tag to the pinned source release (or nearest release, commit count and Git SHA). Include the API server revision when pinned separately. Use a distinct tag when comparing builds of the same sources, such as a ROCm or patch variant.
 
 ## Model preparation
 
@@ -16,7 +16,7 @@ Describe how `/runtime/scripts/serve.py --recipe /recipes/<recipe-id>` reads nat
 
 ## Baseline and clients
 
-Describe how the [baseline runner](../baseline.md) uses this server: readiness, request fields (token limit, thinking control), the token-count route, usage and cached-token reporting, and where engine timings come from. Mention any ad hoc check helpers in one line. Describe engine-specific reasoning support. Link to shared Pi setup for installation and metadata alignment; recipe-specific provider configuration belongs in each recipe.
+Link to the [baseline guide](../baseline.md) and shared Pi setup where needed. Document engine-specific steps here only when the shared guides do not cover them. Put runnable baseline commands and Pi provider details in the recipe setup.
 
 ---
 

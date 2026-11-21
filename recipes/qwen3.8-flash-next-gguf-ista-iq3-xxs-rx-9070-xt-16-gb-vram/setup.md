@@ -2,63 +2,44 @@
 
 ## Runtime and capacity
 
-Build and check the shared [Strata runtime](../../docs/runtimes/strata.md#build-and-check).
+Allow 100 GiB of free disk space for model preparation. The tested system had 16 GB VRAM and 64 GB RAM. From the repository root, build the pinned image and check GPU access:
 
-Allow at least **100 GiB free disk space** for approximately 79 GiB of downloads and preparation outputs. The tested configuration uses 16 GB VRAM and 64 GB RAM; its expert arena is 39.97 GiB.
+```bash
+recipe=qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram
+python3 scripts/build_runtime.py strata --recipe "$recipe" --check
+```
 
 ## Prepare models
 
-Run from the repository root with the serving instance stopped:
-
 ```bash
-python3 runtimes/strata/scripts/prepare_models.py \
-  --recipe recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram \
-  --models "${LLM_RECIPES_HOME:-$HOME/llm-recipes}"
+python3 runtimes/strata/scripts/prepare_models.py --recipe "recipes/$recipe" --models "${LLM_RECIPES_HOME:-$HOME/llm-recipes}"
 ```
 
-The [model lock](config/models.lock.json) selects two target shards, a BF16 CPU projector, and Q2_0 MTP. Target tensors retain their native formats. Files are prepared under `<models root>/recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram/`.
-
-For a custom root, set `LLM_RECIPES_HOME` for preparation and launch. If you pass a different `--models` path to preparation, pass that same path to the launcher and baseline runner.
+The [model lock](config/models.lock.json) selects two target shards, a BF16 CPU projector and Q2_0 MTP. See [prepared files and shared weights](../../docs/runtimes/strata.md#preparation).
 
 ## Launch
 
-Run one model instance at a time on the RX 9070 XT workstation. Stop the other recipe's instance before switching, then:
+With the [launcher installed](../../README.md#quick-start) and the GPU free:
 
 ```bash
-sudo -v
-llm-recipes doctor qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram
-llm-recipes start qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram --detach
+llm-recipes doctor "$recipe"
+llm-recipes start "$recipe" --detach
+curl --retry 90 --retry-delay 2 --retry-all-errors -fsS http://127.0.0.1:8080/health
 ```
 
-The instance name defaults to the recipe identifier; file logs land in `<models root>/logs/<instance>`. The manifest already holds the tested configuration, so the command passes no capacity options.
+The [launch defaults](config/launch.json) are 131,072 context tokens, MTP on and CPU vision. The OpenAI-compatible API is at `http://127.0.0.1:8080/v1`. See [native settings](config/strata.json) and [launch overrides](../../docs/launcher.md#launch-options).
 
-Readiness: `curl -f http://127.0.0.1:8080/health`. The API is `http://127.0.0.1:8080/v1` and serves `qwen3.8-flash-next-iq3_xxs`.
+For Pi, follow [client setup](../../docs/clients/pi.md#configure-a-recipe) with [this recipe’s model entry](config/pi.models.json) and select `strata-local` with `/model`.
 
-[Launch defaults](config/launch.json): 131,072 context tokens, MTP on, CPU vision. To change them for one launch, pass the matching options to `start`; edit the manifest to change them persistently ([launch options](../../docs/launcher.md#launch-options)). [Native settings](config/strata.json) contain sampling, cache, and image-token settings; restart the instance after editing them.
-
-## Baseline
-
-Run with the installed command:
+## Logs and baseline
 
 ```bash
-llm-recipes-baseline run qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram
+llm-recipes logs "$recipe" --follow
+# Press Ctrl+C to leave the log viewer.
+llm-recipes stop "$recipe"
+llm-recipes-baseline run "$recipe"
 ```
-
-Results and the server logs go to `~/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
-
-## Pi
-
-Follow [Pi setup](../../docs/clients/pi.md#configure-a-recipe) using [`config/pi.models.json`](config/pi.models.json). Select `strata-local` with `/model`. The entry mirrors the launch defaults: 131,072 context tokens, text/image input.
-
-## Logs and stopping
-
-```bash
-llm-recipes logs qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram --follow
-llm-recipes stop qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram
-```
-
-See [launcher controls](../../docs/launcher.md#foreground-and-background-execution) and [Strata file logs](../../docs/runtimes/strata.md#serving).
 
 ---
 
-[Recipe](recipe.md) · [Runtime](../../docs/runtimes/strata.md)
+[Recipe](recipe.md) · [Runtime](../../docs/runtimes/strata.md) · [Baseline guide](../../docs/baseline.md)
