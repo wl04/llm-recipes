@@ -35,10 +35,23 @@ Prepared files under the recipe's data folder:
 
 ```text
 models/              # Published GGUF shards and projector
-packs/iq3_xxs/       # Native pack, tokenizer, optional conversion report
-mtp/                 # Verified source, converted GGUF and rt/ runtime
-prepared.json        # Completion record matching model and runtime locks
+prepared/<version>/
+  packs/iq3_xxs/     # Native pack, tokenizer, optional conversion report
+  mtp/               # Verified source, converted GGUF and rt/ runtime
+  prepared.json      # Completion record matching model and runtime locks
 ```
+
+### Existing v0.2.13 + 95 installations
+
+For an existing top-level `packs/`, `mtp/` and `prepared.json`, run the [one-time migration](../../tools/migrate_strata_v0213.py) from the updated checkout. Use the same `LLM_RECIPES_HOME` as the launcher. Stop serving containers and finish or roll back locally adopted trials first.
+
+```bash
+python3 tools/migrate_strata_v0213.py          # Preview each local recipe
+python3 tools/migrate_strata_v0213.py --apply
+python3 scripts/install.py install
+```
+
+The utility verifies the locks and moves the three generated items to `prepared/v0.2.13-95-gdbb2d168/` by filesystem rename. Shared model files stay in place. If interrupted, repeat the preview and apply commands. After reinstalling, run `llm-recipes doctor <recipe-id>` for each recipe printed as verified. Fresh installations use the ordinary preparation command above.
 
 ## Serving
 
@@ -77,7 +90,7 @@ python3 scripts/upgrade_strata.py v0.2.18
 
 The script resolves the upstream tag and ROCm Linux amd64 digest, checks upstream compatibility, and creates or resumes a sibling Git worktree. It compares the local image’s embedded build lock before running the HIP check. Matching inputs reuse the image, including an existing v0.2.18 build. A conflicting tag stops the command. Use `--prepare-only` to inspect the Git inputs before building or preparing data.
 
-Each trial records its selected recipes so retries, adoption and cleanup use the same set. One image serves all selected recipes. The script reuses the published shards and projector under `recipes/<recipe>/models/` in the data home. Each trial prepares its pack, tokenizer, MTP files and receipt under `recipes/<recipe>/prepared/<version>/`. A completed matching preparation is reused. The shared runtime continues to read its original pack and receipt directly under the recipe data directory.
+Each trial records its selected recipes so retries, adoption and cleanup use the same set. One image serves all selected recipes. The script reuses the published shards and projector under `recipes/<recipe>/models/` in the data home. Each trial prepares its pack, tokenizer, MTP files and receipt under `recipes/<recipe>/prepared/<version>/`. A completed matching preparation is reused.
 
 The script prints launch and baseline commands for each selected recipe. Run one model at a time. Stop its interactive server before starting its baseline.
 

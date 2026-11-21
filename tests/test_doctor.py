@@ -39,9 +39,8 @@ def test_doctor_uses_only_noninteractive_inspection_commands(tmp_path: Path) -> 
 
 
 def test_prepared_rejects_stale_receipt_for_strata(tmp_path: Path) -> None:
-    folder = tmp_path / STRATA.data_subpath
-    folder.parent.mkdir()
-    folder.mkdir()
+    folder = tmp_path / STRATA.data_subpath / "prepared" / STRATA.runtime_directory.name
+    folder.mkdir(parents=True)
     (folder / "prepared.json").write_text(json.dumps({"models": {}, "image": {}}))
 
     finding = doctor.check_prepared(STRATA, tmp_path)
@@ -71,7 +70,9 @@ def test_prepared_checks_sizes_and_missing_artifacts_for_strata(tmp_path: Path) 
     (root / "models").mkdir(parents=True)
     (root / "models/target.gguf").write_bytes(b"abc")
     versions = json.loads((recipe.runtime_directory / "container/versions.lock.json").read_text())
-    (root / "prepared.json").write_text(json.dumps({"models": lock, "image": versions}))
+    prepared = root / "prepared" / recipe.runtime_directory.name
+    prepared.mkdir(parents=True)
+    (prepared / "prepared.json").write_text(json.dumps({"models": lock, "image": versions}))
     for name in (
         "native_experts.txt",
         "index.txt",
@@ -80,7 +81,7 @@ def test_prepared_checks_sizes_and_missing_artifacts_for_strata(tmp_path: Path) 
         "tokenizer/chat_template.jinja",
         "tokenizer/vocab.json",
     ):
-        path = root / "packs/iq3_xxs" / name
+        path = prepared / "packs/iq3_xxs" / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("artifact")
 
@@ -88,7 +89,7 @@ def test_prepared_checks_sizes_and_missing_artifacts_for_strata(tmp_path: Path) 
     (root / "models/target.gguf").write_bytes(b"ab")
     assert "Size differs" in doctor.check_prepared(recipe, models).detail
     (root / "models/target.gguf").write_bytes(b"abc")
-    (root / "packs/iq3_xxs/index.txt").unlink()
+    (prepared / "packs/iq3_xxs/index.txt").unlink()
     assert "Missing or empty" in doctor.check_prepared(recipe, models).detail
 
 
