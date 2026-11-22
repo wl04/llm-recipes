@@ -140,16 +140,19 @@ def discover_recipes(directory: Path, *, local: bool = True) -> dict[str, Recipe
             if local and directory.resolve() == (paths.runtime_prefix() / "app/recipes").resolve():
                 selected = local_selections(manifest.parents[1].name)
                 if selected:
-                    adopted = Path(selected[-1]) / manifest.relative_to(directory.parent)
-                    try:
-                        adopted.stat()
-                    except FileNotFoundError:
-                        print(
-                            f"Missing {adopted}; using installed recipe {manifest}", file=sys.stderr
-                        )
-                    else:
-                        manifest = adopted
-            data = json.loads(manifest.read_text())
+                    manifest = Path(selected[-1]) / default_manifest.relative_to(directory.parent)
+            try:
+                contents = manifest.read_text()
+            except FileNotFoundError:
+                if manifest == default_manifest:
+                    raise
+                print(
+                    f"Missing {manifest}; using installed recipe {default_manifest}",
+                    file=sys.stderr,
+                )
+                manifest = default_manifest
+                contents = manifest.read_text()
+            data = json.loads(contents)
             if not isinstance(data, dict) or set(data) != fields:
                 raise ValueError(f"expected fields: {', '.join(sorted(fields))}")
             for key in fields - {"port", "context"}:

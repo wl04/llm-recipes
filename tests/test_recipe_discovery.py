@@ -53,6 +53,52 @@ def test_discover_returns_distinct_recipes_with_shared_adapter(tmp_path: Path) -
     assert instance_name(recipes["model-a"].name) != instance_name(recipes["model-b"].name)
 
 
+@pytest.fixture
+def adopted_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
+    prefix = tmp_path / "install"
+    installed, trial = prefix / "app/recipes", tmp_path / "trial"
+    monkeypatch.setenv("LLM_RECIPES_RUNTIME", str(prefix))
+    write_recipe(installed, "model")
+    write_recipe(trial / "recipes", "model")
+    selections = prefix / "selections"
+    selections.mkdir()
+    (selections / "model.json").write_text(json.dumps([str(trial)]))
+    return installed, trial
+
+
+def test_discover_uses_installed_recipe_when_adopted_manifest_disappears_at_read(
+    adopted_checkout: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    installed, trial = adopted_checkout
+    manifest = trial / "recipes/model/config/launch.json"
+    read_text = Path.read_text
+
+    def read_after_removal(path: Path) -> str:
+        if path == manifest:
+            manifest.unlink()
+        return read_text(path)
+
+    monkeypatch.setattr(Path, "read_text", read_after_removal)
+
+    recipe = discover_recipes(installed)["model"]
+
+    assert recipe.directory == installed / "model"
+    assert recipe.runtime_directory == installed.parent / "runtimes/exllamav3-tabbyapi"
+
+
+def test_discover_reports_missing_adopted_runtime_when_manifest_is_present(
+    adopted_checkout: tuple[Path, Path],
+) -> None:
+    installed, trial = adopted_checkout
+    descriptor = trial / "runtimes/exllamav3-tabbyapi/runtime.json"
+    descriptor.unlink()
+
+    with pytest.raises(ValueError, match=r"runtime\.json") as failure:
+        discover_recipes(installed)
+
+    assert str(descriptor) in str(failure.value)
+
+
 def test_discover_rejects_unknown_adapter(tmp_path: Path) -> None:
     write_recipe(tmp_path / "recipes", "model")
     path = tmp_path / "runtimes/exllamav3-tabbyapi/runtime.json"

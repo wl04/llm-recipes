@@ -7,6 +7,8 @@ from unittest.mock import Mock
 
 import pytest
 import upgrade_strata as upgrade
+from launcher import local_selections
+from paths import data_home, runtime_prefix
 
 
 def test_candidate_reuses_worktree_and_preserves_local_edits(tmp_path: Path) -> None:
@@ -85,13 +87,9 @@ def test_candidate_resumes_generated_inputs_after_reference_update(tmp_path: Pat
     assert (candidate / upgrade.DESCRIPTOR).read_text() == '{"candidate":true}'
 
 
-def test_adoption_selects_installed_strata_models_and_delete_restores_each(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
+@pytest.fixture
+def trial_reference(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     import shutil
-
-    from doctor import _strata_required_files
-    from launcher import discover_recipes
 
     source = upgrade.ROOT
     root = tmp_path / "reference"
@@ -126,6 +124,41 @@ def test_adoption_selects_installed_strata_models_and_delete_restores_each(
     subprocess.run(["git", "commit", "-qm", "fixture"], cwd=root, check=True)
     monkeypatch.setattr(upgrade, "release", lambda *args: ("f" * 40, "e" * 64, "0.1.64"))
     monkeypatch.setattr(upgrade, "base_image", lambda tag: "rocm/dev@sha256:" + "a" * 64)
+    return root
+
+
+def test_adoption_preserves_selections_when_a_predecessor_manifest_is_missing(
+    trial_reference: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    options = upgrade.settings(trial_reference / upgrade.RUNTIME / "upgrade.json")
+    monkeypatch.setattr(upgrade, "check_ready_recipe", lambda recipe, models: None)
+    first, second = "v0.2.18", "v0.2.19"
+    upgrade.upgrade(first, options, prepare_only=True)
+    upgrade.manage(first, delete=False)
+    upgrade.upgrade(second, options, prepare_only=True)
+    first_checkout = Path(local_selections("second-model")[-1])
+    (first_checkout / upgrade.manifest_path("second-model")).unlink()
+
+    with pytest.raises(ValueError, match=r"second-model.*restore .* or roll back"):
+        upgrade.manage(second, delete=False)
+
+    for name in ("first-model", "second-model"):
+        assert local_selections(name) == [str(first_checkout)]
+    assert "previous" not in json.loads(upgrade.trial_record(second).read_text())
+
+
+def test_adoption_selects_installed_strata_models_and_delete_restores_each(
+    trial_reference: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from doctor import _strata_required_files
+    from launcher import discover_recipes
+
+    root = trial_reference
+    models = data_home()
+    app = runtime_prefix() / "app"
+    installed_names = ("first-model", "second-model")
+    shard = models / "recipes/second-model/models/shard.gguf"
+    weights = json.loads((root / "recipes/second-model/config/models.lock.json").read_text())
     tag = "v0.2.18"
     options = upgrade.settings(root / upgrade.RUNTIME / "upgrade.json")
     shard.write_bytes(b"")
@@ -161,7 +194,7 @@ def test_adoption_selects_installed_strata_models_and_delete_restores_each(
         assert shlex.split(section[1])[-5:] == ["start", name, "--models", str(models), "--detach"]
         assert section[2].strip() == "Run the baseline"
         assert shlex.split(section[3])[-4:] == ["run", name, "--models", str(models)]
-    candidate = tmp_path / "reference-strata-v0.2.18"
+    candidate = root.parent / "reference-strata-v0.2.18"
     old = discover_recipes(app / "recipes")
     trials = discover_recipes(candidate / "recipes")
     trial = trials[installed_names[0]]

@@ -537,6 +537,12 @@ def manage_trial(key: str, delete: bool, guards: ExitStack) -> None:
         for name in names:
             if name in active:
                 continue
+            if stack := selections[name]:
+                predecessor = Path(stack[-1]) / manifest_path(name)
+                if installed[name].directory != predecessor.parents[1].resolve():
+                    raise ValueError(
+                        f"Cannot adopt {name}: restore {predecessor} or roll back the prior trial"
+                    )
             identity = selection_identity(installed[name])
             if name in previous_ids and previous_ids[name] != identity:
                 raise ValueError(f"The prior selection for {name} changed; review before adoption")
