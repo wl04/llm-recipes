@@ -1,0 +1,20 @@
+{
+  "base_image": "rocm/dev-ubuntu-24.04@sha256:21801c0ba1bc4aba31f81ab11fe576c43daa7f2c7f42bac7baaa4d2f75273f86",
+  "base_tag": "10.2.0-full",
+  "architecture": "gfx1201",
+  "sources": {
+    "strata": {
+      "repository": "Niko1221/Strata",
+      "revision": "d46f5f268f8ed797e83a5c63a69bffbd7a581cf6",
+      "sha256": "e23078def6ce4f772cedd0fe86034159d1b4fd2fb8e7bf1f60de3213edee058f"
+    },
+    "llama_cpp": {
+      "repository": "ggml-org/llama.cpp",
+      "revision": "3cf03257f219afbe7334045ff7c6a06ac68c627d",
+      "sha256": "c076d7534afa0e5d0ec2a0d425b11e791c16f3de0d727221aea071cef156a280"
+    }
+  },
+  "layout": "engine-terminal",
+  "engine_options": {},
+  "build_inputs_sha256": "2217ff7b8b782e73aee47ea9aade8829bead9a913e93a88086f8810ee1e5aa2a"
+}
