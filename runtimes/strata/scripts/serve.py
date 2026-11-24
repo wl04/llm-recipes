@@ -48,10 +48,14 @@ def configure(
     return config
 
 
-def validate_model_files(root: Path, lock: dict[str, Any]) -> None:
+def validate_model_files(
+    root: Path, lock: dict[str, Any], projector: dict[str, Any] | None = None
+) -> None:
     """Check every locked shard, including middle shards, without rehashing at startup."""
     for item in lock["files"]:
         path = root / "models" / item["path"]
+        if projector and item["path"] == projector["source"]:
+            path = (root.parents[1] / projector["path"]).with_name(path.name)
         if not path.is_file() or path.stat().st_size != item["size_bytes"]:
             raise ValueError(f"Missing or incomplete model file: {path}; rerun prepare_models.py")
 
@@ -171,7 +175,7 @@ def main() -> int:
                 raise ValueError("Invalid shared vision projector; rerun prepare_models.py")
         if receipt != {"models": models, "image": expected}:
             raise ValueError("Prepared model lock differs; rerun prepare_models.py")
-        validate_model_files(Path("/models") / folder, models)
+        validate_model_files(Path("/models") / folder, models, projector)
         validate_files(config)
         environment = dict(os.environ, HIP_VISIBLE_DEVICES=probe_device())
         print(json.dumps(config, indent=2), flush=True)

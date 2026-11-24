@@ -17,7 +17,7 @@ from contextlib import ExitStack
 from pathlib import Path
 from typing import Any
 
-from doctor import check_prepared
+from doctor import check_prepared, strata_weight_path
 from launcher import (
     Recipe,
     discover_recipes,
@@ -263,7 +263,7 @@ def upgrade(tag: str, config: dict[str, Any], prepare_only: bool) -> None:
             raise ValueError(f"{name} no longer selects Strata")
         model_lock = json.loads((recipe.directory / "config/models.lock.json").read_text())
         for item in model_lock["files"]:
-            shard = models / recipe.data_subpath / "models" / item["path"]
+            shard = strata_weight_path(models / recipe.data_subpath, model_lock, item["path"])
             if not shard.is_file() or shard.stat().st_size != item["size_bytes"]:
                 raise ValueError(f"Incomplete local preparation for {name}: {shard}")
         requirements[name] = model_lock["mtp"]

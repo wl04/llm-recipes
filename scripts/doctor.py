@@ -89,6 +89,14 @@ def check_prepared(recipe: Recipe, models: Path) -> Finding:
         )
 
 
+def strata_weight_path(root: Path, lock: dict[str, Any], name: str) -> Path:
+    """Locate a published GGUF on the host or in the container."""
+    projector = lock.get("projector")
+    if projector and name == projector["source"]:
+        return (root.parents[1] / Path(projector["path"])).with_name(name)
+    return root / "models" / name
+
+
 def _check_strata_preparation(
     lock: dict[str, Any], versions: dict[str, Any], root: Path, recipe: Recipe
 ) -> None:
@@ -104,7 +112,7 @@ def _check_strata_preparation(
         if path.stat().st_size != projector["size_bytes"]:
             raise ValueError(f"Size differs from projector lock: {path}")
     for item in lock["files"]:
-        path = root / "models" / item["path"]
+        path = strata_weight_path(root, lock, item["path"])
         require_file(path)
         if path.stat().st_size != item["size_bytes"]:
             raise ValueError(f"Size differs from model lock: {path}")
@@ -192,7 +200,7 @@ def _strata_endpoints(
     args = native["args"]
     if not isinstance(args, list):
         raise ValueError("strata.json args must be a list")
-    files = {str(root / "models" / item["path"]) for item in lock["files"]}
+    files = {str(strata_weight_path(root, lock, item["path"])) for item in lock["files"]}
     for flag in ("--native", "--ple-gguf"):
         if args[args.index(flag) + 1] not in files:
             raise ValueError(f"{flag} is not a locked model path")
@@ -207,7 +215,7 @@ def _strata_endpoints(
             raise ValueError("strata.json vision must be an object")
         projector = lock.get("projector")
         if projector:
-            if str(root / "models" / projector["source"]) not in files:
+            if str(strata_weight_path(root, lock, projector["source"])) not in files:
                 raise ValueError("Vision conversion source is not a locked model path")
             files = {str(Path("/models") / projector["path"])}
         if vision.get("mmproj") not in files:

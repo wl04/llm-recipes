@@ -182,12 +182,15 @@ def test_prepare_records_selected_lock_without_touching_baseline(
                 prepare.prepare(recipe, root)
             rerun.assert_not_called()
 
-    projector.assert_called_with(lock.pop("projector"), root.parents[1], root / "models")
+    projector.assert_called_with(lock.pop("projector"), root.parents[1])
     output = root / "prepared/v0.2.18" if versioned else root
     assert json.loads((output / "prepared.json").read_text()) == {"models": lock, "image": versions}
     assert baseline.read_text() == "baseline receipt"
     pack_mtp = next(command for command in calls if Path(command[1]).name == "mtp_pack.py")
     assert pack_mtp[pack_mtp.index("--src") + 1] == str(tmp_path / "shared-source")
+    source = lock["files"][-1]["path"]
+    assert not (root / "models" / source).exists()
+    assert (tmp_path / "projectors" / source).is_file()
     assert len(urls) == 5
     assert all("unsloth/Qwen3.8-Flash-Next-GGUF/resolve/084c631" in url for url in urls[:4])
     assert "ISTA-DASLab/" in urls[-1]
@@ -238,7 +241,7 @@ def test_release_preparation_uses_shared_weights_and_versioned_outputs(tmp_path:
 
 
 def test_shared_projector_is_converted_once_and_checked_on_reuse(tmp_path: Path) -> None:
-    source = tmp_path / "models" / "bf16.gguf"
+    source = tmp_path / "projectors" / "bf16.gguf"
     source.parent.mkdir()
     source.write_bytes(b"source")
     target = tmp_path / "projectors/q8.gguf"
@@ -254,30 +257,9 @@ def test_shared_projector_is_converted_once_and_checked_on_reuse(tmp_path: Path)
         partial.write_bytes(b"q8")
 
     with patch.object(prepare, "quantize_projector", side_effect=convert) as run:
-        prepare.prepare_projector(projector, tmp_path, source.parent)
-        prepare.prepare_projector(projector, tmp_path, source.parent)
+        prepare.prepare_projector(projector, tmp_path)
+        prepare.prepare_projector(projector, tmp_path)
         target.write_bytes(b"xx")
         with pytest.raises(ValueError, match="checksum"):
-            prepare.prepare_projector(projector, tmp_path, source.parent)
+            prepare.prepare_projector(projector, tmp_path)
     run.assert_called_once()
-
-
-def test_bf16_sources_consolidate_and_survive_repeat_preparation(tmp_path: Path) -> None:
-    data = b"projector"
-    digest = hashlib.sha256(data).hexdigest()
-    shared = tmp_path / "projectors/bf16.gguf"
-    for recipe in ("ista", "unsloth", "fresh"):
-        local = tmp_path / "recipes" / recipe / "models/bf16.gguf"
-        local.parent.mkdir(parents=True)
-        if recipe != "fresh":
-            local.write_bytes(data)
-        for _ in range(2):
-            prepare.share_projector_source(local, shared, "unused", len(data), digest)
-            assert local.is_symlink()
-            assert local.samefile(shared)
-            assert local.read_bytes() == data
-    damaged = tmp_path / "bad.gguf"
-    damaged.write_bytes(b"corrupted")
-    with pytest.raises(ValueError, match="checksum"):
-        prepare.share_projector_source(damaged, shared, "unused", len(data), digest)
-    assert damaged.read_bytes() == b"corrupted"

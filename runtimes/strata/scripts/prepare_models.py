@@ -124,7 +124,7 @@ def quantize_projector(source: Path, output: Path) -> None:
         subprocess.run([Path(build) / "bin/llama-quantize", source, output, "Q8_0"], check=True)
 
 
-def prepare_projector(projector: dict[str, Any], data_root: Path, weights: Path) -> None:
+def prepare_projector(projector: dict[str, Any], data_root: Path) -> None:
     """Publish one verified CPU projector shared by recipes using the same conversion."""
     target = data_root / projector["path"]
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -135,35 +135,9 @@ def prepare_projector(projector: dict[str, Any], data_root: Path, weights: Path)
             return
         with tempfile.TemporaryDirectory(dir=target.parent) as stage:
             partial = Path(stage) / target.name
-            quantize_projector(weights / projector["source"], partial)
+            quantize_projector(target.with_name(projector["source"]), partial)
             verify(partial, projector["size_bytes"], projector["sha256"])
             partial.replace(target)
-
-
-def share_projector_source(local: Path, shared: Path, url: str, size: int, digest: str) -> None:
-    """Verify the BF16 source and atomically link each recipe to a shared copy."""
-    shared.parent.mkdir(parents=True, exist_ok=True)
-    local.parent.mkdir(parents=True, exist_ok=True)
-    with shared.with_suffix(".lock").open("a") as guard:
-        fcntl.flock(guard, fcntl.LOCK_EX)
-        if shared.is_symlink():
-            raise ValueError(f"Shared BF16 source must be a regular file: {shared}")
-        if shared.exists() or not local.exists():
-            download(url, shared, size, digest)
-        else:
-            with tempfile.TemporaryDirectory(dir=shared.parent) as stage:
-                seed = Path(stage) / shared.name
-                shutil.copyfile(local, seed)
-                verify(seed, size, digest)
-                seed.replace(shared)
-        if local.is_symlink() and local.resolve() == shared.resolve():
-            return
-        if local.exists():
-            verify(local, size, digest)
-        with tempfile.TemporaryDirectory(dir=local.parent) as stage:
-            link = Path(stage) / local.name
-            link.symlink_to(os.path.relpath(shared, local.parent))
-            link.replace(local)
 
 
 def prepare_weights(
@@ -177,10 +151,11 @@ def prepare_weights(
             f"{item.get('revision', lock['revision'])}/{item['path']}"
         )
         if projector and item["path"] == projector["source"]:
-            shared = root.parents[1] / projector["path"]
-            share_projector_source(
-                path, shared.with_name(path.name), url, item["size_bytes"], item["sha256"]
-            )
+            path = (root.parents[1] / projector["path"]).with_name(path.name)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.with_suffix(".lock").open("a") as guard:
+                fcntl.flock(guard, fcntl.LOCK_EX)
+                download(url, path, item["size_bytes"], item["sha256"])
         elif not reuse:
             download(url, path, item["size_bytes"], item["sha256"])
         elif path.stat().st_size != item["size_bytes"]:
@@ -214,7 +189,7 @@ def prepare(recipe: Path, root: Path) -> None:
                 raise ValueError(f"Conflicting preparation at {final}")
             prepare_weights(root, lock, projector, reuse=True)
             if projector:
-                prepare_projector(projector, root.parents[1], root / "models")
+                prepare_projector(projector, root.parents[1])
             print(f"Reusing {final}", flush=True)
             return
         output = final.with_name("." + key + ".partial") if key else root
@@ -276,7 +251,7 @@ def prepare(recipe: Path, root: Path) -> None:
         )
         validate_outputs(output)
         if projector:
-            prepare_projector(projector, root.parents[1], root / "models")
+            prepare_projector(projector, root.parents[1])
         temporary = receipt.with_suffix(".tmp")
         temporary.write_text(json.dumps({"models": lock, "image": versions}, indent=2) + "\n")
         temporary.replace(receipt)
