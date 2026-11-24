@@ -1,0 +1,72 @@
+id: Qwen3.8-Flash-Next / GGUF ISTA IQ3_XXS / RX 9070 XT / 16 GB VRAM
+hardware:
+  gpu: Radeon RX 9070/9070 XT/9070 GRE (gfx1201)
+  cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+  memory:
+    architecture: discrete
+    dedicated_vram_gib: 16
+    system_ram_gib: 59
+    unified_memory_gib: null
+os:
+  name: Ubuntu
+  version: '26.10'
+  kernel: 7.3.0-11-generic
+  kernel_driver: amdgpu
+software:
+  harness: llm-recipes baseline suite
+  harness_version: https://github.com/wl04/llm-recipes/commit/a1ade8d1f8d945e5afd67265f7fb1c38707926c5
+  engine: Strata
+  engine_version: 0.1.67
+  engine_source_version: v0.2.21
+  revision: https://github.com/Niko1221/Strata/commit/d46f5f268f8ed797e83a5c63a69bffbd7a581cf6
+  rocm_version: 10.2.0
+  backend: ROCm / HIP
+  backend_api_version: null
+  gpu_driver: amdgpu
+  gpu_driver_version: null
+  pytorch: null
+  python: null
+  base_image_tag: https://hub.docker.com/r/rocm/dev-ubuntu-24.04/tags?name=10.2.0-full
+  base_image: rocm/dev-ubuntu-24.04@sha256:21801c0ba1bc4aba31f81ab11fe576c43daa7f2c7f42bac7baaa4d2f75273f86
+  server: Strata
+  server_version: https://github.com/Niko1221/Strata/commit/d46f5f268f8ed797e83a5c63a69bffbd7a581cf6
+  host_python: 3.14.8
+  running_image_id: sha256:df7b3ef6d4f55a2951383a29c6eb322f8e5c8f2b1e3caf94e557576ed5029c4b
+model:
+  name: Qwen3.8-Flash-Next IQ3_XXS · Strata
+  format: GGUF ISTA IQ3 XXS
+  quantization: IQ3_XXS
+  repository: https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF
+  artifacts:
+  - IQ3_XXS/Qwen3.8-Flash-Next-GSQ-RCO-IQ3_XXS-00001-of-00002.gguf
+  - IQ3_XXS/Qwen3.8-Flash-Next-GSQ-RCO-IQ3_XXS-00002-of-00002.gguf
+  - mmproj-Qwen3.8-Flash-Next-BF16.gguf
+  revision: https://huggingface.co/ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF/commit/ed59f92082b1e93c0e96d60a8b11aab089b52f09
+  draft_repository: https://huggingface.co/Qwen/Qwen3.8-Flash-Next
+  draft_revision: https://huggingface.co/Qwen/Qwen3.8-Flash-Next/commit/de4b8e4d43b917e7706784d8bb445c9af86a3540
+  draft_quantization: q2_0
+settings:
+  serving:
+    served_model_id: qwen3.8-flash-next-iq3_xxs
+    expert_cache: auto
+    prefill: auto
+    max_draft_tokens: '4'
+    min_draft_probability: '0.5'
+    kv_cache: int8
+    gpu_resident_kv_cells: 32768
+    vision: cpu
+    vision_min_image_tokens: 1024
+    vision_max_image_tokens: 1024
+    context_length_tokens: 131072
+    speculative_decoding: true
+    draft_method: MTP
+  sampling: null
+  thinking:
+    enabled: false
+    control: reasoning_effort=none
+  requests:
+    endpoint: /v1/chat/completions
+    token_counting: /v1/messages/count_tokens
+    streaming: Performance requests streamed
+    concurrency: 1
+  notes: null
