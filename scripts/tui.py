@@ -28,7 +28,7 @@ from launcher import (
     start_with_facts,
     validate_options,
 )
-from textual import work
+from textual import on, work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
@@ -206,6 +206,12 @@ class LaunchScreen(ModalScreen[tuple[LaunchOptions, str | None]]):
                     yield Input(
                         str(recipe.context), type="integer", id="launch-context", compact=True
                     )
+                    yield Select(
+                        [(f"{tokens:,}", tokens) for tokens in range(32768, 262145, 32768)],
+                        prompt="Presets",
+                        id="launch-context-preset",
+                        compact=True,
+                    )
                 with Horizontal(classes="launch-row"):
                     yield Label("Drafting")
                     yield Switch(recipe.draft == "on", id="launch-draft")
@@ -267,6 +273,12 @@ class LaunchScreen(ModalScreen[tuple[LaunchOptions, str | None]]):
                 f"Model root: {options.models}\nLogs: {options.logs}"
             )
         self.query_one("#launch-preview", Static).update(text)
+
+    @on(Select.Changed, "#launch-context-preset")
+    def apply_context_preset(self, event: Select.Changed) -> None:
+        if isinstance(event.value, int):
+            self._field("context").value = str(event.value)
+            event.select.clear()
 
     def on_input_changed(self) -> None:
         self._update_preview()

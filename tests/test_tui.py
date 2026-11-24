@@ -354,7 +354,15 @@ def test_launch_form_reuses_validated_options_and_retains_edits_after_failure(
             assert not launched
             assert "multiple of 256" in str(form.query_one("#launch-error", Static).render())
 
-            form.query_one("#launch-context", Input).value = "65536"
+            preset = form.query_one("#launch-context-preset", Select)
+            preset.focus()
+            await pilot.press("enter", "end", "enter")
+            await pilot.pause()
+            assert form.query_one("#launch-context", Input).value == "262144"
+            form.query_one("#launch-context", Input).value = "65792"
+            await pilot.pause()
+            assert form.query_one("#launch-context", Input).value == "65792"
+            preset.value = 65536
             form.query_one("#launch-port", Input).value = "8081"
             form.query_one("#launch-draft", Switch).value = False
             form.query_one("#launch-vision", Select).value = vision
