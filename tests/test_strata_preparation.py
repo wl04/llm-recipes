@@ -105,7 +105,7 @@ def test_prepare_records_selected_lock_without_touching_baseline(
     import json
     import subprocess
 
-    root = tmp_path / "strata-unsloth"
+    root = tmp_path / "recipes/strata-unsloth"
     baseline = tmp_path / "strata/prepared.json"
     baseline.parent.mkdir()
     baseline.write_text("baseline receipt")
@@ -118,6 +118,7 @@ def test_prepare_records_selected_lock_without_touching_baseline(
     (config / "launch.json").write_text(json.dumps({"runtime": selected}))
     for item in lock["files"]:
         item["size_bytes"] = len(b"fixture")
+        item["sha256"] = hashlib.sha256(b"fixture").hexdigest()
     (config / "models.lock.json").write_text(json.dumps(lock))
     runtime = tmp_path / "runtimes/strata"
     lock_path = tmp_path / "runtimes" / selected / "container/versions.lock.json"
@@ -133,7 +134,8 @@ def test_prepare_records_selected_lock_without_touching_baseline(
         return original_read(path)
 
     def download(url: str, path: Path, size: int, digest: str) -> None:
-        urls.append(url)
+        if not path.exists():
+            urls.append(url)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"fixture")
 
@@ -258,3 +260,24 @@ def test_shared_projector_is_converted_once_and_checked_on_reuse(tmp_path: Path)
         with pytest.raises(ValueError, match="checksum"):
             prepare.prepare_projector(projector, tmp_path, source.parent)
     run.assert_called_once()
+
+
+def test_bf16_sources_consolidate_and_survive_repeat_preparation(tmp_path: Path) -> None:
+    data = b"projector"
+    digest = hashlib.sha256(data).hexdigest()
+    shared = tmp_path / "projectors/bf16.gguf"
+    for recipe in ("ista", "unsloth", "fresh"):
+        local = tmp_path / "recipes" / recipe / "models/bf16.gguf"
+        local.parent.mkdir(parents=True)
+        if recipe != "fresh":
+            local.write_bytes(data)
+        for _ in range(2):
+            prepare.share_projector_source(local, shared, "unused", len(data), digest)
+            assert local.is_symlink()
+            assert local.samefile(shared)
+            assert local.read_bytes() == data
+    damaged = tmp_path / "bad.gguf"
+    damaged.write_bytes(b"corrupted")
+    with pytest.raises(ValueError, match="checksum"):
+        prepare.share_projector_source(damaged, shared, "unused", len(data), digest)
+    assert damaged.read_bytes() == b"corrupted"

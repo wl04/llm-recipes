@@ -140,6 +140,53 @@ def prepare_projector(projector: dict[str, Any], data_root: Path, weights: Path)
             partial.replace(target)
 
 
+def share_projector_source(local: Path, shared: Path, url: str, size: int, digest: str) -> None:
+    """Verify the BF16 source and atomically link each recipe to a shared copy."""
+    shared.parent.mkdir(parents=True, exist_ok=True)
+    local.parent.mkdir(parents=True, exist_ok=True)
+    with shared.with_suffix(".lock").open("a") as guard:
+        fcntl.flock(guard, fcntl.LOCK_EX)
+        if shared.is_symlink():
+            raise ValueError(f"Shared BF16 source must be a regular file: {shared}")
+        if shared.exists() or not local.exists():
+            download(url, shared, size, digest)
+        else:
+            with tempfile.TemporaryDirectory(dir=shared.parent) as stage:
+                seed = Path(stage) / shared.name
+                shutil.copyfile(local, seed)
+                verify(seed, size, digest)
+                seed.replace(shared)
+        if local.is_symlink() and local.resolve() == shared.resolve():
+            return
+        if local.exists():
+            verify(local, size, digest)
+        with tempfile.TemporaryDirectory(dir=local.parent) as stage:
+            link = Path(stage) / local.name
+            link.symlink_to(os.path.relpath(shared, local.parent))
+            link.replace(local)
+
+
+def prepare_weights(
+    root: Path, lock: dict[str, Any], projector: dict[str, Any] | None, *, reuse: bool
+) -> None:
+    """Prepare published GGUF files, reusing existing shards for a matching receipt."""
+    for item in lock["files"]:
+        path = root / "models" / item["path"]
+        url = (
+            f"https://huggingface.co/{item.get('repository', lock['repository'])}/resolve/"
+            f"{item.get('revision', lock['revision'])}/{item['path']}"
+        )
+        if projector and item["path"] == projector["source"]:
+            shared = root.parents[1] / projector["path"]
+            share_projector_source(
+                path, shared.with_name(path.name), url, item["size_bytes"], item["sha256"]
+            )
+        elif not reuse:
+            download(url, path, item["size_bytes"], item["sha256"])
+        elif path.stat().st_size != item["size_bytes"]:
+            raise ValueError(f"Invalid shared GGUF: {item['path']}")
+
+
 def prepare(recipe: Path, root: Path) -> None:
     """Prepare the locked target, CPU projector, tokenizer, and Q2_0 MTP runtime."""
     config, _ = recipe_paths(recipe)
@@ -165,9 +212,7 @@ def prepare(recipe: Path, root: Path) -> None:
                 "image": versions,
             }:
                 raise ValueError(f"Conflicting preparation at {final}")
-            for item in lock["files"]:
-                if (root / "models" / item["path"]).stat().st_size != item["size_bytes"]:
-                    raise ValueError(f"Invalid shared GGUF: {item['path']}")
+            prepare_weights(root, lock, projector, reuse=True)
             if projector:
                 prepare_projector(projector, root.parents[1], root / "models")
             print(f"Reusing {final}", flush=True)
@@ -190,12 +235,7 @@ def prepare(recipe: Path, root: Path) -> None:
             output.mkdir(parents=True, exist_ok=True)
         receipt = output / "prepared.json"
         receipt.unlink(missing_ok=True)
-        for item in lock["files"]:
-            url = (
-                f"https://huggingface.co/{item.get('repository', lock['repository'])}/resolve/"
-                f"{item.get('revision', lock['revision'])}/{item['path']}"
-            )
-            download(url, root / "models" / item["path"], item["size_bytes"], item["sha256"])
+        prepare_weights(root, lock, projector, reuse=False)
         environment = dict(
             os.environ,
             STRATA_GGUF_PY="/opt/src/llama_cpp/gguf-py",

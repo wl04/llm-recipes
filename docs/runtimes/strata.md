@@ -13,9 +13,9 @@ Docker needs access to `/dev/kfd` and `/dev/dri`. The recipe's build command rea
 
 ## Preparation
 
-The data root defaults to `~/llm-recipes`. Set `LLM_RECIPES_HOME` before preparation and launch to use another location. Preparation verifies the published GGUF shards and BF16 projector source under `recipes/<recipe>/models/`. Recipes using the same pinned checkpoint share the verified BF16 MTP source under `.cache/strata/mtp/<repository>/<revision>/`.
+The data root defaults to `~/llm-recipes`. Set `LLM_RECIPES_HOME` before preparation and launch to use another location. Preparation verifies the published GGUF shards under `recipes/<recipe>/models/`. Recipes using the same pinned checkpoint share the verified BF16 MTP source under `.cache/strata/mtp/<repository>/<revision>/`.
 
-Both Qwen3.8-Flash-Next recipes serve the same Q8_0 CPU projector under `<data root>/projectors/`. Preparation builds the quantizer from the image's pinned llama.cpp source on first use and checks the output against the model lock. It can add the projector to an existing preparation without repacking the model or regenerating MTP. Keep the locked BF16 source under each recipe's `models/`.
+Both Qwen3.8-Flash-Next recipes serve the same Q8_0 CPU projector under `<data root>/projectors/`. Preparation builds the quantizer from the image's pinned llama.cpp source on first use and checks the output against the model lock. It can add the projector to an existing preparation without repacking the model or regenerating MTP. Preparation also stores one verified BF16 source beside Q8_0. Running preparation for each recipe replaces its duplicate source with a relative symlink in `models/`, preserving the path used by older releases.
 
 Each recipe keeps its generated pack, tokenizer, Q2_0 draft and receipt in `recipes/<recipe>/prepared/<version>/`. Repeating preparation reuses a completed matching receipt and resumes partial downloads.
 
