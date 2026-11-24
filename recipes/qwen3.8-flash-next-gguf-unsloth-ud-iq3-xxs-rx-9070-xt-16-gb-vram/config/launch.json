@@ -1,5 +1,5 @@
 {
-  "runtime": "strata/releases/v0.2.18",
+  "runtime": "strata/releases/v0.2.21",
   "port": 8080,
   "context": 131072,
   "draft": "on",
