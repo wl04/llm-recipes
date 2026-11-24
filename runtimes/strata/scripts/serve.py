@@ -161,6 +161,14 @@ def main() -> int:
             config["tokenizer"] = str(prepared / Path(config["tokenizer"]).relative_to(root))
         receipt = json.loads((prepared / "prepared.json").read_text())
         models = json.loads((config_dir / "models.lock.json").read_text())
+        projector = models.pop("projector", None)
+        if projector and "vision" in config:
+            target = Path("/models") / projector["path"]
+            if (
+                Path(config["vision"]["mmproj"]) != target
+                or target.stat().st_size != projector["size_bytes"]
+            ):
+                raise ValueError("Invalid shared vision projector; rerun prepare_models.py")
         if receipt != {"models": models, "image": expected}:
             raise ValueError("Prepared model lock differs; rerun prepare_models.py")
         validate_model_files(Path("/models") / folder, models)

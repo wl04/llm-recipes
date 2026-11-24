@@ -4,8 +4,8 @@ Strata serves GGUF models through its own API on Ubuntu x86_64 with Docker and a
 
 | Recipe | Pinned Strata build | Setup |
 |---|---|---|
-| Unsloth UD-IQ3_XXS | [v0.2.18](../../runtimes/strata/releases/v0.2.18/runtime.json) | [Build and run](../../recipes/qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram/setup.md) |
-| ISTA IQ3_XXS | [v0.2.13 + 95 commits](../../runtimes/strata/releases/v0.2.13-95-gdbb2d168/runtime.json) | [Build and run](../../recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram/setup.md) |
+| Unsloth UD-IQ3_XXS | [v0.2.21](../../runtimes/strata/releases/v0.2.21/runtime.json) | [Build and run](../../recipes/qwen3.8-flash-next-gguf-unsloth-ud-iq3-xxs-rx-9070-xt-16-gb-vram/setup.md) |
+| ISTA IQ3_XXS | [v0.2.21](../../runtimes/strata/releases/v0.2.21/runtime.json) | [Build and run](../../recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram/setup.md) |
 
 ## Build and check
 
@@ -13,7 +13,9 @@ Docker needs access to `/dev/kfd` and `/dev/dri`. The recipe's build command rea
 
 ## Preparation
 
-The data root defaults to `~/llm-recipes`. Set `LLM_RECIPES_HOME` before preparation and launch to use another location. Preparation verifies the published GGUF shards and projector under `recipes/<recipe>/models/`. Recipes using the same pinned checkpoint share the verified BF16 MTP source under `.cache/strata/mtp/<repository>/<revision>/`.
+The data root defaults to `~/llm-recipes`. Set `LLM_RECIPES_HOME` before preparation and launch to use another location. Preparation verifies the published GGUF shards and BF16 projector source under `recipes/<recipe>/models/`. Recipes using the same pinned checkpoint share the verified BF16 MTP source under `.cache/strata/mtp/<repository>/<revision>/`.
+
+Both Qwen3.8-Flash-Next recipes serve the same Q8_0 CPU projector under `<data root>/projectors/`. Preparation builds the quantizer from the image's pinned llama.cpp source on first use and checks the output against the model lock. It can add the projector to an existing preparation without repacking the model or regenerating MTP. Keep the locked BF16 source under each recipe's `models/`.
 
 Each recipe keeps its generated pack, tokenizer, Q2_0 draft and receipt in `recipes/<recipe>/prepared/<version>/`. Repeating preparation reuses a completed matching receipt and resumes partial downloads.
 

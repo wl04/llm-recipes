@@ -39,5 +39,11 @@
     "expert_quantization": "q2_0",
     "draft_vocabulary": "draft_vocab.bin",
     "verification": "tools/mtp_fetch.py SHA256 at the pinned Strata revision"
+  },
+  "projector": {
+    "source": "mmproj-Qwen3.8-Flash-Next-BF16.gguf",
+    "path": "projectors/mmproj-Qwen3.8-Flash-Next-Q8_0.gguf",
+    "size_bytes": 616703328,
+    "sha256": "6cbb8943b156bed0aca85a48a2d33f1c820885c5787447b0c37985f54809b0fe"
   }
 }

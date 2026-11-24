@@ -15,7 +15,7 @@ python3 scripts/build_runtime.py strata --recipe "$recipe" --check
 python3 runtimes/strata/scripts/prepare_models.py --recipe "recipes/$recipe" --models "${LLM_RECIPES_HOME:-$HOME/llm-recipes}"
 ```
 
-The [model lock](config/models.lock.json) selects two target shards, a BF16 CPU projector and Q2_0 MTP. See [prepared files and shared weights](../../docs/runtimes/strata.md#preparation).
+The [model lock](config/models.lock.json) selects two target shards, the shared Q8_0 CPU projector and Q2_0 MTP. See [prepared files and shared weights](../../docs/runtimes/strata.md#preparation).
 
 ## Launch
 

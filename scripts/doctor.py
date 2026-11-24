@@ -94,8 +94,15 @@ def _check_strata_preparation(
 ) -> None:
     """Verify the strata receipt, the locked weight sizes, and the pack layout."""
     prepared = root / "prepared" / recipe.runtime_directory.name if "/" in recipe.runtime else root
-    if read_json(prepared / "prepared.json") != {"models": lock, "image": versions}:
+    pack_lock = {key: value for key, value in lock.items() if key != "projector"}
+    if read_json(prepared / "prepared.json") != {"models": pack_lock, "image": versions}:
         raise ValueError("Preparation receipt differs from model or runtime lock")
+    projector = lock.get("projector")
+    if projector:
+        path = root.parents[1] / projector["path"]
+        require_file(path)
+        if path.stat().st_size != projector["size_bytes"]:
+            raise ValueError(f"Size differs from projector lock: {path}")
     for item in lock["files"]:
         path = root / "models" / item["path"]
         require_file(path)
@@ -198,6 +205,11 @@ def _strata_endpoints(
         vision = native.get("vision", {})
         if not isinstance(vision, dict):
             raise ValueError("strata.json vision must be an object")
+        projector = lock.get("projector")
+        if projector:
+            if str(root / "models" / projector["source"]) not in files:
+                raise ValueError("Vision conversion source is not a locked model path")
+            files = {str(Path("/models") / projector["path"])}
         if vision.get("mmproj") not in files:
             raise ValueError("Vision projector is not a locked model path")
     return port, model

@@ -170,6 +170,7 @@ def test_prepare_records_selected_lock_without_touching_baseline(
         patch.object(prepare, "tensor_hashes", return_value={}),
         patch.object(prepare, "pinned_mtp_revision", return_value=lock["mtp"]["revision"]),
         patch.object(prepare, "download", download),
+        patch.object(prepare, "prepare_projector") as projector,
         patch.object(prepare.subprocess, "run", run),
         patch.object(prepare.shutil, "copyfile", copy),
     ):
@@ -179,6 +180,7 @@ def test_prepare_records_selected_lock_without_touching_baseline(
                 prepare.prepare(recipe, root)
             rerun.assert_not_called()
 
+    projector.assert_called_with(lock.pop("projector"), root.parents[1], root / "models")
     output = root / "prepared/v0.2.18" if versioned else root
     assert json.loads((output / "prepared.json").read_text()) == {"models": lock, "image": versions}
     assert baseline.read_text() == "baseline receipt"
@@ -231,3 +233,28 @@ def test_release_preparation_uses_shared_weights_and_versioned_outputs(tmp_path:
     )
     assert args[1] == str(tmp_path / "models/weights-00001-of-00002.gguf")
     assert args[3] == str(tmp_path / "prepared/v0.2.18/packs/iq3_xxs")
+
+
+def test_shared_projector_is_converted_once_and_checked_on_reuse(tmp_path: Path) -> None:
+    source = tmp_path / "models" / "bf16.gguf"
+    source.parent.mkdir()
+    source.write_bytes(b"source")
+    target = tmp_path / "projectors/q8.gguf"
+    projector = {
+        "path": "projectors/q8.gguf",
+        "source": source.name,
+        "size_bytes": 2,
+        "sha256": hashlib.sha256(b"q8").hexdigest(),
+    }
+
+    def convert(original: Path, partial: Path) -> None:
+        assert original == source
+        partial.write_bytes(b"q8")
+
+    with patch.object(prepare, "quantize_projector", side_effect=convert) as run:
+        prepare.prepare_projector(projector, tmp_path, source.parent)
+        prepare.prepare_projector(projector, tmp_path, source.parent)
+        target.write_bytes(b"xx")
+        with pytest.raises(ValueError, match="checksum"):
+            prepare.prepare_projector(projector, tmp_path, source.parent)
+    run.assert_called_once()

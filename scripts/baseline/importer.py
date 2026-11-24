@@ -389,6 +389,11 @@ def model_block(recipe_dir: Path, format_part: str) -> dict[str, Any]:
             for item in _seq(lock.get("files"))
             if isinstance(item, Mapping) and isinstance(item.get("path"), str)
         ]
+        projector = _obj(lock.get("projector"))
+        if isinstance(projector.get("path"), str):
+            model["artifacts"] = [
+                name for name in model["artifacts"] if name != projector.get("source")
+            ] + [projector["path"]]
         for artifact in model["artifacts"]:
             path = Path(artifact)
             if len(path.parts) > 1 and re.search(r"-00001-of-\d{5}\.gguf$", path.name):

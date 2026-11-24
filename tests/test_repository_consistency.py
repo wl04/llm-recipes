@@ -42,7 +42,8 @@ def test_recipe_matches_preparation_and_client_with_native_configuration(name: s
         locked_files = {root / "models" / item["path"] for item in lock["files"]}
         for flag in ("--native", "--ple-gguf"):
             assert Path(args[args.index(flag) + 1]) in locked_files
-        assert Path(native["vision"]["mmproj"]) in locked_files
+        assert root / "models" / lock["projector"]["source"] in locked_files
+        assert Path(native["vision"]["mmproj"]) == Path("/models") / lock["projector"]["path"]
         assert Path(args[args.index("--pack") + 1]) == root / "packs/iq3_xxs"
         assert Path(args[args.index("--mtp") + 1]) == root / "mtp/rt"
         assert Path(native["tokenizer"]) == root / "packs/iq3_xxs/tokenizer"

@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -95,10 +96,56 @@ def pack_arguments(lock: dict[str, Any], root: Path, output: Path | None = None)
     return args
 
 
+def quantize_projector(source: Path, output: Path) -> None:
+    """Build the CPU quantizer from the image's pinned llama.cpp checkout."""
+    with tempfile.TemporaryDirectory(prefix="llama-quantize-") as build:
+        subprocess.run(
+            [
+                "cmake",
+                "-S",
+                "/opt/src/llama_cpp",
+                "-B",
+                build,
+                "-G",
+                "Ninja",
+                "-DCMAKE_BUILD_TYPE=Release",
+                "-DGGML_CUDA=OFF",
+                "-DGGML_HIP=OFF",
+                "-DLLAMA_BUILD_TOOLS=ON",
+                "-DLLAMA_BUILD_TESTS=OFF",
+                "-DLLAMA_BUILD_SERVER=OFF",
+            ],
+            check=True,
+        )
+        subprocess.run(
+            ["cmake", "--build", build, "--target", "llama-quantize", "--parallel", "4"],
+            check=True,
+        )
+        subprocess.run([Path(build) / "bin/llama-quantize", source, output, "Q8_0"], check=True)
+
+
+def prepare_projector(projector: dict[str, Any], data_root: Path, weights: Path) -> None:
+    """Publish one verified CPU projector shared by recipes using the same conversion."""
+    target = data_root / projector["path"]
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.with_suffix(".lock").open("a") as guard:
+        fcntl.flock(guard, fcntl.LOCK_EX)
+        if target.exists():
+            verify(target, projector["size_bytes"], projector["sha256"])
+            return
+        with tempfile.TemporaryDirectory(dir=target.parent) as stage:
+            partial = Path(stage) / target.name
+            quantize_projector(weights / projector["source"], partial)
+            verify(partial, projector["size_bytes"], projector["sha256"])
+            partial.replace(target)
+
+
 def prepare(recipe: Path, root: Path) -> None:
     """Prepare the locked target, CPU projector, tokenizer, and Q2_0 MTP runtime."""
     config, _ = recipe_paths(recipe)
     lock = json.loads((config / "models.lock.json").read_text())
+    # The projector has its own checksum and is independent of the pack and MTP receipt.
+    projector = lock.pop("projector", None)
     key = release_key(config)
     pins = RUNTIME / "releases" / key if key else RUNTIME
     versions = json.loads((pins / "container/versions.lock.json").read_text())
@@ -121,6 +168,8 @@ def prepare(recipe: Path, root: Path) -> None:
             for item in lock["files"]:
                 if (root / "models" / item["path"]).stat().st_size != item["size_bytes"]:
                     raise ValueError(f"Invalid shared GGUF: {item['path']}")
+            if projector:
+                prepare_projector(projector, root.parents[1], root / "models")
             print(f"Reusing {final}", flush=True)
             return
         output = final.with_name("." + key + ".partial") if key else root
@@ -186,6 +235,8 @@ def prepare(recipe: Path, root: Path) -> None:
             tools.parent / "data" / lock["mtp"]["draft_vocabulary"], mtp / "rt/draft_vocab.bin"
         )
         validate_outputs(output)
+        if projector:
+            prepare_projector(projector, root.parents[1], root / "models")
         temporary = receipt.with_suffix(".tmp")
         temporary.write_text(json.dumps({"models": lock, "image": versions}, indent=2) + "\n")
         temporary.replace(receipt)

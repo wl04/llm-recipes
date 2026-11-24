@@ -35,7 +35,7 @@
   "backend": "hip",
   "vision": {
     "exe": "/opt/strata/bin/strata-vision",
-    "mmproj": "/models/recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram/models/mmproj-Qwen3.8-Flash-Next-BF16.gguf",
+    "mmproj": "/models/projectors/mmproj-Qwen3.8-Flash-Next-Q8_0.gguf",
     "model": "/models/recipes/qwen3.8-flash-next-gguf-ista-iq3-xxs-rx-9070-xt-16-gb-vram/models/IQ3_XXS/Qwen3.8-Flash-Next-GSQ-RCO-IQ3_XXS-00001-of-00002.gguf",
     "gpu": false,
     "min_tokens": 1024,
