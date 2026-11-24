@@ -2,6 +2,7 @@
 
 import json
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -201,9 +202,12 @@ def test_import_creates_a_complete_experiment_folder(
 ) -> None:
     root = _make_repo(tmp_path)
     run_dir = _make_run(tmp_path)
-    monkeypatch.setattr(
-        importer, "_repository_url", lambda _root: "https://github.com/wl04/llm-recipes"
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(
+        ["git", "-C", str(root), "remote", "add", "origin", "https://example.org/recipes.git"],
+        check=True,
     )
+    monkeypatch.chdir(tmp_path)
 
     folder = importer.import_run(run_dir, root)
 
@@ -215,7 +219,7 @@ def test_import_creates_a_complete_experiment_folder(
     assert profile["hardware"]["memory"]["system_ram_gib"] == 59
     assert profile["os"]["version"] == "26.10"
     assert profile["software"]["harness"] == importer.HARNESS
-    assert profile["software"]["harness_version"].endswith("/commit/abc123def")
+    assert profile["software"]["harness_version"] == "https://example.org/recipes/commit/abc123def"
     assert profile["software"]["engine_version"] == "1.6.6"
     assert profile["software"]["rocm_version"] == "7.1.0"
     assert profile["software"]["base_image_tag"] == (

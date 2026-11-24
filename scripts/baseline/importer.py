@@ -14,7 +14,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -281,12 +281,11 @@ def software_block(
     runtime: Mapping[str, Any],
     lock: Mapping[str, Any],
     system: Mapping[str, Any] | None,
-    repository: Callable[[Path], str | None] = _repository_url,
-    root: Path = Path("."),
+    root: Path,
 ) -> dict[str, Any]:
     revision = _obj(_dig(meta, "host", "revision"))
     commit = revision.get("commit")
-    base_url = repository(root)
+    base_url = _repository_url(root) if commit else None
     harness_version = None
     if commit and base_url:
         harness_version = f"{base_url}/commit/{commit}"
@@ -668,7 +667,7 @@ def build_profile(
         "id": recipe_identity(recipe_dir),
         "hardware": hardware_block(system),
         "os": os_block(system, meta),
-        "software": software_block(meta, facts, runtime, lock, system),
+        "software": software_block(meta, facts, runtime, lock, system, recipe_dir.parents[1]),
         "model": model_block(recipe_dir, format_part),
         "settings": settings_block(meta, results, facts, recipe_dir, adapter),
     }
@@ -748,7 +747,7 @@ def session_profile(
         "id": recipe_identity(recipe_dir),
         "hardware": hardware_block(system),
         "os": os_block(system, meta),
-        "software": software_block(meta, facts, runtime, lock, system),
+        "software": software_block(meta, facts, runtime, lock, system, root),
         "model": model_block(recipe_dir, format_part),
         "settings": {
             "serving": serving,
