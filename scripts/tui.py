@@ -30,7 +30,7 @@ from launcher import (
     start_with_facts,
     validate_options,
 )
-from textual import on, work
+from textual import events, on, work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
@@ -43,6 +43,7 @@ from textual.widgets import (
     Input,
     Label,
     Link,
+    OptionList,
     Select,
     Static,
     Switch,
@@ -163,6 +164,71 @@ def launch_recipe(recipe: Recipe, options: LaunchOptions) -> str | None:
     return warning
 
 
+class ContextField(Vertical):
+    """Editable context size with an attached preset menu."""
+
+    FOCUS_ON_CLICK = False
+    PRESETS = range(32768, 262145, 32768)
+    DEFAULT_CSS = """
+    ContextField { width: 1fr; height: auto; }
+    ContextField Horizontal { height: 1; background: $surface; }
+    ContextField #context-arrow { width: 3; text-align: center; pointer: pointer; }
+    ContextField #context-presets {
+        display: none; height: auto; max-height: 12;
+        overlay: screen; constrain: none inside; border: tall $border-blurred;
+    }
+    """
+
+    def __init__(self, value: int) -> None:
+        super().__init__()
+        self.editor = Input(str(value), type="integer", id="launch-context", compact=True)
+        self.arrow = Static("▼", id="context-arrow")
+        self.menu = OptionList(
+            *(f"{tokens:,}" for tokens in self.PRESETS), id="context-presets", compact=True
+        )
+
+    def compose(self) -> ComposeResult:
+        with Horizontal():
+            yield self.editor
+            yield self.arrow
+        yield self.menu
+
+    @on(Input.Submitted, "#launch-context")
+    @on(events.Click, "#context-arrow")
+    def toggle_presets(self) -> None:
+        if self.menu.display:
+            self.editor.focus()
+            return
+        # Keep an arrow click from moving focus to the surrounding scroll view.
+        self.can_focus = True
+        self.menu.display = True
+        self.arrow.update("▲")
+        self.menu.highlighted = next(
+            (i for i, tokens in enumerate(self.PRESETS) if str(tokens) == self.editor.value), 0
+        )
+        self.menu.focus(scroll_visible=False)
+
+    def on_key(self, event: events.Key) -> None:
+        if self.editor.has_focus and event.key == "down":
+            self.toggle_presets()
+        elif self.menu.has_focus and event.key == "escape":
+            self.editor.focus()
+        else:
+            return
+        event.stop()
+        event.prevent_default()
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        self.editor.value = str(self.PRESETS[event.option_index])
+        self.editor.focus()
+
+    @on(events.DescendantBlur, "#context-presets")
+    def close_presets(self) -> None:
+        self.can_focus = False
+        self.menu.display = False
+        self.arrow.update("▼")
+
+
 class LaunchScreen(ModalScreen[tuple[LaunchOptions, str | None]]):
     """Edit the options for one launch."""
 
@@ -208,15 +274,7 @@ class LaunchScreen(ModalScreen[tuple[LaunchOptions, str | None]]):
                     yield Input(recipe.name, id="launch-name", compact=True)
                 with Horizontal(classes="launch-row"):
                     yield Label("Context tokens")
-                    yield Input(
-                        str(recipe.context), type="integer", id="launch-context", compact=True
-                    )
-                    yield Select(
-                        [(f"{tokens:,}", tokens) for tokens in range(32768, 262145, 32768)],
-                        prompt="Presets",
-                        id="launch-context-preset",
-                        compact=True,
-                    )
+                    yield ContextField(recipe.context)
                 with Horizontal(classes="launch-row"):
                     yield Label("Drafting")
                     yield Switch(recipe.draft == "on", id="launch-draft")
@@ -285,12 +343,6 @@ class LaunchScreen(ModalScreen[tuple[LaunchOptions, str | None]]):
             )
         self.query_one("#launch-preview", Static).update(text)
 
-    @on(Select.Changed, "#launch-context-preset")
-    def apply_context_preset(self, event: Select.Changed) -> None:
-        if isinstance(event.value, int):
-            self._field("context").value = str(event.value)
-            event.select.clear()
-
     def on_input_changed(self) -> None:
         self._update_preview()
 
@@ -328,7 +380,7 @@ class LaunchScreen(ModalScreen[tuple[LaunchOptions, str | None]]):
 
     def _set_starting(self, starting: bool) -> None:
         self._starting = starting
-        for widget in self.query("Input, Switch, Select, Checkbox, Button"):
+        for widget in self.query("Input, Switch, Select, Checkbox, Button, ContextField"):
             widget.disabled = starting
 
     @work

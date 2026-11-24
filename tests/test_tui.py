@@ -17,6 +17,7 @@ from textual.widgets import (
     DataTable,
     Input,
     Link,
+    OptionList,
     Select,
     Static,
     Switch,
@@ -364,15 +365,24 @@ def test_launch_form_reuses_validated_options_and_retains_edits_after_failure(
             assert not launched
             assert "multiple of 256" in str(form.query_one("#launch-error", Static).render())
 
-            preset = form.query_one("#launch-context-preset", Select)
-            preset.focus()
-            await pilot.press("enter", "end", "enter")
-            await pilot.pause()
-            assert form.query_one("#launch-context", Input).value == "262144"
-            form.query_one("#launch-context", Input).value = "65792"
-            await pilot.pause()
-            assert form.query_one("#launch-context", Input).value == "65792"
-            preset.value = 65536
+            context = form.query_one("#launch-context", Input)
+            context.focus()
+            await pilot.press("down", "end", "enter")
+            assert context.value == "262144"
+            assert context.has_focus
+            await pilot.press("ctrl+shift+a", "6", "5", "7", "9", "2")
+            assert context.value == "65792"
+            await pilot.press("enter", "escape")
+            assert app.screen is form
+            assert context.value == "65792"
+            await pilot.click("#context-arrow")
+            menu = form.query_one("#context-presets", OptionList)
+            assert menu.display
+            await pilot.click("#context-arrow")
+            assert not menu.display
+            await pilot.click("#context-arrow")
+            await pilot.press("home", "down", "enter")
+            assert context.value == "65536"
             form.query_one("#launch-port", Input).value = "8081"
             form.query_one("#launch-draft", Switch).value = False
             assert bool(form.query("#launch-api-monitor")) == (adapter == "strata")
@@ -435,7 +445,9 @@ def test_launch_form_resets_defaults_and_escape_cancels(
             form = app.screen
             form.query_one("#launch-name", Input).value = "custom"
             form.query_one("#launch-port", Input).value = "8081"
+            form.query_one("#launch-context", Input).value = "196608"
             await pilot.click("#launch-reset")
+            assert form.query_one("#launch-context", Input).value == str(RECIPE.context)
             assert form.query_one("#launch-name", Input).value == RECIPE.name
             assert form.query_one("#launch-port", Input).value == str(RECIPE.port)
             await pilot.press("escape")
