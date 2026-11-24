@@ -126,6 +126,32 @@ def test_start_rejects_unsupported_vision_before_execution(recipe: launcher.Reci
     assert result.returncode == 2
 
 
+@pytest.mark.parametrize(("adapter", "expected_status"), [("strata", 0), ("tabbyapi", 2)])
+def test_start_checks_monitor_capability_before_execution(
+    adapter: str, expected_status: int
+) -> None:
+    recipe = recipe_for(adapter)
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/launch.py"),
+            "start",
+            recipe.name,
+            "--dry-run",
+            "--api-monitor",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == expected_status
+    if expected_status == 0:
+        assert result.stdout.strip().endswith("--api-monitor")
+    else:
+        assert "--api-monitor is unsupported" in result.stderr
+
+
 def test_start_dry_run_leaves_directories_absent_without_gpu(
     recipe: launcher.Recipe, tmp_path: Path
 ) -> None:

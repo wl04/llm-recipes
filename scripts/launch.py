@@ -13,6 +13,7 @@ import paths
 from doctor import diagnose
 from launcher import (
     Recipe,
+    dashboard_url,
     discover_recipes,
     gpu_groups,
     instances_command,
@@ -57,6 +58,9 @@ def parser() -> argparse.ArgumentParser:
     start.add_argument("--draft", choices=("on", "off"))
     start.add_argument(
         "--vision", choices=("on", "off", "cpu"), help="TabbyAPI: on/off; Strata: cpu/off"
+    )
+    start.add_argument(
+        "--api-monitor", action="store_true", help="enable the Strata API request monitor"
     )
     start.add_argument("--context", type=int)
     start.add_argument("--port", type=int)
@@ -196,6 +200,7 @@ def _start(recipe: Recipe, args: argparse.Namespace) -> int:
         vision=args.vision,
         port=args.port,
         detached=args.detach,
+        api_monitor=args.api_monitor,
     )
     uid, gid = os.getuid(), os.getgid()
     # Validate the plan before host-device access or directory creation.
@@ -209,6 +214,9 @@ def _start(recipe: Recipe, args: argparse.Namespace) -> int:
     refresh_sudo_ticket()
     print(f"Instance: {name}\nPersistent logs: {options.logs}", flush=True)
     print(f"API address: http://127.0.0.1:{options.port}/v1 (after model loading)", flush=True)
+    print(f"Dashboard: {dashboard_url(recipe.adapter, options.port)}", flush=True)
+    if options.api_monitor:
+        print(f"Request monitor: http://127.0.0.1:{options.port}/api-monitor", flush=True)
     status, warning = start_with_facts(recipe, options, command, run_command)
     if warning:
         print(warning, file=sys.stderr)

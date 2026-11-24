@@ -34,7 +34,7 @@ The [launcher](../launcher.md#shared-runtimes) provides mounts and invokes the s
 
 The helper validates `config/tabby.yml` against the pinned TabbyAPI schema, verifies model preparation metadata and image pins, selects the GPU before HIP initialization, and starts TabbyAPI in a temporary writable directory. That directory's `logs` entry points to `/logs`. TabbyAPI rotates file logs at 20 MB, compresses them, and retains them for one week by default; native logging settings control retention.
 
-`--vision on|off` selects GPU-resident vision, `--draft on|off` controls the configured draft, and `--context` sets sequence and cache capacity. Native sampling values remain in the recipe. Entries with `force: false` supply defaults; explicit request values take precedence. The default host API port is 5000; the UI is `/ui/` and status is `/ui/status`.
+`--vision on|off` selects GPU-resident vision, `--draft on|off` controls the configured draft, and `--context` sets sequence and cache capacity. Native sampling values remain in the recipe. Entries with `force: false` supply defaults; explicit request values take precedence. The default host API port is 5000; the UI is `/ui/` and status is `/ui/status`. With admin access, select a running request or one of the last 20 completed requests to inspect its prompt and generated text. [TabbyAPI status page](https://github.com/theroyallab/tabbyAPI/blob/8f92fac5d9307bf1e09668c3715b32ff46ad0333/docs/03.-Usage.md#status-page)
 
 ## Baseline and clients
 

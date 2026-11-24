@@ -18,7 +18,13 @@ RUNTIME = Path(__file__).resolve().parents[1]
 
 
 def configure(
-    source: dict[str, Any], context: int, draft: str, vision: str, *, modern: bool = False
+    source: dict[str, Any],
+    context: int,
+    draft: str,
+    vision: str,
+    *,
+    modern: bool = False,
+    api_monitor: bool = False,
 ) -> dict[str, Any]:
     """Return an independent native config with requested context, MTP, and CPU vision."""
     if context < 1024 or context % 256 or context > 999999999:
@@ -26,6 +32,8 @@ def configure(
     if draft not in ("on", "off") or vision not in ("cpu", "off"):
         raise ValueError("draft must be on/off; vision must be cpu/off")
     config = copy.deepcopy(source)
+    if api_monitor:
+        config["api_monitor"] = True
     args = config["args"]
     args[args.index("--max-context") + 1] = str(context)
     args[args.index("--kv-resident") + 1] = str(min(context, 32768))
@@ -136,6 +144,7 @@ def main() -> int:
     parser.add_argument("--context", type=int, default=131072)
     parser.add_argument("--draft", choices=("on", "off"), default="on")
     parser.add_argument("--vision", choices=("cpu", "off"), default="cpu")
+    parser.add_argument("--api-monitor", action="store_true")
     options = parser.parse_args()
     recipe = options.recipe.resolve()
     try:
@@ -151,6 +160,7 @@ def main() -> int:
             options.context,
             options.draft,
             options.vision,
+            api_monitor=options.api_monitor,
             modern=built.get("layout") == "engine-terminal",
         )
         root = Path("/models") / folder

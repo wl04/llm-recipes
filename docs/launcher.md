@@ -64,6 +64,7 @@ Explicit CLI options override the recipe's launch defaults.
 | `--context TOKENS` | Manifest context | Context capacity |
 | `--draft on\|off` | Manifest drafting setting | Configured speculative decoding |
 | `--vision on\|off\|cpu` | Manifest vision setting | TabbyAPI: `on/off` GPU vision; Strata: `cpu/off` CPU vision |
+| `--api-monitor` | Recipe setting (off in the supplied recipes) | Enable the Strata request monitor at `/api-monitor` for this instance. It holds the last 100 requests’ prompts and answers in memory. |
 | `--detach` | Off | Background execution |
 | `--dry-run` | Off | Print the command without creating directories or accessing GPU devices |
 
@@ -85,9 +86,9 @@ Queries (`list`, `ps`, `status`) accept `--json` for machine-readable output.
 
 Run `llm-recipes tui` after the normal installation. It asks for Docker credentials before opening.
 
-On the Recipes tab, select a recipe and press **s**. The form starts with the recipe defaults. Press **Enter** on **Start** to accept them, or use **Tab** and **Shift+Tab** to edit the instance name, context, drafting, vision, and host port. For context, enter a token count or choose a preset from 32,768 to 262,144 tokens in steps of 32,768. The form previews the API address and log directory. **Reset defaults** restores the form, and **Esc** cancels before launch. Overrides apply to this instance.
+On the Recipes tab, select a recipe and press **s**. The form starts with the recipe defaults. Press **Enter** on **Start** to accept them, or use **Tab** and **Shift+Tab** to edit the instance name, context, drafting, vision, and host port. For context, enter a token count or choose a preset from 32,768 to 262,144 tokens in steps of 32,768. Strata recipes also offer an **Enable API request monitor** checkbox. The form previews the API address and log directory. **Reset defaults** restores the form, and **Esc** cancels before launch. Overrides apply to this instance.
 
-If Docker rejects the start, the form keeps your values and shows the error. After Docker accepts it, the dashboard switches to Instances and selects the new instance when it appears. The status shows its API address while the model loads. Use **l** to follow logs, **x** to stop the selected instance, **r** to refresh, and **q** to quit. **Esc** closes the log view. Closing the dashboard leaves running instances active.
+If Docker rejects the start, the form keeps your values and shows the error. After Docker accepts it, the dashboard switches to Instances and selects the new instance when it appears. The status shows its API address while the model loads. Select a running instance and open its dashboard link. Strata opens its web app with the Monitor tab, and TabbyAPI opens its status page. Use **l** to follow logs, **x** to stop the selected instance, **r** to refresh, and **q** to quit. **Esc** closes the log view. Closing the dashboard leaves running instances active.
 
 ![Terminal dashboard Instances tab with an example coding server](../assets/tui/dashboard.svg)
 

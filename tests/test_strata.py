@@ -199,6 +199,16 @@ def test_configure_disables_optional_models_without_mutating_defaults() -> None:
     assert "--mtp" in original["args"]
 
 
+def test_configure_enables_api_monitor_only_for_requested_launch() -> None:
+    source = json.loads((RECIPE / "config/strata.json").read_text())
+
+    assert "api_monitor" not in serve.configure(source, 4096, "on", "cpu")
+    assert serve.configure(source, 4096, "on", "cpu", api_monitor=True)["api_monitor"] is True
+    assert "api_monitor" not in source
+    source["api_monitor"] = True
+    assert serve.configure(source, 4096, "on", "cpu")["api_monitor"] is True
+
+
 def test_configure_preserves_cpu_vision_and_resident_cap_for_long_context() -> None:
     original = json.loads((RECIPE / "config/strata.json").read_text())
 

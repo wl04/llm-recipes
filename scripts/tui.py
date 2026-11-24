@@ -3,6 +3,7 @@
 
 import asyncio
 import os
+import re
 import subprocess
 import sys
 from collections import deque
@@ -12,9 +13,10 @@ from typing import ClassVar
 import paths
 from doctor import diagnose
 from launcher import (
-    VISION_MODES,
+    ADAPTER_CAPABILITIES,
     LaunchOptions,
     Recipe,
+    dashboard_url,
     discover_recipes,
     gpu_groups,
     instance_name,
@@ -34,11 +36,13 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import (
     Button,
+    Checkbox,
     DataTable,
     Footer,
     Header,
     Input,
     Label,
+    Link,
     Select,
     Static,
     Switch,
@@ -194,6 +198,7 @@ class LaunchScreen(ModalScreen[tuple[LaunchOptions, str | None]]):
 
     def compose(self) -> ComposeResult:
         recipe = self.recipe
+        capabilities = ADAPTER_CAPABILITIES[recipe.adapter]
         vision_labels = {"off": "Off", "on": "GPU", "cpu": "CPU"}
         with Vertical(id="launch-dialog"):
             yield Static(f"Launch {recipe.name}", id="launch-title", markup=False)
@@ -218,7 +223,7 @@ class LaunchScreen(ModalScreen[tuple[LaunchOptions, str | None]]):
                 with Horizontal(classes="launch-row"):
                     yield Label("Vision")
                     yield Select(
-                        [(vision_labels[value], value) for value in VISION_MODES[recipe.adapter]],
+                        [(vision_labels[value], value) for value in capabilities.vision_modes],
                         value=recipe.vision,
                         allow_blank=False,
                         id="launch-vision",
@@ -227,6 +232,10 @@ class LaunchScreen(ModalScreen[tuple[LaunchOptions, str | None]]):
                 with Horizontal(classes="launch-row"):
                     yield Label("Host port")
                     yield Input(str(recipe.port), type="integer", id="launch-port", compact=True)
+                if capabilities.api_monitor:
+                    yield Checkbox(
+                        "Enable API request monitor", id="launch-api-monitor", compact=True
+                    )
                 yield Static("", id="launch-preview", markup=False)
                 yield Static("", id="launch-error", markup=False)
             with Horizontal(id="launch-buttons"):
@@ -258,6 +267,8 @@ class LaunchScreen(ModalScreen[tuple[LaunchOptions, str | None]]):
             vision=str(self.query_one("#launch-vision", Select).value),
             port=self._number("port", "Host port"),
             detached=True,
+            api_monitor=ADAPTER_CAPABILITIES[self.recipe.adapter].api_monitor
+            and self.query_one("#launch-api-monitor", Checkbox).value,
         )
         validate_options(options, self.recipe.adapter)
         return options
@@ -299,6 +310,8 @@ class LaunchScreen(ModalScreen[tuple[LaunchOptions, str | None]]):
             self._field("port").value = str(recipe.port)
             self.query_one("#launch-draft", Switch).value = recipe.draft == "on"
             self.query_one("#launch-vision", Select).value = recipe.vision
+            if ADAPTER_CAPABILITIES[recipe.adapter].api_monitor:
+                self.query_one("#launch-api-monitor", Checkbox).value = False
             self.query_one("#launch-error", Static).update("")
         elif event.button.id == "launch-start":
             error_box = self.query_one("#launch-error", Static)
@@ -315,7 +328,7 @@ class LaunchScreen(ModalScreen[tuple[LaunchOptions, str | None]]):
 
     def _set_starting(self, starting: bool) -> None:
         self._starting = starting
-        for widget in self.query("Input, Switch, Select, Button"):
+        for widget in self.query("Input, Switch, Select, Checkbox, Button"):
             widget.disabled = starting
 
     @work
@@ -336,6 +349,7 @@ class LlmRecipesApp(App[None]):
     """Recipe dashboard with doctor badges and a live instance list."""
 
     CSS = """
+    #instance-table { height: 1fr; }
     #status { height: auto; min-height: 1; max-height: 3; dock: bottom; }
     """
     BINDINGS: ClassVar = [
@@ -359,6 +373,7 @@ class LlmRecipesApp(App[None]):
                 yield DataTable(id="recipe-table")
             with TabPane("Instances", id="instances"):
                 yield DataTable(id="instance-table")
+                yield Link("", id="instance-dashboard")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -392,12 +407,13 @@ class LlmRecipesApp(App[None]):
         except Exception as error:  # noqa: BLE001 - the status bar reports worker failures
             self.call_from_thread(self._status, f"Recipe discovery failed: {error}")
             return
-        self._recipes = recipes
         self.call_from_thread(self._fill_recipes, recipes)
         for recipe in recipes.values():
             self.call_from_thread(self._check_doctor, recipe.name)
 
     def _fill_recipes(self, recipes: dict[str, Recipe]) -> None:
+        self._recipes = recipes
+        self._update_dashboard_link()
         table = self.query_one("#recipe-table", DataTable)
         selected = table.cursor_row
         table.clear(columns=False)
@@ -458,6 +474,26 @@ class LlmRecipesApp(App[None]):
             self._instance_to_select = None
         if selected is not None and selected in table.rows:
             table.move_cursor(row=table.get_row_index(selected))
+
+        self._update_dashboard_link()
+
+    @on(DataTable.RowHighlighted, "#instance-table")
+    def _update_dashboard_link(self) -> None:
+        table = self.query_one("#instance-table", DataTable)
+        link = self.query_one("#instance-dashboard", Link)
+        url = ""
+        if table.cursor_row < table.row_count:
+            _, recipe_name, _, ports = table.get_row_at(table.cursor_row)
+            recipe = self._recipes.get(str(recipe_name))
+            if recipe is not None:
+                mapping = re.search(
+                    rf"(?:^|,\s*)127\.0\.0\.1:(\d+)->{recipe.port}/tcp(?:,|$)", str(ports)
+                )
+                if mapping:
+                    url = dashboard_url(recipe.adapter, int(mapping[1]))
+        link.url = url
+        link.text = f"Open dashboard  {url}"
+        link.display = bool(url)
 
     def _selected_name(self, selector: str) -> str | None:
         """Return the key of the focused row in the addressed table."""

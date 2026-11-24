@@ -11,7 +11,17 @@ import launcher
 import pytest
 import tui
 from launcher import LaunchOptions, Recipe
-from textual.widgets import Button, DataTable, Input, Select, Static, Switch, TabbedContent
+from textual.widgets import (
+    Button,
+    Checkbox,
+    DataTable,
+    Input,
+    Link,
+    Select,
+    Static,
+    Switch,
+    TabbedContent,
+)
 
 RECIPE = Recipe(
     name="alpha",
@@ -365,6 +375,11 @@ def test_launch_form_reuses_validated_options_and_retains_edits_after_failure(
             preset.value = 65536
             form.query_one("#launch-port", Input).value = "8081"
             form.query_one("#launch-draft", Switch).value = False
+            assert bool(form.query("#launch-api-monitor")) == (adapter == "strata")
+            if adapter == "strata":
+                monitor = form.query_one("#launch-api-monitor", Checkbox)
+                assert not monitor.value
+                monitor.value = True
             form.query_one("#launch-vision", Select).value = vision
             await pilot.pause()
             assert "127.0.0.1:8081/v1" in str(form.query_one("#launch-preview", Static).render())
@@ -390,7 +405,15 @@ def test_launch_form_reuses_validated_options_and_retains_edits_after_failure(
         launched
         == [
             LaunchOptions(
-                "coding", tmp_path, tmp_path / "logs/coding", 65536, "off", vision, 8081, True
+                "coding",
+                tmp_path,
+                tmp_path / "logs/coding",
+                65536,
+                "off",
+                vision,
+                8081,
+                True,
+                api_monitor=adapter == "strata",
             )
         ]
         * 2
@@ -420,3 +443,34 @@ def test_launch_form_resets_defaults_and_escape_cancels(
 
     asyncio.run(scenario())
     assert not launched
+
+
+def test_instance_dashboard_links_follow_selected_published_port() -> None:
+    async def scenario() -> None:
+        app = make_app()
+        async with app.run_test() as pilot:
+            strata = replace(OTHER_RECIPE, adapter="strata", port=8080)
+            app._fill_recipes({RECIPE.name: RECIPE, strata.name: strata})
+            records = [
+                {**INSTANCE_RECORD, "instance": "one", "ports": "127.0.0.1:8081->5000/tcp"},
+                {
+                    **INSTANCE_RECORD,
+                    "instance": "two",
+                    "recipe": strata.name,
+                    "ports": "127.0.0.1:8082->8080/tcp",
+                },
+            ]
+            app.query_one(TabbedContent).active = "instances"
+            app._fill_instances(records)
+            await pilot.pause()
+            link = app.query_one("#instance-dashboard", Link)
+            assert link.display
+            assert link.url == "http://127.0.0.1:8081/ui/status"
+            app.query_one("#instance-table", DataTable).move_cursor(row=1)
+            await pilot.pause()
+            assert link.url == "http://127.0.0.1:8082/"
+            app._fill_instances([])
+            await pilot.pause()
+            assert not link.display
+
+    asyncio.run(scenario())

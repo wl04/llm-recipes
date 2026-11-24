@@ -55,6 +55,7 @@ class LaunchOptions:
     vision: str
     port: int
     detached: bool = False
+    api_monitor: bool = False
 
 
 def instance_name(value: str) -> str:
@@ -64,7 +65,24 @@ def instance_name(value: str) -> str:
     return value
 
 
-VISION_MODES = {"tabbyapi": ("on", "off"), "strata": ("cpu", "off")}
+@dataclass(frozen=True)
+class AdapterCapabilities:
+    """Launch overrides supported by an API server."""
+
+    vision_modes: tuple[str, ...]
+    dashboard_path: str
+    api_monitor: bool = False
+
+
+ADAPTER_CAPABILITIES = {
+    "tabbyapi": AdapterCapabilities(("on", "off"), dashboard_path="/ui/status"),
+    "strata": AdapterCapabilities(("cpu", "off"), dashboard_path="/", api_monitor=True),
+}
+
+
+def dashboard_url(adapter: str, port: int) -> str:
+    """Return the browser dashboard on the instance's published loopback port."""
+    return f"http://127.0.0.1:{port}{ADAPTER_CAPABILITIES[adapter].dashboard_path}"
 
 
 def validate_options(options: LaunchOptions, adapter: str = "tabbyapi") -> None:
@@ -74,10 +92,15 @@ def validate_options(options: LaunchOptions, adapter: str = "tabbyapi") -> None:
         raise ValueError("context must be at least 1024 and a multiple of 256 (at most 9 digits)")
     if not 1 <= options.port <= 65535:
         raise ValueError("port must be between 1 and 65535")
-    if adapter not in VISION_MODES:
+    if adapter not in ADAPTER_CAPABILITIES:
         raise ValueError(f"Unsupported adapter: {adapter}")
-    if options.draft not in ("on", "off") or options.vision not in VISION_MODES[adapter]:
-        raise ValueError(f"{adapter}: draft must be on/off; vision must be {VISION_MODES[adapter]}")
+    capabilities = ADAPTER_CAPABILITIES[adapter]
+    if options.api_monitor and not capabilities.api_monitor:
+        raise ValueError(f"{adapter}: --api-monitor is unsupported")
+    if options.draft not in ("on", "off") or options.vision not in capabilities.vision_modes:
+        raise ValueError(
+            f"{adapter}: draft must be on/off; vision must be {capabilities.vision_modes}"
+        )
 
 
 def resolve_launch_options(
@@ -91,6 +114,7 @@ def resolve_launch_options(
     vision: str | None = None,
     port: int | None = None,
     detached: bool = False,
+    api_monitor: bool = False,
 ) -> LaunchOptions:
     """Fill unset launch options from the recipe's manifest defaults."""
     return LaunchOptions(
@@ -102,6 +126,7 @@ def resolve_launch_options(
         recipe.vision if vision is None else vision,
         recipe.port if port is None else port,
         detached,
+        api_monitor,
     )
 
 
@@ -216,21 +241,22 @@ def mount(source: Path, destination: str, readonly: bool = False) -> list[str]:
     return ["--mount", f"type=bind,src={source},dst={destination}{suffix}"]
 
 
-def engine_command(recipe: Recipe, context: int, draft: str, vision: str) -> list[str]:
+def engine_command(recipe: Recipe, options: LaunchOptions) -> list[str]:
     """Translate launch options into the recipe's native entry point."""
-    if recipe.adapter not in ("tabbyapi", "strata"):
+    if recipe.adapter not in ADAPTER_CAPABILITIES:
         raise ValueError(f"No serving adapter for {recipe.name}")
     return [
         "python3",
         "/runtime/scripts/serve.py",
         "--draft",
-        draft,
+        options.draft,
         "--vision",
-        vision,
+        options.vision,
         "--context",
-        str(context),
+        str(options.context),
         "--recipe",
         f"/recipes/{recipe.name}",
+        *(["--api-monitor"] if options.api_monitor else []),
     ]
 
 
@@ -245,7 +271,6 @@ def start_command(
     """Validate options and build Docker argv without side effects."""
     validate_options(options, recipe.adapter)
     models, logs = options.models, options.logs
-    context, draft, vision = options.context, options.draft, options.vision
     port, detached = options.port, options.detached
     command = [
         "sudo",
@@ -295,7 +320,7 @@ def start_command(
     command += mount(models, "/models", readonly=True)
     command += mount(models / ".cache", "/cache")
     command += mount(logs, "/logs")
-    return [*command, recipe.image, *engine_command(recipe, context, draft, vision)]
+    return [*command, recipe.image, *engine_command(recipe, options)]
 
 
 def gpu_access_args(groups: list[int]) -> list[str]:
@@ -498,6 +523,7 @@ def start_facts(
             "draft": options.draft,
             "vision": options.vision,
             "detached": options.detached,
+            **({"api_monitor": True} if options.api_monitor else {}),
         },
         "mounts": {
             "recipe": str(recipe.directory),
