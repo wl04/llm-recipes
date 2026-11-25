@@ -238,6 +238,21 @@ def activate_snapshot(prefix: Path, selections: list[Path]) -> None:
 
 def install(root: Path, prefix: Path, *, force: bool, with_dependencies: bool) -> int:
     """Serialize snapshot preparation and activate it with rollback on failure."""
+    root = root.resolve()
+    data_home = paths.data_home()
+    data_root = data_home.resolve()
+    model_recipes = (data_root / paths.RECIPES_SUBPATH).resolve()
+    for name in RUNTIME_INCLUDES:
+        source = (root / name).resolve()
+        if (
+            data_root.is_relative_to(source)
+            or model_recipes.is_relative_to(source)
+            or source.is_relative_to(model_recipes)
+        ):
+            raise ValueError(
+                f"model data root {data_home} overlaps checkout {root}; "
+                "move the checkout or set LLM_RECIPES_HOME to a separate location"
+            )
     prefix = prefix.expanduser().resolve()
     prefix.mkdir(parents=True, exist_ok=True)
     with (prefix / ".install.lock").open("a") as lock:

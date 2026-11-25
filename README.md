@@ -20,7 +20,8 @@ Container serving needs Docker, Python 3.14 or later, and `sudo` for container a
 1. Install the `llm-recipes` command from a checkout using the command below. This project does not ship a Python distribution; `pip install .` is not supported. The installer copies a runtime snapshot to `~/.llm-recipes` and symlinks shims into `~/.local/bin`; keep that directory on `PATH`. The installer requests sudo credentials to check for running containers; file installation runs as your regular user. Re-run the same command after updating the repository.
 
    ```bash
-   git clone https://github.com/wl04/llm-recipes.git && cd llm-recipes
+   git clone https://github.com/wl04/llm-recipes.git "$HOME/llm-recipes-src"
+   cd "$HOME/llm-recipes-src"
    python3 scripts/install.py install
    llm-recipes list
    ```

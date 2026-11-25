@@ -123,6 +123,33 @@ def test_install_copies_runtime_subset_and_writes_version_stamp(
     assert (roots["home"] / ".local/bin/llm-recipes").is_symlink()
 
 
+@pytest.mark.parametrize("alias", [False, True])
+def test_install_preserves_active_snapshot_when_checkout_overlaps_model_data(
+    roots: dict[str, Path], monkeypatch: pytest.MonkeyPatch, alias: bool
+) -> None:
+    checkout = roots["data"]
+    make_checkout(checkout)
+    weight = checkout / "recipes/alpha/weight.gguf"
+    weight.write_bytes(b"model data")
+    if alias:
+        link = roots["tmp"] / "data-alias"
+        link.symlink_to(checkout, target_is_directory=True)
+        monkeypatch.setenv("LLM_RECIPES_HOME", str(link))
+    app = roots["runtime"] / "app"
+    app.mkdir(parents=True)
+    marker = app / "active"
+    marker.write_text("keep")
+
+    with pytest.raises(ValueError, match=r"model data.*checkout") as error:
+        install(checkout, roots["runtime"], force=True, with_dependencies=False)
+
+    assert str(checkout) in str(error.value)
+    assert str(paths.data_home()) in str(error.value)
+    assert marker.read_text() == "keep"
+    assert weight.read_bytes() == b"model data"
+    assert not (roots["runtime"] / "app.new").exists()
+
+
 def test_install_refuses_swap_with_running_instances(
     roots: dict[str, Path], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
