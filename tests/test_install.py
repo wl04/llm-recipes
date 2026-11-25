@@ -2,6 +2,8 @@
 
 import json
 import subprocess
+import sys
+import venv
 from pathlib import Path
 
 import install as install_module
@@ -119,8 +121,51 @@ def test_install_copies_runtime_subset_and_writes_version_stamp(
     assert stamp["repo_commit"] is None
     assert stamp["installed_at"]
     shim = (roots["runtime"] / "bin/llm-recipes").read_text()
-    assert str(app / ".venv/bin/python") in shim
+    assert sys.executable in shim
     assert (roots["home"] / ".local/bin/llm-recipes").is_symlink()
+
+
+def test_skip_deps_installs_both_commands_with_existing_interpreter(roots: dict[str, Path]) -> None:
+    install(REPO, roots["runtime"], force=True, with_dependencies=False)
+
+    for name in ("llm-recipes", "llm-recipes-baseline"):
+        result = subprocess.run(
+            [roots["home"] / ".local/bin" / name, "--help"],
+            check=False,
+            cwd=roots["home"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "usage:" in result.stdout
+
+
+def test_skip_deps_preserves_active_install_when_interpreter_lacks_dependencies(
+    roots: dict[str, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    checkout = tmp_path / "checkout"
+    make_checkout(checkout)
+    prefix = roots["runtime"]
+    install(checkout, prefix, force=True, with_dependencies=False)
+    app = prefix / "app/scripts/launch.py"
+    shim = prefix / "bin/llm-recipes"
+    before = (app.read_bytes(), shim.read_bytes())
+    (checkout / "scripts/launch.py").write_text("updated")
+    bare = tmp_path / "bare"
+    venv.EnvBuilder(with_pip=False).create(bare)
+    monkeypatch.setattr(sys, "executable", str(bare / "bin/python"))
+    monkeypatch.setattr(install_module, "repo_root", lambda: checkout)
+
+    code = install_module.main(["install", "--force", "--skip-deps"])
+
+    assert code == 1
+    assert "--skip-deps requires" in capsys.readouterr().err
+    assert (app.read_bytes(), shim.read_bytes()) == before
+    assert not (prefix / "app.prev").exists()
 
 
 @pytest.mark.parametrize("alias", [False, True])
@@ -265,7 +310,7 @@ def test_install_restores_snapshot_when_shim_activation_fails(
     install(checkout, roots["runtime"], force=True, with_dependencies=False)
     (checkout / "scripts/launch.py").write_text("print('new')")
 
-    def fail(_prefix: Path) -> None:
+    def fail(_prefix: Path, _runtime_python: Path) -> None:
         raise OSError("activation failed")
 
     monkeypatch.setattr(install_module, "write_shims", fail)
@@ -295,8 +340,6 @@ def test_install_refuses_concurrent_install_without_touching_staging(
 def test_install_runs_venv_entrypoint_after_snapshot_swap(
     roots: dict[str, Path], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    import venv
-
     checkout = tmp_path / "checkout"
     make_checkout(checkout)
     prefix = roots["runtime"] / "spaces ' and $literal"
@@ -339,8 +382,8 @@ def test_install_restores_shims_after_partial_activation(
     old = shim.read_bytes() if existing else None
     original = install_module.write_shims
 
-    def fail_after_writing(path: Path) -> None:
-        original(path)
+    def fail_after_writing(path: Path, runtime_python: Path) -> None:
+        original(path, runtime_python)
         shim.write_text("incomplete")
         raise OSError("shim failure")
 
@@ -546,6 +589,6 @@ def test_failed_selection_switch_restores_snapshot_and_selections(
 
     monkeypatch.setattr(Path, "rename", fail_second)
     with pytest.raises(OSError, match="cannot move selection"):
-        install_module.activate_snapshot(prefix, [first, second])
+        install_module.activate_snapshot(prefix, [first, second], Path(sys.executable))
     assert first.read_text() == second.read_text() == '["/trial"]'
     assert (prefix / "app/scripts/launch.py").read_text() == "print('launch')\n"

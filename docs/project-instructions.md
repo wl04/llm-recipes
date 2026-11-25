@@ -71,6 +71,8 @@ Normal serving runs from the installed snapshot `~/.llm-recipes/app` (`LLM_RECIP
 
 The installer CLI requests sudo credentials before checking for running containers; `--force` skips that check and prompt. Installation itself runs as your regular user. The installer serializes updates with a prefix-level lock. Code is staged in `app.new`; activation keeps the previous snapshot in `app.prev` and restores the active snapshot and shims if activation fails. Virtual environments stay at `environments/<key>` under the runtime prefix, keyed by Python and pinned dependencies; `app/.venv` links to the matching environment. Matching environments are reused. Unrelated executables or symlinks in the command destinations are preserved and reported as conflicts.
 
+For development, `install --skip-deps` uses the Python interpreter that runs the installer instead of creating a private environment. Use the development virtual environment and keep it available to the installed commands.
+
 ## Workstation validation
 
 Run GPU/Docker checks only when explicitly invoked on the target workstation: image builds, `check_image.py`, server startup, and generation checks. Follow the recipe's `setup.md`. Report CPU validation separately from GPU behavior verified on the workstation.

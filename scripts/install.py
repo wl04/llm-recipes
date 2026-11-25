@@ -130,6 +130,19 @@ def runtime_environment(prefix: Path) -> Path:
     return environment
 
 
+def development_python() -> Path:
+    """Reuse the installer's interpreter only if it can run the installed commands."""
+    if sys.executable:
+        python = Path(sys.executable).absolute()
+        probe = run_process([str(python), "-P", "-c", "import textual, yaml"])
+        if probe.returncode == 0:
+            return python
+    raise RuntimeError(
+        "--skip-deps requires an interpreter with PyYAML and Textual; "
+        "run the installer with the development virtual environment or omit --skip-deps"
+    )
+
+
 def validate_shims(prefix: Path) -> None:
     """Refuse to replace commands owned by another installation or tool."""
     for name in COMMANDS:
@@ -144,12 +157,11 @@ def validate_shims(prefix: Path) -> None:
             raise RuntimeError(f"refusing to replace unrelated command: {link}")
 
 
-def write_shims(prefix: Path) -> None:
+def write_shims(prefix: Path, runtime_python: Path) -> None:
     """Write quoted command shims and link them into the user's PATH."""
     validate_shims(prefix)
     bin_dir = prefix / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
-    runtime_python = prefix / "app/.venv/bin/python"
     for shim, script in COMMANDS.items():
         path = bin_dir / shim
         command = shlex.join([str(runtime_python), str(prefix / "app/scripts" / script)])
@@ -198,7 +210,7 @@ def published_selections(staging: Path, prefix: Path) -> list[Path]:
     return matches
 
 
-def activate_snapshot(prefix: Path, selections: list[Path]) -> None:
+def activate_snapshot(prefix: Path, selections: list[Path], runtime_python: Path) -> None:
     """Publish staged code and shims, restoring the active installation on failure."""
     app, previous = prefix / "app", prefix / "app.prev"
     bin_dir = prefix / "bin"
@@ -218,7 +230,7 @@ def activate_snapshot(prefix: Path, selections: list[Path]) -> None:
             app.rename(previous)
         try:
             (prefix / "app.new").rename(app)
-            write_shims(prefix)
+            write_shims(prefix, runtime_python)
             for selection in selections:
                 selection.rename(Path(temporary) / selection.name)
         except BaseException:  # Roll back interruptions as well as errors, then re-raise.
@@ -271,6 +283,9 @@ def install(root: Path, prefix: Path, *, force: bool, with_dependencies: bool) -
         if not force and running_instances():
             log("refusing to swap while launcher instances run; stop them or pass --force")
             return 1
+        runtime_python = (
+            prefix / "app/.venv/bin/python" if with_dependencies else development_python()
+        )
         staging = prefix / "app.new"
         if staging.exists():
             shutil.rmtree(staging)
@@ -282,7 +297,7 @@ def install(root: Path, prefix: Path, *, force: bool, with_dependencies: bool) -
                 )
             stamp = json.loads((staging / "VERSION").read_text())
             selections = published_selections(staging, prefix)
-            activate_snapshot(prefix, selections)
+            activate_snapshot(prefix, selections, runtime_python)
         finally:
             if staging.exists():
                 shutil.rmtree(staging)
@@ -299,7 +314,7 @@ def main(argv: list[str] | None = None) -> int:
     setup = commands.add_parser("install", help="copy the runtime snapshot and refresh shims")
     setup.add_argument("--force", action="store_true", help="swap even while instances run")
     setup.add_argument(
-        "--skip-deps", action="store_true", help="skip venv creation (development use)"
+        "--skip-deps", action="store_true", help="reuse this Python environment (development use)"
     )
     args = parser.parse_args(argv)
     prefix = paths.runtime_prefix()
