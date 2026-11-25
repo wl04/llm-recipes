@@ -291,6 +291,8 @@ def software_block(
         harness_version = f"{base_url}/commit/{commit}"
         if revision.get("dirty"):
             harness_version += " (dirty)"
+        elif "dirty" in revision and revision["dirty"] is None:
+            harness_version += " (dirty state unknown)"
     engine_value = runtime.get("engine")
     adapter_value = runtime.get("adapter")
     engine = engine_value if isinstance(engine_value, str) else None
@@ -681,7 +683,7 @@ def git_revision(root: Path) -> dict[str, Any]:
     if commit.returncode:
         stamp = paths.version_stamp(root)
         if stamp is not None:
-            return {"commit": stamp["commit"], "dirty": False}
+            return {"commit": stamp["commit"], "dirty": stamp["dirty"]}
         return {"commit": None, "dirty": False}
     dirty = (
         subprocess.run(

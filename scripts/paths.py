@@ -47,9 +47,9 @@ def recipe_data_dir(models_root: Path, recipe_name: str) -> Path:
 def version_stamp(root: Path) -> dict[str, object] | None:
     """``VERSION`` stamp of an installed snapshot: revision without a git checkout.
 
-    Returns the installer's ``{repo_commit, installed_at, version}`` document as
+    Returns the installer's ``{repo_commit, repo_dirty, installed_at, version}`` document as
     ``{commit, dirty, source}``, or ``None`` when the stamp is missing, unreadable,
-    or not a JSON object.
+    or not a JSON object. A legacy stamp has an unknown dirty state.
     """
     try:
         stamp = json.loads((root / "VERSION").read_text())
@@ -60,7 +60,12 @@ def version_stamp(root: Path) -> dict[str, object] | None:
     commit = stamp.get("repo_commit")
     if not isinstance(commit, str) or not commit.strip():
         return None
-    return {"commit": commit.strip(), "dirty": False, "source": "install"}
+    dirty = stamp.get("repo_dirty")
+    return {
+        "commit": commit.strip(),
+        "dirty": dirty if isinstance(dirty, bool) else None,
+        "source": "install",
+    }
 
 
 def logs_dir(models_root: Path, instance: str) -> Path:

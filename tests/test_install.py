@@ -178,6 +178,44 @@ def test_install_force_proceeds_and_keeps_previous_snapshot(
     assert (roots["runtime"] / "app.prev/scripts/launch.py").read_text() == "print('launch')\n"
 
 
+def test_install_records_dirty_revision_when_checkout_files_are_modified(
+    roots: dict[str, Path], tmp_path: Path
+) -> None:
+    from baseline import host, importer
+
+    checkout = tmp_path / "checkout"
+    make_checkout(checkout)
+    for args in (
+        ["init", "--quiet"],
+        ["add", "."],
+        [
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "commit",
+            "--no-gpg-sign",
+            "-qm",
+            "Fixture",
+        ],
+    ):
+        subprocess.run(["git", "-C", checkout, *args], check=True, timeout=10)
+    prefix = roots["runtime"]
+
+    install(checkout, prefix, force=True, with_dependencies=False)
+    (checkout / "scripts/launch.py").write_text("print('changed')\n")
+    install(checkout, prefix, force=True, with_dependencies=False)
+
+    clean = host.repository_revision(prefix / "app.prev")
+    dirty = host.repository_revision(prefix / "app")
+    assert clean is not None
+    assert dirty is not None
+    assert clean["commit"] == dirty["commit"]
+    assert clean["dirty"] is False
+    assert dirty["dirty"] is True
+    assert importer.git_revision(prefix / "app") == {"commit": dirty["commit"], "dirty": True}
+
+
 def test_repository_revision_falls_back_to_version_stamp_without_git(
     tmp_path: Path,
 ) -> None:
@@ -192,7 +230,7 @@ def test_repository_revision_falls_back_to_version_stamp_without_git(
 
     assert host.repository_revision(tmp_path, run=failing_git) == {
         "commit": "a" * 40,
-        "dirty": False,
+        "dirty": None,
         "source": "install",
     }
 

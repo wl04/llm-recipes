@@ -58,21 +58,28 @@ def running_instances() -> list[str]:
     return [name for name in probe.stdout.splitlines() if name.strip()]
 
 
-def repository_commit(root: Path) -> str | None:
-    """HEAD commit of the checkout; ``None`` for a source tree without git."""
+def repository_revision(root: Path) -> tuple[str | None, bool | None]:
+    """Return the source commit and dirty state; unavailable values are unknown."""
     revision = run_process(["git", "-C", str(root), "rev-parse", "HEAD"])
-    return revision.stdout.strip() if revision.returncode == 0 else None
+    if revision.returncode:
+        return None, None
+    status = run_process(
+        ["git", "-C", str(root), "status", "--porcelain", "--untracked-files=normal"]
+    )
+    return revision.stdout.strip(), None if status.returncode else bool(status.stdout.strip())
 
 
 def build_snapshot(root: Path, destination: Path) -> None:
     """Copy the runtime trees and stamp the snapshot into ``destination``."""
+    commit, dirty = repository_revision(root)
     destination.mkdir(parents=True)
     for name in RUNTIME_INCLUDES:
         source = root / name
         if source.is_dir():
             shutil.copytree(source, destination / name, ignore=IGNORED_DIRECTORIES)
     stamp = {
-        "repo_commit": repository_commit(root),
+        "repo_commit": commit,
+        "repo_dirty": dirty,
         "installed_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "version": "2",
     }
