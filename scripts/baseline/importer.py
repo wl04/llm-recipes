@@ -512,7 +512,7 @@ def _effective_serving(
             serving.pop("vision_max_image_tokens", None)
 
 
-def _validate_facts(facts: Mapping[str, Any] | None, recipe_dir: Path) -> None:
+def validate_launch_facts(facts: Mapping[str, Any] | None, recipe_dir: Path) -> None:
     """Reject mismatched identities or recorded files that have changed."""
     if not facts:
         return
@@ -642,7 +642,7 @@ def build_profile(
 ) -> dict[str, Any]:
     """Compose a schema-v2 ``profile.yaml`` document from the run and recipe sources."""
     facts = _facts(meta, run_dir)
-    _validate_facts(facts, recipe_dir)
+    validate_launch_facts(facts, recipe_dir)
     system = facts.get("host") if isinstance(facts, Mapping) else None
     if not isinstance(system, Mapping):
         recorded = _dig(meta, "host", "system")
@@ -706,7 +706,7 @@ def session_profile(
     ``facts`` is the launcher's instance document; ``sampling`` comes from the engine
     log. Fields no source records stay ``null``.
     """
-    _validate_facts(facts, recipe_dir)
+    validate_launch_facts(facts, recipe_dir)
     system_value = facts.get("host")
     system = system_value if isinstance(system_value, Mapping) else None
     meta: dict[str, Any] = {

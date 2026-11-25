@@ -215,7 +215,9 @@ def _session_run(
     )
     report.write_session_block(summary, report.render_session(document))
     profile = experiment / "profile.yaml"
-    if not profile.exists():
+    if profile.exists():
+        importer.validate_launch_facts(facts, recipe_dir)
+    else:
         if not facts and engine != "lm-studio":
             raise ValueError(f"{log_dir} has no facts.json; cannot seed {profile}")
         profile.write_text(

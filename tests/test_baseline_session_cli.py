@@ -154,6 +154,32 @@ def test_session_cli_keeps_existing_profile_and_replaces_block(
     assert (experiment / "summary.md").read_text().count(report.SESSION_START) == 1
 
 
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"recipe": "another-recipe"}, "Facts describe recipe"),
+        ({"config_sha256": {"launch.json": "0" * 64}}, "Recorded configuration differs"),
+    ],
+)
+def test_session_update_preserves_published_files_when_launch_facts_conflict(
+    tmp_path: Path, overrides: dict[str, Any], message: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = runfixtures._make_repo(tmp_path)
+    log_dir = _log_dir(tmp_path, _facts(), ("tabbyapi.log", TABBY_LOG))
+    experiment = _experiment(root)
+    cli.session_run(log_dir, root, experiment=experiment)
+    before = {path: path.read_bytes() for path in experiment.parent.rglob("*") if path.is_file()}
+    (log_dir / "facts.json").write_text(json.dumps(_facts(**overrides)))
+
+    code = cli.main(["session", "--logs", str(log_dir), "--experiment", str(experiment)], root=root)
+
+    assert code != 0
+    assert message in capsys.readouterr().err
+    assert {
+        path: path.read_bytes() for path in experiment.parent.rglob("*") if path.is_file()
+    } == before
+
+
 def test_session_cli_prints_document_without_experiment(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
