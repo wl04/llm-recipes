@@ -2,6 +2,8 @@
 
 import json
 import os
+import subprocess
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -9,10 +11,11 @@ from typing import Any
 import generate_configurations as generator
 import paths
 import pytest
-from baseline import cli, guided, host, schema
+from baseline import cli, guided, host, lifecycle, schema
 from baseline.schema import ExitCode
 from fake_server import FakeServer
 from launcher import LaunchOptions, Recipe
+from test_baseline_lifecycle import FakeDocker, done, make_control
 from test_baseline_runner import SUITE, FakeControl
 from test_baseline_sources import make_cgroup
 
@@ -66,6 +69,82 @@ def test_run_baseline_refreshes_sudo_ticket_once_before_noninteractive_calls(
 
     assert code == ExitCode.OK
     assert order == ["refresh", "control"]
+
+
+@pytest.mark.parametrize(
+    ("outcome", "expected"),
+    [
+        ("complete", ExitCode.OK),
+        ("interrupted", ExitCode.INTERRUPTED),
+        ("revoked", ExitCode.CHECKS_FAILED),
+    ],
+)
+def test_managed_run_renews_cleanup_authorization_during_workloads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outcome: str, expected: ExitCode
+) -> None:
+    now = 0.0
+    expires_at = 60.0
+    attempted = threading.Event()
+    workers: set[threading.Thread] = set()
+
+    def renew(command: list[str]) -> subprocess.CompletedProcess[str]:
+        nonlocal expires_at
+        assert command == ["sudo", "-n", "-v"]
+        workers.add(threading.current_thread())
+        current_time = now
+        if current_time == 0:
+            return done()
+        if outcome != "revoked":
+            expires_at = current_time + 60
+        attempted.set()
+        return done(code=1, error="sudo credentials revoked") if outcome == "revoked" else done()
+
+    class TicketedDocker(FakeDocker):
+        def __call__(self, command: list[str]) -> subprocess.CompletedProcess[str]:
+            if now >= expires_at:
+                return done(code=1, error="sudo credentials expired")
+            return super().__call__(command)
+
+    def progress(message: str) -> None:
+        nonlocal now
+        checkpoint = "Warming up the server" if outcome == "interrupted" else "Stopping the server"
+        if message != checkpoint:
+            return
+        now = 45
+        attempted.wait(1)
+        now = 90
+        if outcome == "interrupted":
+            raise KeyboardInterrupt
+
+    make_cgroup(tmp_path / "cg")
+    docker = TicketedDocker()
+    control = make_control(tmp_path, docker)
+    monkeypatch.setattr(cli, "ContainerControl", lambda *args, **kwargs: control)
+    monkeypatch.setattr(cli, "refresh_sudo_ticket", lambda: None)
+    monkeypatch.setattr(cli, "_progress", progress)
+    original_run = host.run_command
+
+    def run(command: list[str], timeout: float = 15.0) -> subprocess.CompletedProcess[str]:
+        if command == ["sudo", "-n", "-v"]:
+            return renew(command)
+        return original_run(command, timeout)
+
+    monkeypatch.setattr(host, "run_command", run)
+    monkeypatch.setattr(lifecycle, "SUDO_TICKET_RENEW_INTERVAL_S", 0.01, raising=False)
+
+    with FakeServer() as server:
+        code = cli.main(managed_argv(tmp_path, server), suite=SUITE)
+
+    output = tmp_path / "run"
+    meta = json.loads((output / "meta.json").read_text())
+    assert attempted.is_set()
+    assert all(not worker.is_alive() for worker in workers)
+    assert code == expected
+    if outcome == "revoked":
+        assert "sudo docker stop abc123" in " ".join(meta["problems"])
+        assert (output / "requests.jsonl").stat().st_size > 0
+    else:
+        assert ["sudo", "-n", "docker", "stop", "abc123"] in docker.commands
 
 
 def test_managed_run_writes_results_summary_and_raw_files(
@@ -205,7 +284,14 @@ def desktop_scope(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return cgroup
 
 
-def test_desktop_recipe_runs_against_a_running_app(tmp_path: Path, desktop_scope: Path) -> None:
+def test_desktop_recipe_runs_against_a_running_app_without_sudo(
+    tmp_path: Path, desktop_scope: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def unexpected_sudo(*_args: object) -> None:
+        pytest.fail("attached runs must not request or renew sudo credentials")
+
+    monkeypatch.setattr(cli, "refresh_sudo_ticket", unexpected_sudo)
+    monkeypatch.setattr(lifecycle, "maintain_sudo_ticket", unexpected_sudo)
     recipes = tmp_path / "recipes"
     (recipes / "desktop-recipe").mkdir(parents=True)
     with FakeServer() as server:

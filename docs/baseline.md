@@ -10,6 +10,8 @@ llm-recipes-baseline run <recipe>
 
 For a container recipe, stop other launcher instances and free the GPU first. The runner starts the server with the recipe defaults and stops it after the run. For a desktop recipe, load the model and start its API server first. The runner prompts for the connection and process details.
 
+Managed runs ask for sudo credentials up front and renew the ticket without prompting while the suite runs. If cleanup cannot use sudo, the runner keeps the measurements and reports the container ID and manual stop command.
+
 Results go to `~/llm-recipes/baselines/<recipe>/<date-time>/` by default. Ctrl+C keeps partial results. Use `llm-recipes-baseline run --help` for options.
 
 To test a candidate worktree, run its script from the worktree root. For all checkout commands below, use Python 3.14 or later with the project dependencies available to `python3`. If you installed them in the repository virtual environment, activate it once with `source .venv/bin/activate`. [Development environment](project-instructions.md#development-dependencies-and-checks)

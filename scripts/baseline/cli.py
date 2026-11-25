@@ -12,6 +12,7 @@ import signal
 import sys
 import threading
 import uuid
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -648,7 +649,11 @@ def _run_command(args: argparse.Namespace, suite: SuiteConfig, root: Path, recip
     )
     previous = signal.signal(signal.SIGTERM, _terminate)
     try:
-        code = runner.run()
+        credentials = (
+            lifecycle.maintain_sudo_ticket(_progress) if recipe is not None else nullcontext()
+        )
+        with credentials:
+            code = runner.run()
     finally:
         signal.signal(signal.SIGTERM, previous)
     return _report_run(code, writer, root)

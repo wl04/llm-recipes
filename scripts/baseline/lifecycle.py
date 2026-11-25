@@ -7,8 +7,10 @@ commands, under a dedicated instance name so an instance the user started is nev
 import os
 import re
 import shlex
+import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -23,6 +25,8 @@ INSTANCE = "baseline"
 GPU_IN_USE_GIB = 2.0
 RESOLVE_ATTEMPTS = 20
 SLOW_COMMAND_TIMEOUT_S = 300.0
+SUDO_TICKET_RENEW_INTERVAL_S = 30.0
+SUDO_TICKET_RENEW_TIMEOUT_S = 5.0
 
 
 class LifecycleError(Exception):
@@ -40,6 +44,28 @@ class StartedServer:
 def _non_interactive(command: list[str]) -> list[str]:
     """Make a ``sudo`` command fail instead of prompting for a password mid-run."""
     return [command[0], "-n", *command[1:]] if command and command[0] == "sudo" else command
+
+
+@contextmanager
+def maintain_sudo_ticket(warn: Callable[[str], None]) -> Iterator[None]:
+    """Renew the existing ticket noninteractively until the managed run leaves this scope."""
+    stopped = threading.Event()
+
+    def renew() -> None:
+        while not stopped.wait(SUDO_TICKET_RENEW_INTERVAL_S):
+            result = host.run_command(["sudo", "-n", "-v"], SUDO_TICKET_RENEW_TIMEOUT_S)
+            if result.returncode:
+                detail = result.stderr.strip() or "sudo validation failed"
+                warn(f"Cannot renew sudo credentials ({detail}); cleanup may need manual help")
+                return
+
+    worker = threading.Thread(target=renew, name="baseline-sudo-renewal")
+    worker.start()
+    try:
+        yield
+    finally:
+        stopped.set()
+        worker.join()
 
 
 class ContainerControl:
