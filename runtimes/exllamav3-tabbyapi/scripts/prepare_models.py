@@ -169,7 +169,7 @@ def model_root(recipe: Path, models: Path) -> Path:
         raise ValueError(f"{manifest_path} must contain a JSON object")
     if manifest.get("runtime") != "exllamav3-tabbyapi":
         raise ValueError("expected an exllamav3-tabbyapi recipe")
-    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", recipe.name):
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,159}", recipe.name):
         raise ValueError("recipe folder name must match the recipe identifier")
     return models / "recipes" / recipe.name
 

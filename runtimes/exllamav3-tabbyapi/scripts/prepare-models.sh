@@ -7,6 +7,7 @@ fi
 runtime_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 scripts_dir=$(cd -- "$runtime_dir/../../scripts" && pwd)
 recipe_dir=$(cd -- "$1" && pwd)
+container_recipe="/recipes/${recipe_dir##*/}"
 action=$2
 image=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["image"])' "$runtime_dir/runtime.json")
 image=${LLM_RECIPES_RUNTIME_IMAGE:-$image}
@@ -35,8 +36,8 @@ sudo docker run --rm \
     --env XDG_CACHE_HOME=/models/.cache \
     --env TRITON_CACHE_DIR=/models/.cache/triton \
     --env PYTHONUNBUFFERED=1 \
-    --mount "type=bind,src=$recipe_dir,dst=/recipe,readonly" \
+    --mount "type=bind,src=$recipe_dir,dst=$container_recipe,readonly" \
     --mount "type=bind,src=$runtime_dir,dst=/runtime,readonly" \
     --mount "type=bind,src=$model_dir,dst=/models" \
     "$image" \
-    python3 /runtime/scripts/prepare_models.py --recipe /recipe "$action"
+    python3 /runtime/scripts/prepare_models.py --recipe "$container_recipe" "$action"
