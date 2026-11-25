@@ -96,7 +96,7 @@ def read_stream(
     """Collect an OpenAI server-sent-event completion with client-side output timings.
 
     ``clock`` is read once per event that carries output (content, reasoning, or a tool call);
-    with a ``deadline_s`` it is read once per data event so a stalled or slow stream is cut off.
+    with a ``deadline_s`` it is read for every received line, including keep-alives and ``[DONE]``.
 
     Raises:
         ApiError: an error event or a malformed event.
@@ -122,16 +122,16 @@ def read_stream(
 
     try:
         for line in lines:
-            if not line.startswith("data:"):
-                continue
-            payload = line[5:].strip()
-            if payload == "[DONE]":
-                return snapshot()
             now = clock() if deadline_s is not None else None
             if now is not None and deadline_s is not None and now - started > deadline_s:
                 raise StreamInterrupted(
                     f"Request deadline of {deadline_s:g} s exceeded", snapshot()
                 )
+            if not line.startswith("data:"):
+                continue
+            payload = line[5:].strip()
+            if payload == "[DONE]":
+                return snapshot()
             try:
                 item = json.loads(payload)
             except json.JSONDecodeError as error:

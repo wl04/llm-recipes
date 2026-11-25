@@ -254,3 +254,29 @@ def test_read_stream_stops_with_partial_result_when_deadline_passes() -> None:
         api.read_stream(lines, readings.__next__, started=0.0, deadline_s=50.0)
 
     assert raised.value.partial.text == "ab"
+
+
+@pytest.mark.parametrize("late_line", [": keep-alive", "data: [DONE]"])
+def test_read_stream_stops_with_partial_result_on_late_non_content_line(late_line: str) -> None:
+    def lines() -> Iterator[str]:
+        yield event(content="before")
+        yield ": keep-alive"
+        yield late_line
+        pytest.fail("stream reader continued after the deadline")
+
+    readings = iter([0.5, 1.0, 2.5])
+
+    with pytest.raises(api.StreamInterrupted, match="deadline") as raised:
+        api.read_stream(lines(), readings.__next__, started=0.0, deadline_s=2.0)
+
+    assert raised.value.partial.text == "before"
+
+
+def test_read_stream_returns_completed_result_when_terminal_event_meets_deadline() -> None:
+    lines = [event(content="before"), ": keep-alive", "data: [DONE]"]
+    readings = iter([0.5, 1.0, 1.5])
+
+    result = api.read_stream(lines, readings.__next__, started=0.0, deadline_s=2.0)
+
+    assert result.text == "before"
+    assert result.first_output_s == 0.5
