@@ -45,7 +45,7 @@ Timestamps: unavailable — this engine logs no per-line times; wall-clock span 
 | Aggregate prefill (tok/s) | 1,954.5 |
 | Aggregate decode (tok/s) | 87.5 |
 | Median decode (tok/s) | 86.1 |
-| Draft acceptance | 70.0% (734,837 / 999,117) |
+| Draft acceptance | 73.5% (734,837 / 999,117) |
 
 ### Request size distribution
 

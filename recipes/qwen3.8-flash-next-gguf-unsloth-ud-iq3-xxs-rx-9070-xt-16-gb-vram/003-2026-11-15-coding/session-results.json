@@ -32,7 +32,7 @@
     "decode_tok_s_median": 86.1,
     "drafts_accepted": 734837,
     "drafts_proposed": 999117,
-    "draft_acceptance": 0.7,
+    "draft_acceptance": 0.7354864345216826,
     "context_buckets": [
       {
         "label": "under 2,048 tokens",

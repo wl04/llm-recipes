@@ -146,7 +146,7 @@ def session_stats(
             "decode_tok_s_median": _rounded(median(rates)) if rates else None,
             "drafts_accepted": accepted if drafts else None,
             "drafts_proposed": proposed if drafts else None,
-            "draft_acceptance": _rounded(accepted / proposed) if proposed else None,
+            "draft_acceptance": accepted / proposed if proposed else None,
             "context_buckets": context_buckets(completed),
         },
     }

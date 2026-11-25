@@ -76,8 +76,9 @@ def test_session_stats_buckets_requests_by_context_range() -> None:
     assert buckets["2,048-8,191 tokens"]["prompt_tokens"] == 5000
 
 
-def test_session_stats_marks_unavailable_metrics_as_unavailable() -> None:
-    no_drafts = [entry(drafts_accepted=None, drafts_proposed=None)]
+@pytest.mark.parametrize("proposals", [None, 0])
+def test_session_stats_marks_unavailable_metrics_as_unavailable(proposals: int | None) -> None:
+    no_drafts = [entry(drafts_accepted=None if proposals is None else 0, drafts_proposed=proposals)]
 
     document = session.session_stats(no_drafts, engine="strata")
 
@@ -170,6 +171,18 @@ def test_session_report_renders_totals_and_buckets() -> None:
     assert "| Generated tokens | 612 |" in block
     assert "### Request size distribution" in block
     assert "32,768-131,071 tokens" in block
+
+
+def test_session_report_formats_precise_draft_acceptance_when_counts_are_available() -> None:
+    from baseline import report
+
+    requests = [entry(drafts_accepted=734_837, drafts_proposed=999_117)]
+
+    document = session.session_stats(requests, engine="strata")
+    block = report.render_session(document)
+
+    assert document["totals"]["draft_acceptance"] == pytest.approx(0.7354864345216826)
+    assert "| Draft acceptance | 73.5% (734,837 / 999,117) |" in block
 
 
 def test_session_report_marks_unavailable_metrics_as_unavailable() -> None:
