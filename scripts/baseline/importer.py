@@ -474,13 +474,14 @@ def _native_serving(recipe_dir: Path) -> dict[str, Any]:
             raise ValueError(f"{native}: unreadable JSON settings") from error
         if not isinstance(settings, Mapping):
             raise ValueError(f"{native}: expected a JSON object")
-        args = _seq(settings.get("args"))
+        args = _seq(settings.get("args")) + _seq(settings.get("user_args"))
         for index, token in enumerate(args):
             setting_row = STRATA_FLAGS.get(str(token))
             if setting_row is None:
                 continue
             if index + 1 < len(args) and not str(args[index + 1]).startswith("--"):
-                rows[setting_row] = args[index + 1]
+                value = args[index + 1]
+                rows[setting_row] = int(value) if token == "--kv-resident" else value
             else:
                 rows[setting_row] = True
         vision_settings = _obj(settings.get("vision"))
@@ -499,8 +500,6 @@ def _effective_serving(
         serving["context_length_tokens"] = context
         if adapter == "tabbyapi":
             serving["cache_capacity"] = context
-        elif adapter == "strata":
-            serving["gpu_resident_kv_cells"] = min(context, 32768)
     if isinstance(draft, str):
         serving["speculative_decoding"] = draft == "on"
         if draft == "on" and adapter == "strata":

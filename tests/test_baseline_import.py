@@ -368,7 +368,7 @@ def test_experiment_identity_rejects_a_name_without_hardware() -> None:
     ("adapter", "context", "key", "expected"),
     [
         ("tabbyapi", 163840, "cache_capacity", 163840),
-        ("strata", 4096, "gpu_resident_kv_cells", 4096),
+        ("strata", 131072, "gpu_resident_kv_cells", 40960),
     ],
 )
 def test_settings_apply_effective_cache_when_context_overridden(
@@ -382,6 +382,7 @@ def test_settings_apply_effective_cache_when_context_overridden(
             json.dumps(
                 {
                     "args": ["--kv-resident", "32768", "--spec", "4", "--vision"],
+                    "user_args": ["--kv-resident", "40960"],
                     "vision": {"min_tokens": 1024, "max_tokens": 1024},
                 }
             )
@@ -452,21 +453,29 @@ def test_profile_rejects_facts_for_another_recipe(tmp_path: Path) -> None:
     ("adapter", "context", "key", "expected"),
     [
         ("tabbyapi", 163840, "cache_capacity", 163840),
-        ("strata", 4096, "gpu_resident_kv_cells", 4096),
+        ("strata", 4096, "gpu_resident_kv_cells", None),
         ("strata", 163840, "gpu_resident_kv_cells", 32768),
     ],
 )
 def test_session_profile_applies_effective_cache_from_facts(
-    tmp_path: Path, adapter: str, context: int, key: str, expected: int
+    tmp_path: Path, adapter: str, context: int, key: str, expected: int | None
 ) -> None:
     root = _make_repo(tmp_path)
+    if adapter == "strata":
+        config = root / "recipes" / RECIPE / "config"
+        (config / "tabby.yml").unlink()
+        args = ["--kv-resident", str(expected)] if expected is not None else []
+        (config / "strata.json").write_text(json.dumps({"args": args}))
     facts = {
         **FACTS,
         "adapter": adapter,
         "options": {"context": context, "draft": "off", "vision": "off"},
     }
     profile = importer.session_profile(facts, root / "recipes" / RECIPE, root)
-    assert profile["settings"]["serving"][key] == expected
+    if expected is None:
+        assert key not in profile["settings"]["serving"]
+    else:
+        assert profile["settings"]["serving"][key] == expected
 
 
 @pytest.mark.parametrize("filename", ["models.lock.json", "launch.json"])

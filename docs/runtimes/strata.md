@@ -23,6 +23,10 @@ Each recipe keeps its generated pack, tokenizer, Q2_0 draft and receipt in `reci
 
 The server publishes its API on loopback. `server.log` contains API output and `engine.log` contains engine and vision diagnostics. Both survive container removal under `<data root>/logs/<instance>/`. Baseline runs keep their own logs in the run directory. See the [launcher controls](../launcher.md#foreground-and-background-execution) and [baseline guide](../baseline.md).
 
+Both recipes start with a GPU-resident KV window of 32,768 tokens. Strata can shrink this window at startup to fit available VRAM while keeping the requested context length. Imported profiles report the configured window.
+
+To pin 40,960 tokens, set `"user_args": ["--kv-resident", "40960"]` in the recipe’s `config/strata.json`. If `user_args` already exists, append the flag and value to it. Remove the pair to restore automatic fitting. When using the installed launcher, run `python3 scripts/install.py install` after editing the checkout, then restart the instance.
+
 ## Upgrade Strata on the RX 9070 XT
 
 For a release already selected on `main`, pull and reinstall with serving instances stopped. If you already prepared that build on this machine, you can start the recipe immediately. For a fresh machine, follow the recipe setup above.

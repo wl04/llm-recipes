@@ -194,7 +194,7 @@ def test_configure_disables_optional_models_without_mutating_defaults() -> None:
     assert "vision" not in result
     assert "--mtp" not in result["args"]
     assert result["args"][result["args"].index("--spec") + 1] == "0"
-    assert result["args"][result["args"].index("--kv-resident") + 1] == "4096"
+    assert result["args"][result["args"].index("--max-context") + 1] == "4096"
     assert "vision" in original
     assert "--mtp" in original["args"]
 
@@ -324,17 +324,24 @@ def test_validate_model_files_rejects_missing_middle_shard(tmp_path: Path) -> No
         serve.validate_model_files(tmp_path, {"files": files})
 
 
-@pytest.mark.parametrize(
-    ("mode", "context", "resident"), [("on", 131072, "32768"), ("off", 4096, "4096")]
-)
-def test_configure_sets_native_drafting_and_kv_override_for_modern_engine(
-    mode: str, context: int, resident: str
+@pytest.mark.parametrize("recipe", [RECIPE, UNSLOTH])
+def test_recipe_resident_window_is_available_to_strata_vram_fit(recipe: Path) -> None:
+    source = json.loads((recipe / "config/strata.json").read_text())
+    config = serve.configure(source, 131072, "on", "cpu", modern=True)
+    assert config["drafting"] == "mtp"
+    assert config["args"][config["args"].index("--kv-resident") + 1] == "32768"
+    assert "--kv-resident" not in config.get("user_args", [])
+
+
+@pytest.mark.parametrize("user_args", [[], ["--kv-resident", "40960"]])
+def test_configure_preserves_user_args_without_requiring_a_recipe_kv_window(
+    user_args: list[str],
 ) -> None:
-    original = json.loads((RECIPE / "config/strata.json").read_text())
-    original["user_args"] = ["--kv-resident", "512"]
-
-    config = serve.configure(original, context, mode, "cpu", modern=True)
-
-    assert config["drafting"] == ("mtp" if mode == "on" else "off")
-    assert config["user_args"] == ["--kv-resident", resident]
-    assert original["user_args"] == ["--kv-resident", "512"]
+    source = json.loads((RECIPE / "config/strata.json").read_text())
+    index = source["args"].index("--kv-resident")
+    del source["args"][index : index + 2]
+    source["user_args"] = ["--spec-min-p", "0.6", *user_args]
+    config = serve.configure(source, 131072, "off", "cpu", modern=True)
+    assert config["drafting"] == "off"
+    assert "--kv-resident" not in config["args"]
+    assert config["user_args"] == source["user_args"]

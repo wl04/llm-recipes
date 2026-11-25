@@ -36,15 +36,8 @@ def configure(
         config["api_monitor"] = True
     args = config["args"]
     args[args.index("--max-context") + 1] = str(context)
-    args[args.index("--kv-resident") + 1] = str(min(context, 32768))
     if modern:
         config["drafting"] = "mtp" if draft == "on" else "off"
-        user = config.setdefault("user_args", [])
-        resident = args[args.index("--kv-resident") + 1]
-        if "--kv-resident" in user:
-            user[user.index("--kv-resident") + 1] = resident
-        else:
-            user.extend(["--kv-resident", resident])
     if draft == "off":
         args[args.index("--spec") + 1] = "0"
         index = args.index("--mtp")
