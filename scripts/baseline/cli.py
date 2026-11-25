@@ -153,17 +153,21 @@ def render_run(directory: Path, root: Path = ROOT) -> Path:
 
 
 def session_destination(
-    root: Path, recipe: str, description: str, log_dir: Path, now: datetime | None = None
+    root: Path, recipe: str | None, description: str, log_dir: Path, now: datetime | None = None
 ) -> Path:
-    """Choose the next session destination without creating it."""
+    """Choose the next destination; use launch facts when no recipe is specified."""
     if not importer.SUFFIX_RULE.fullmatch(description):
         raise ValueError(f"{description}: use a lowercase-hyphen slug, like coding-session")
-    recipe_dir = importer.recipe_directory(root / "recipes", recipe)
     facts_path = log_dir / "facts.json"
-    date = ""
-    if facts_path.is_file():
-        started = importer.read_json(facts_path).get("started_at")
-        date = started[:10] if isinstance(started, str) else ""
+    facts = importer.read_json(facts_path) if recipe is None or facts_path.is_file() else {}
+    if recipe is None:
+        recorded_recipe = facts.get("recipe")
+        if not isinstance(recorded_recipe, str) or not recorded_recipe:
+            raise ValueError(f"{facts_path}: missing or invalid recipe identifier")
+        recipe = recorded_recipe
+    recipe_dir = importer.recipe_directory(root / "recipes", recipe)
+    started = facts.get("started_at")
+    date = started[:10] if isinstance(started, str) else ""
     date = date or (now or datetime.now()).strftime("%Y-%m-%d")
     datetime.strptime(date, "%Y-%m-%d")
     numbers = [
@@ -273,14 +277,14 @@ def session_run(
 
 def create_session_report(
     root: Path,
-    recipe: str,
+    recipe: str | None,
     description: str,
     log_dir: Path,
     *,
     since: str | None = None,
     until: str | None = None,
 ) -> tuple[Path, dict[str, Any]]:
-    """Publish a new session experiment only after its complete report renders."""
+    """Publish only after rendering; use launch facts when no recipe is specified."""
     destination = session_destination(root, recipe, description, log_dir)
     with importer.staged_experiment(destination) as staged:
         template = root / "templates/recipe"
@@ -700,14 +704,14 @@ def main(
         experiment = args.experiment
         if args.create and (args.logs is not None or args.instance is None):
             print(
-                "session --create needs the instance name; it also selects the recipe",
+                "session --create needs the instance name to locate launch facts",
                 file=sys.stderr,
             )
             return ExitCode.USAGE
         try:
             if args.create:
                 experiment, document = create_session_report(
-                    root, args.instance, args.create, log_dir, since=args.since, until=args.until
+                    root, None, args.create, log_dir, since=args.since, until=args.until
                 )
             else:
                 document = session_run(

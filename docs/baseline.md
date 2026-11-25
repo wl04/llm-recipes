@@ -52,6 +52,8 @@ This creates the numbered experiment, writes its profile and results, and update
 
 ## Report a coding session
 
+The instance name locates logs. The `recipe` in the instance’s `facts.json` selects the recipe directory for `--create`.
+
 To summarize a launched instance’s logs, run `python3 scripts/run_baseline.py session <instance>`. To save the session as a recipe experiment, run these commands from the repository root:
 
 ```bash

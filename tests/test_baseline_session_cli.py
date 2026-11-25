@@ -287,18 +287,22 @@ def test_session_cli_detects_lm_studio_by_rotated_file_names(
     assert profile["settings"]["sampling"]["temperature"] == 0.6
 
 
+@pytest.mark.parametrize("instance", [runfixtures.RECIPE, "coding"])
 def test_session_create_builds_the_experiment_from_templates(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    instance: str,
 ) -> None:
     root = runfixtures._make_repo(tmp_path)
     monkeypatch.setattr(importer, "_repository_url", lambda _root: None)
     monkeypatch.setenv("LLM_RECIPES_HOME", str(tmp_path / "data"))
-    logs = tmp_path / "data" / "logs" / runfixtures.RECIPE
+    logs = tmp_path / "data" / "logs" / instance
     logs.mkdir(parents=True)
     (logs / "tabbyapi.log").write_text(TABBY_LOG)
-    (logs / "facts.json").write_text(json.dumps(_facts()))
+    (logs / "facts.json").write_text(json.dumps(_facts(instance=instance)))
 
-    code = cli.main(["session", runfixtures.RECIPE, "--create", "coding-session"], root=root)
+    code = cli.main(["session", instance, "--create", "coding-session"], root=root)
 
     assert code == 0
     experiment = root / "recipes" / runfixtures.RECIPE / "001-2026-11-15-coding-session"
@@ -330,17 +334,28 @@ def test_session_create_rejects_invalid_arguments(
     assert "instance" in capsys.readouterr().err
 
 
-def test_session_create_rejects_an_unknown_recipe(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+@pytest.mark.parametrize("recorded_recipe", [None, "no-such-recipe", "../outside"])
+def test_session_create_leaves_recipes_unchanged_when_recorded_recipe_is_unusable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    recorded_recipe: str | None,
 ) -> None:
     root = runfixtures._make_repo(tmp_path)
-    monkeypatch.setenv("LLM_RECIPES_HOME", str(tmp_path / "data"))
+    data = tmp_path / "data"
+    monkeypatch.setenv("LLM_RECIPES_HOME", str(data))
+    logs = data / "logs" / runfixtures.RECIPE
+    logs.mkdir(parents=True)
+    (logs / "tabbyapi.log").write_text(TABBY_LOG)
+    (logs / "facts.json").write_text(json.dumps(_facts(recipe=recorded_recipe)))
+    recipes = root / "recipes"
+    before = sorted(recipes.rglob("*"))
 
-    code = cli.main(["session", "no-such-recipe", "--create", "coding"], root=root)
+    code = cli.main(["session", runfixtures.RECIPE, "--create", "coding"], root=root)
 
     assert code != 0
-    assert "no-such-recipe" in capsys.readouterr().err
-    assert not (root / "recipes" / "no-such-recipe").exists()
+    assert (recorded_recipe or "recipe identifier") in capsys.readouterr().err
+    assert sorted(recipes.rglob("*")) == before
 
 
 def test_session_preserves_existing_files_when_facts_missing(tmp_path: Path) -> None:
