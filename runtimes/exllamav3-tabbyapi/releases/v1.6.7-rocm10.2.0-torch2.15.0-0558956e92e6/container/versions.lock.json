@@ -1,0 +1,20 @@
+{
+  "base_image": "rocm/pytorch@sha256:fe66c7b7b2d746d028471685eab44b399c8a31b89a66bf5ca6c6473cd5432fb1",
+  "torch_version": "2.15.0+rocm10.2.0",
+  "python_version": "3.12",
+  "gpu_arch": "gfx1201",
+  "sources": {
+    "exllamav3": {
+      "repository": "https://github.com/turboderp-org/exllamav3",
+      "revision": "8c593e4e5c88da76a4aaf8f1b1838bb7c1fce4e0",
+      "archive_sha256": "e8bab145bab68062ce4013da1229656579440e743070e745f7652bb45e2f722f"
+    },
+    "tabbyAPI": {
+      "repository": "https://github.com/theroyallab/tabbyAPI",
+      "revision": "8f92fac5d9307bf1e09668c3715b32ff46ad0333",
+      "archive_sha256": "045250356389d0f0986594f29345de1de8a7fc24e7e472a0b9d4da05ca7384d7"
+    }
+  },
+  "base_tag": "rocm10.2.0_ubuntu24.04_py3.12_pytorch_release_2.15.0",
+  "build_inputs_sha256": "42e54386a408843839bb520c31729b37f583323a0b048f9da5a1df4432bb925a"
+}

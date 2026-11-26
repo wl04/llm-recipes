@@ -1,0 +1,7 @@
+{
+  "adapter": "tabbyapi",
+  "engine": "exllamav3",
+  "engine_version": "1.6.7",
+  "image": "llm-recipes/exl3-rdna4:v1.6.7-rocm10.2.0-torch2.15.0-0558956e92e6",
+  "engine_source_version": "v1.6.7"
+}
