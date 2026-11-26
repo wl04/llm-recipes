@@ -2,6 +2,7 @@
 
 import json
 import os
+import shlex
 import subprocess
 import threading
 from collections.abc import Callable
@@ -150,10 +151,11 @@ def test_managed_run_renews_cleanup_authorization_during_workloads(
 def test_managed_run_writes_results_summary_and_raw_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    monkeypatch.chdir(tmp_path)
+    output = tmp_path / "operator's run"
     with FakeServer() as server:
-        code, _ = run_managed(tmp_path, server, monkeypatch)
+        code, _ = run_managed(tmp_path, server, monkeypatch, "--output", output.name)
 
-    output = tmp_path / "run"
     assert code == ExitCode.OK
     for name in ("meta.json", "requests.jsonl", "samples.jsonl", "results.json", "summary.md"):
         assert (output / name).is_file()
@@ -164,8 +166,13 @@ def test_managed_run_writes_results_summary_and_raw_files(
     ]  # fmt: skip
     assert "## Baseline results" in (output / "summary.md").read_text()
     captured = capsys.readouterr()
-    assert captured.out.count("\n") == 1
-    assert str(output) in captured.out
+    assert "Baseline written to" in captured.out
+    assert shlex.split(captured.out.splitlines()[-1]) == [
+        "python3",
+        "scripts/run_baseline.py",
+        "import",
+        str(output),
+    ]
     assert "[baseline]" in captured.err
     assert "[baseline]" not in captured.out
 
@@ -247,6 +254,7 @@ def test_managed_run_reports_a_failed_preflight_with_its_exit_code(
     assert "already running" in meta["run"]["error"]
     assert "already running" in captured.err
     assert "Baseline failed" in captured.out
+    assert "scripts/run_baseline.py import" not in captured.out
     assert (tmp_path / "run" / "results.json").is_file()
 
 

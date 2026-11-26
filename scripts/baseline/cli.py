@@ -7,6 +7,7 @@ be running; without ``--base-url``/``--context`` the run is set up by the guided
 import argparse
 import json
 import platform
+import shlex
 import shutil
 import signal
 import sys
@@ -585,6 +586,12 @@ def _report_run(code: int, writer: RunWriter, root: Path) -> int:
             _progress(f"Problem: {problem}")
     if status == "complete":
         print(f"Baseline written to {writer.directory} (results: {results.name}, summary.md)")
+        print("To import this run, execute the following in the matching recipe checkout:")
+        print(
+            shlex.join(
+                ["python3", "scripts/run_baseline.py", "import", str(writer.directory.resolve())]
+            )
+        )
     else:
         print(f"Baseline {status}; partial output in {writer.directory}")
     return code

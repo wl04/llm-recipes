@@ -42,7 +42,7 @@ python3 scripts/run_baseline.py render <run-dir>
 
 ## Import a baseline run
 
-From the checkout whose recipe and runtime match the run, import the completed run directory:
+A successful run prints the import command with its output directory. Run it from the checkout whose recipe and runtime match the run:
 
 ```bash
 python3 scripts/run_baseline.py import <run-dir>
