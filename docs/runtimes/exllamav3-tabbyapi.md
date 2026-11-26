@@ -4,6 +4,8 @@ The shared runtime builds ExLlamaV3 against AMD's ROCm/PyTorch image and serves 
 
 ## Build and check
 
+To test a newer engine or ROCm image, follow [Upgrade a container runtime](../launcher.md#upgrade-a-container-runtime).
+
 Use the pinned build command in the recipe setup on Ubuntu x86_64 with Docker and working AMD `/dev/kfd` and `/dev/dri` devices. Lower `--max-jobs` if compiler memory use is excessive. The image check verifies engine imports and GPU matrix multiplication.
 
 [`versions.lock.json`](../../runtimes/exllamav3-tabbyapi/releases/v1.6.6-tabby-8f92fac5/container/versions.lock.json) pins the ROCm/PyTorch image digest and upstream ExLlamaV3 and TabbyAPI sources with archive hashes. Python dependencies are pinned with hashes in the [shared container inputs](../../runtimes/exllamav3-tabbyapi/container/requirements.lock). The base supplies Torch, the ROCm SDK, and Triton. ExLlamaV3 is compiled against that Torch with build isolation disabled. Source licenses remain under `/opt/src`.

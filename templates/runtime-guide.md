@@ -6,6 +6,8 @@
 
 State supported OS/GPU architecture and prerequisites. Link to `runtimes/<runtime>/container/` build inputs, source/dependency locks, and `runtime.json`. For a runtime with per-recipe release pins, put the concrete `python3 scripts/build_runtime.py <runtime> --recipe <recipe-id> --check` command in each recipe setup page. Otherwise use `python3 scripts/build_runtime.py <runtime> --check`. Set the descriptor’s image tag to the pinned source release (or nearest release, commit count and Git SHA). Include the API server revision when pinned separately. Use a distinct tag when comparing builds of the same sources, such as a ROCm or patch variant.
 
+For runtimes supported by the shared upgrader, link to [upgrade a container runtime](../launcher.md#upgrade-a-container-runtime).
+
 ## Model preparation
 
 Describe the preparation helper, model lock schema, verification, resumability, retry behavior, and prepared file layout. Recipe setup pages supply runnable commands, model-specific conversion choices, and resource requirements.

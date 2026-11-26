@@ -43,9 +43,16 @@ def output(*cmd: str, cwd: Path | None = None) -> str:
     return subprocess.check_output(cmd, cwd=cwd or ROOT, text=True).strip()
 
 
-def worktree(root: Path, key: str, names: tuple[str, ...] = ()) -> Path:
+def worktree(
+    root: Path,
+    key: str,
+    names: tuple[str, ...] = (),
+    runtime: str = "strata",
+    *,
+    update_reference: bool = True,
+) -> Path:
     """Create a sibling trial or resume the matching worktree of this repository."""
-    branch = f"strata-{key}"
+    branch = f"{runtime}-{key}"
     path = root.with_name(f"{root.name}-{branch}")
     if path.exists():
         for directory in (path, root):
@@ -58,7 +65,7 @@ def worktree(root: Path, key: str, names: tuple[str, ...] = ()) -> Path:
         ):
             raise ValueError(f"Another checkout occupies {path}")
         reference = output("git", "rev-parse", "HEAD", cwd=root)
-        if output("git", "rev-parse", "HEAD", cwd=path) != reference:
+        if update_reference and output("git", "rev-parse", "HEAD", cwd=path) != reference:
             # Git handles conflicts in generated files during the fast-forward.
             changes = output(
                 "git",
@@ -69,8 +76,8 @@ def worktree(root: Path, key: str, names: tuple[str, ...] = ()) -> Path:
                 f":(exclude){LOCK}",
                 f":(exclude){DESCRIPTOR}",
                 *(f":(exclude){manifest_path(name)}" for name in names),
-                f":(exclude){RUNTIME}/releases/{key}/runtime.json",
-                f":(exclude){RUNTIME}/releases/{key}/container/versions.lock.json",
+                f":(exclude)runtimes/{runtime}/releases/{key}/runtime.json",
+                f":(exclude)runtimes/{runtime}/releases/{key}/container/versions.lock.json",
                 cwd=path,
             )
             if changes or output("git", "diff", "--cached", "--name-only", cwd=path):
@@ -122,16 +129,21 @@ def inspect_source(files: dict[str, str], requirements: dict[str, dict[str, str]
     return version[1]
 
 
-def release(
-    tag: str, requirements: dict[str, dict[str, str]], options: dict[str, bool]
-) -> tuple[str, str, str]:
-    repo = "https://github.com/Niko1221/Strata.git"
+def resolve_revision(repo: str, tag: str) -> str:
     ref = f"refs/tags/{tag}"
     lines = output("git", "ls-remote", "--exit-code", repo, ref, ref + "^{}")
     refs = dict(line.split()[::-1] for line in lines.splitlines())
     revision = refs.get(ref + "^{}", refs[ref])
     if not re.fullmatch("[0-9a-f]{40}", revision):
         raise ValueError(f"Invalid Git revision for {tag}")
+    return revision
+
+
+def release(
+    tag: str, requirements: dict[str, dict[str, str]], options: dict[str, bool]
+) -> tuple[str, str, str]:
+    repo = "https://github.com/Niko1221/Strata.git"
+    revision = resolve_revision(repo, tag)
     url = f"https://codeload.github.com/Niko1221/Strata/tar.gz/{revision}"
     with tempfile.TemporaryFile() as archive:
         with urllib.request.urlopen(url, timeout=120) as response:
@@ -198,41 +210,55 @@ def settings(path: Path) -> dict[str, Any]:
     return config
 
 
-def build_or_check(candidate: Path, image: str, lock: dict[str, Any], jobs: int) -> None:
+def build_fingerprint(candidate: Path, runtime: str) -> str:
+    # Include all tracked container build inputs except the generated lock itself.
+    fingerprint = hashlib.sha256()
+    container = Path("runtimes") / runtime / "container"
+    for name in sorted(output("git", "ls-files", str(container), cwd=candidate).splitlines()):
+        if Path(name) != container / "versions.lock.json":
+            fingerprint.update(
+                name.encode() + b"\0" + hashlib.sha256((candidate / name).read_bytes()).digest()
+            )
+    return fingerprint.hexdigest()
+
+
+def build_or_check(
+    candidate: Path, image: str, lock: dict[str, Any], jobs: int, runtime: str = "strata"
+) -> str:
     image_id = output("sudo", "docker", "image", "ls", "--no-trunc", "-q", image)
-    if image_id:
-        saved = output(
-            "sudo",
-            "docker",
-            "run",
-            "--rm",
-            "--network=none",
-            "--entrypoint",
-            "cat",
-            image_id,
-            "/opt/build/versions.lock.json",
-        )
-        if json.loads(saved) != lock:
-            raise ValueError(f"{image} already has different inputs; select a new image_suffix")
-        print(f"Checking existing image {image}", flush=True)
-        subprocess.run(
-            ["sudo", "docker", "run", "--rm", *gpu_access_args(gpu_groups()), image_id], check=True
-        )
-    else:
+    if not image_id:
         subprocess.run(
             [
                 sys.executable,
                 "scripts/build_runtime.py",
-                "strata",
+                runtime,
                 "--version",
                 image.rsplit(":", 1)[1],
-                "--check",
                 "--max-jobs",
                 str(jobs),
             ],
             cwd=candidate,
             check=True,
         )
+        image_id = output("sudo", "docker", "image", "inspect", "--format", "{{.Id}}", image)
+    saved = output(
+        "sudo",
+        "docker",
+        "run",
+        "--rm",
+        "--network=none",
+        "--entrypoint",
+        "cat",
+        image_id,
+        "/opt/build/versions.lock.json",
+    )
+    if json.loads(saved) != lock:
+        raise ValueError(f"{image} already has different inputs; select a new image_suffix")
+    print(f"Checking image {image} ({image_id})", flush=True)
+    subprocess.run(
+        ["sudo", "docker", "run", "--rm", *gpu_access_args(gpu_groups()), image_id], check=True
+    )
+    return image_id
 
 
 def upgrade(tag: str, config: dict[str, Any], prepare_only: bool) -> None:
@@ -279,20 +305,12 @@ def upgrade(tag: str, config: dict[str, Any], prepare_only: bool) -> None:
         flush=True,
     )
     candidate = worktree(ROOT, key, tuple(names))
-    # Include all tracked container build inputs except the generated lock itself.
-    fingerprint = hashlib.sha256()
-    container = LOCK.parent
-    for name in sorted(output("git", "ls-files", str(container), cwd=candidate).splitlines()):
-        if Path(name) != LOCK:
-            fingerprint.update(
-                name.encode() + b"\0" + hashlib.sha256((candidate / name).read_bytes()).digest()
-            )
     lock.update(
         base_image=base,
         base_tag=config["base_tag"],
         layout="engine-terminal",
         engine_options=config["engine_options"],
-        build_inputs_sha256=fingerprint.hexdigest(),
+        build_inputs_sha256=build_fingerprint(candidate, "strata"),
     )
     lock["sources"]["strata"].update(revision=rev, sha256=digest)
     descriptor.update(engine_version=version, engine_source_version=tag, image=image)
@@ -313,25 +331,10 @@ def upgrade(tag: str, config: dict[str, Any], prepare_only: bool) -> None:
         manifest = json.loads((ROOT / path).read_text())
         manifest["runtime"] = f"strata/releases/{key}"
         generated[str(path)] = manifest
-    state = {"files": generated, "models": str(models), "candidate": str(candidate)}
-    if prior and any(prior.get(k) != v for k, v in state.items()):
-        raise ValueError(f"Conflicting trial inputs for {key}; use an image_suffix")
-    manifests = {manifest_path(name) for name in names}
-    for name, value in generated.items():
-        dest = candidate / name
-        if (
-            dest.exists()
-            and json.loads(dest.read_text()) != value
-            and (Path(name) not in manifests or dest.read_bytes() != (ROOT / name).read_bytes())
-        ):
-            raise ValueError(f"Conflicting candidate file: {dest}")
-    save(record, {**prior, **state})
-    for name, value in generated.items():
-        save(candidate / name, value)
+    state = stage_files(record, prior, generated, candidate, models, names)
     if prepare_only:
         return
-    build_or_check(candidate, image, lock, config["max_jobs"])
-    image_id = output("sudo", "docker", "image", "inspect", "--format", "{{.Id}}", image)
+    image_id = build_or_check(candidate, image, lock, config["max_jobs"])
     save(record, {**prior, **state, "image_id": image_id})
     for index, name in enumerate(names, 1):
         print(f"\nPreparing recipe {index}/{len(names)}  {name}", flush=True)
@@ -379,6 +382,43 @@ def upgrade(tag: str, config: dict[str, Any], prepare_only: bool) -> None:
         print(f"  Run the baseline\n    {baseline}")
 
 
+def stage_files(
+    record: Path,
+    prior: dict[str, Any],
+    generated: dict[str, Any],
+    candidate: Path,
+    models: Path,
+    names: list[str],
+) -> dict[str, Any]:
+    state = {"files": generated, "models": str(models), "candidate": str(candidate)}
+    if prior and (
+        prior["models"] != str(models)
+        or prior["candidate"] != str(candidate)
+        or any(generated.get(path) != contents for path, contents in prior["files"].items())
+    ):
+        raise ValueError(f"Conflicting trial inputs at {record}")
+    manifests = {manifest_path(name) for name in names}
+    for name, value in generated.items():
+        path = Path(name)
+        if (
+            path.is_absolute()
+            or ".." in path.parts
+            or (candidate / path).resolve() != candidate / path
+        ):
+            raise ValueError(f"Invalid candidate file: {name}")
+        dest = candidate / name
+        if (
+            dest.exists()
+            and json.loads(dest.read_text()) != value
+            and (Path(name) not in manifests or dest.read_bytes() != (ROOT / name).read_bytes())
+        ):
+            raise ValueError(f"Conflicting candidate file: {dest}")
+    save(record, {**prior, **state})
+    for name, value in generated.items():
+        save(candidate / name, value)
+    return state
+
+
 def manifest_path(name: str) -> Path:
     return Path("recipes") / name / "config/launch.json"
 
@@ -399,9 +439,9 @@ def save(path: Path, value: object) -> None:
         write_json_atomic(path, value)
 
 
-def trial_record(key: str) -> Path:
+def trial_record(key: str, runtime: str = "strata") -> Path:
     common = Path(output("git", "rev-parse", "--path-format=absolute", "--git-common-dir"))
-    return common / "strata-trials" / (key + ".json")
+    return common / f"{runtime}-trials" / (key + ".json")
 
 
 def check_ready_recipe(recipe: Recipe, models: Path) -> None:
@@ -440,14 +480,14 @@ def selection_identity(recipe: Recipe) -> list[str]:
     ]
 
 
-def manage(key: str, delete: bool) -> None:
+def manage(key: str, delete: bool, runtime: str = "strata") -> None:
     with ExitStack() as guards:
-        manage_trial(key, delete, guards)
+        manage_trial(key, delete, guards, runtime)
 
 
-def manage_trial(key: str, delete: bool, guards: ExitStack) -> None:
-    record = trial_record(key)
-    candidate = ROOT.with_name(f"{ROOT.name}-strata-{key}")
+def manage_trial(key: str, delete: bool, guards: ExitStack, runtime: str) -> None:
+    record = trial_record(key, runtime)
+    candidate = ROOT.with_name(f"{ROOT.name}-{runtime}-{key}")
     if not record.exists():
         if delete and not candidate.exists():
             return
@@ -456,7 +496,7 @@ def manage_trial(key: str, delete: bool, guards: ExitStack) -> None:
     models = data_home().resolve()
     if state["candidate"] != str(candidate) or state["models"] != str(models):
         raise ValueError("Use the checkout and model root that prepared this trial")
-    pins = RUNTIME / "releases" / key
+    pins = Path("runtimes") / runtime / "releases" / key
     files = state["files"]
     names = trial_names(files)
     manifests = {str(manifest_path(name)) for name in names}
@@ -468,7 +508,7 @@ def manage_trial(key: str, delete: bool, guards: ExitStack) -> None:
     if not names or set(files) != expected:
         raise ValueError("Invalid trial record")
     image = files[str(pins / "runtime.json")]["image"]
-    branch = "strata-" + key
+    branch = f"{runtime}-{key}"
     if candidate.exists():
         common = ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"]
         if (
@@ -552,7 +592,7 @@ def manage_trial(key: str, delete: bool, guards: ExitStack) -> None:
         subprocess.run(["git", "add", "--", *files], cwd=candidate, check=True)
         if output("git", "diff", "--cached", "--name-only", cwd=candidate):
             subprocess.run(
-                ["git", "commit", "-m", f"Select Strata {key} for {len(names)} local recipes"],
+                ["git", "commit", "-m", f"Select {runtime} {key} for {len(names)} local recipes"],
                 cwd=candidate,
                 check=True,
             )
@@ -568,7 +608,7 @@ def manage_trial(key: str, delete: bool, guards: ExitStack) -> None:
     # A published or installed default still owns its versioned preparation.
     for checkout in (ROOT, app):
         for path in (checkout / "recipes").glob("*/config/launch.json"):
-            if json.loads(path.read_text()).get("runtime") == f"strata/releases/{key}":
+            if json.loads(path.read_text()).get("runtime") == f"{runtime}/releases/{key}":
                 raise ValueError(
                     f"{path} still selects {key}; revert the published selection first"
                 )
@@ -593,8 +633,22 @@ def manage_trial(key: str, delete: bool, guards: ExitStack) -> None:
         ):
             raise ValueError(f"Unexpected partial preparation at {partial}")
         if prepared.exists():
-            receipt = json.loads((prepared / "prepared.json").read_text())
-            if receipt.get("image") != files[str(pins / "container/versions.lock.json")]:
+            if runtime == "exllamav3-tabbyapi":
+                model_lock = json.loads(
+                    (ROOT / manifest_path(name).parent / "models.lock.json").read_text()
+                )
+                draft = prepared / model_lock["conversion"]["directory"]
+                allowed = {draft.name, model_lock["conversion"]["work_directory"]}
+                if draft.parent != prepared or any(
+                    p.is_symlink() or p.name not in allowed for p in prepared.iterdir()
+                ):
+                    raise ValueError(f"Unexpected converted draft directory: {prepared}")
+                receipt = json.loads((draft / "prepared.json").read_text())
+                owner = receipt.get("build")
+            else:
+                receipt = json.loads((prepared / "prepared.json").read_text())
+                owner = receipt.get("image")
+            if owner != files[str(pins / "container/versions.lock.json")]:
                 raise ValueError(f"Unexpected preparation at {prepared}")
         directories.extend((prepared, partial))
     if image_id:

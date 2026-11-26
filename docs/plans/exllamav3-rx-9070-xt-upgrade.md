@@ -6,24 +6,29 @@ Evaluate whether ExLlamaV3 1.6.7 improves warm Pi turns and whether the communit
 
 The [runtime lock](../../runtimes/exllamav3-tabbyapi/releases/v1.6.6-tabby-8f92fac5/container/versions.lock.json) pins unpatched ExLlamaV3 1.6.6 and TabbyAPI `8f92fac`, built for `gfx1201` on AMD’s PyTorch `2.14.0+rocm10.1.0` image. The [model lock](../../recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/config/models.lock.json) pins the Qwen3.8-27B EXL3 3 bpw target and DFlash2 source and defines the 3 bpw draft conversion.
 
-- [Baseline 001](../../recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/001-2026-11-14-baseline/summary.md) recorded 1,038 tok/s prefill, 36.4 tok/s decode, and 28.9% draft acceptance at 119,542 input tokens.
+- Use [baseline 003](../../recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/003-2026-11-26-baseline/summary.md) as the suite-v3 reference for ROCm 10.1.0. At 119,542 input tokens it recorded 1,031 tok/s prefill and 38.28 tok/s decode. At 64K, replay served 65,024 cached tokens with first output in 0.806 s. Exclude the two sustained coding cases marked `insufficient_sample` from throughput comparisons.
 - [Coding session 002](../../recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/002-2026-11-07-coding-gpu-switcher/summary.md) recorded 97.2% prompt reuse, 1.90 s median time to first token, and 59.6 tok/s median decode.
-
-Rerun the reference with the current baseline runner. The historical results establish the workload and its scale. Promotion decisions use the paired runs below.
 
 ## 1. Prepare the runtime and model layout
 
-The reference recipe selects `exllamav3-tabbyapi/releases/v1.6.6-tabby-8f92fac5`. Use the [recipe data layout](../../recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/setup.md#prepare-models) for all trials. On the workstation, verify the reference draft with `doctor` and run one generation with drafting enabled before changing the image.
+The reference recipe selects `exllamav3-tabbyapi/releases/v1.6.6-tabby-8f92fac5`. Baseline 003 verified the migrated DFlash2 draft and GPU vision at a configured context of 131,072 tokens. Use the [recipe data layout](../../recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/setup.md#prepare-models) for all trials.
 
-For the unified upgrader, resolve each candidate to a distinct build key, release lock and image tag. Reuse matching images and verified drafts. Keep the reference selectable until the candidate passes, and exercise rollback with both preparations in the same data root.
+Use the [runtime upgrader](../launcher.md#upgrade-a-container-runtime) for isolated trials. Keep the reference selectable until the candidate passes, and exercise rollback with both preparations in the same data root.
 
-## 2. Test the AMD base
+## 2. Build the candidate on the workstation
 
-Use AMD’s `rocm/pytorch:rocm10.2.0_ubuntu24.04_py3.12_pytorch_release_2.14.0` as the candidate base. Resolve its Linux/amd64 digest and verify its Python, PyTorch and HIP versions. Keep ExLlamaV3 1.6.6 and the reference TabbyAPI revision, rebuild the extension, and run the image and generation checks on gfx1201. Compare against the original ROCm 10.1 build.
+From the main checkout, build and smoke-test the latest compatible ExLlamaV3 and AMD PyTorch image:
+
+```bash
+recipe=qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
+python3 scripts/upgrade_runtime.py "$recipe" --image-only
+```
+
+Use the printed resume command to prepare the draft and get the baseline command. Verify the image ID in the resulting run. For an optional ROCm-only comparison with baseline 003, add `--release v1.6.6 --rocm 10.2.0 --pytorch current` when creating the trial.
 
 ## 3. Test the upstream release
 
-Build vanilla [ExLlamaV3 1.6.7](https://github.com/turboderp-org/exllamav3/releases/tag/v1.6.7) (`8c593e4`) with [TabbyAPI `4728158`](https://github.com/theroyallab/tabbyAPI/commit/47281587f). Pin the full source revisions and archive hashes. Compare TabbyAPI’s runtime dependencies with the existing hashed overlay and validate the recipe against its configuration schema. Keep the ROCm/PyTorch image digest, GPU architecture, and server sampling settings fixed.
+For a targeted engine and API-server trial, build vanilla [ExLlamaV3 1.6.7](https://github.com/turboderp-org/exllamav3/releases/tag/v1.6.7) (`8c593e4`) with [TabbyAPI `4728158`](https://github.com/theroyallab/tabbyAPI/commit/47281587f). Pin the full source revisions and archive hashes. Compare TabbyAPI’s runtime dependencies with the existing hashed overlay and validate the recipe against its configuration schema. Keep the ROCm/PyTorch image digest, GPU architecture, and server sampling settings fixed.
 
 Rolling recurrent checkpoints can reduce the tokens replayed on follow-up turns. Measure this with cached requests and track warm first-token latency. Long cold prompts exercise the chunked-prefill shared-memory fix. The prefill pipeline requires at least two GPU stages, so the single RX 9070 XT uses the regular prefill path. [Release comparison](https://github.com/turboderp-org/exllamav3/compare/v1.6.6...v1.6.7) · [Pipeline source](https://github.com/turboderp-org/exllamav3/blob/v1.6.7/exllamav3/model/prefill_pipeline.py)
 

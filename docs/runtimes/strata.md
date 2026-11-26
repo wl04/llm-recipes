@@ -9,6 +9,8 @@ Strata serves GGUF models through its own API on Ubuntu x86_64 with Docker and a
 
 ## Build and check
 
+To test a newer engine or ROCm image, follow [Upgrade a container runtime](../launcher.md#upgrade-a-container-runtime).
+
 Docker needs access to `/dev/kfd` and `/dev/dri`. The recipe's build command reads its selected release lock and checks binary startup, API imports and a HIP kernel. If the compiler runs short of RAM, add `--max-jobs 2`.
 
 ## Preparation
@@ -36,7 +38,7 @@ git pull --ff-only
 python3 scripts/install.py install
 ```
 
-To evaluate a **new upstream release**, run the following in Bash from your main checkout with the GPU free:
+To prepare **all installed Strata recipes together** for a specific upstream release, run the following in Bash from your main checkout with the GPU free:
 
 ```bash
 read -rp 'Strata release tag (vX.Y.Z): ' tag

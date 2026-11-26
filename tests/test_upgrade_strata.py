@@ -166,7 +166,7 @@ def test_adoption_selects_installed_strata_models_and_delete_restores_each(
         upgrade.upgrade(tag, options, False)
     shard.write_bytes(b"x")
     query = upgrade.output
-    probe = Mock()
+    probe = Mock(return_value="image-id")
     run = subprocess.run
     prepared_recipes: list[str] = []
 

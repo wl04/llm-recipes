@@ -24,6 +24,33 @@ A successful query with no matching container returns `"status": "not-found"`; b
 exit with code 0. Docker or authentication failures return `"status": "error"` with an
 `error` message and exit code 1. Invalid command arguments exit with code 2.
 
+## Upgrade a container runtime
+
+From the main checkout, set `recipe` to a container recipe ID from `llm-recipes list`. Run the upgrader with the GPU free:
+
+```bash
+recipe=qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
+python3 scripts/upgrade_runtime.py "$recipe"
+```
+
+A fresh trial selects the latest stable upstream engine release and the newest matching Linux/amd64 ROCm image. ExLlamaV3 uses the newest matching PyTorch release for the runtime's supported Python minor and keeps the recipe's TabbyAPI revision. Strata uses the Ubuntu ROCm dev image and its distribution Python. The command prints the resolved source revisions, AMD tag, digest and candidate key.
+
+| Option | Use |
+|---|---|
+| `--release vX.Y.Z` | Pin the upstream engine tag. |
+| `--rocm X.Y.Z` | Pin the AMD stack version. |
+| `--pytorch X.Y.Z` or `--pytorch current` | Pin PyTorch or keep the recipe's version when testing ExLlamaV3. |
+| `--prepare-only` | Write the candidate checkout and locks without Docker or weights. |
+| `--image-only` | Build or reuse the image and run the GPU smoke test without preparing weights. |
+
+The full run prepares the selected recipe and prints its baseline command. Recipes with identical build inputs share one image. Their generated model files live in separate recipe directories. To continue an image-only run or retry an exact candidate, use the printed key:
+
+```bash
+python3 scripts/upgrade_runtime.py "$recipe" --resume <key>
+```
+
+Run the printed baseline from the candidate worktree. Normal installed launches use the published recipe until adoption. To adopt the candidate's participating recipes, use `--adopt <key>` from the main checkout; adoption prints the branch publication command. Use `--delete <key>` to discard or roll back an unpublished trial. Stop candidate containers before cleanup.
+
 ## Diagnose a recipe
 
 ```bash
