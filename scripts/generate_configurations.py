@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 import yaml
 from baseline import report, schema
+from command_hints import command_hint
 
 ROOT = Path(__file__).resolve().parents[1]
 START = "<!-- BEGIN GENERATED CONFIGURATIONS -->"
@@ -854,7 +855,17 @@ def main() -> int:
             else:
                 write_atomic(path, new)
                 print(f"Updated: {path.relative_to(ROOT)}")
-    return int(args.check and stale)
+    if args.check and stale:
+        print(
+            command_hint(
+                "Regenerate the documents from the checkout",
+                ["python3", "scripts/generate_configurations.py"],
+                stream=sys.stderr,
+            ),
+            file=sys.stderr,
+        )
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ commands, under a dedicated instance name so an instance the user started is nev
 import os
 import re
 import shlex
+import shutil
 import threading
 import time
 from collections.abc import Callable, Iterator
@@ -17,6 +18,7 @@ from typing import Any
 
 import doctor
 import launcher
+from command_hints import command_hint
 from launcher import LaunchOptions, Recipe
 
 from baseline import host
@@ -110,7 +112,7 @@ class ContainerControl:
             if item.status == "FAIL"
         ]
         if failed:
-            raise LifecycleError("The recipe is not ready: " + "; ".join(failed))
+            raise LifecycleError("The recipe is not ready:\n" + "\n\n".join(failed))
         listing = self._run(
             _non_interactive(
                 [
@@ -127,9 +129,14 @@ class ContainerControl:
             )
         names = listing.stdout.split()
         if names:
+            stop = (
+                ["llm-recipes", "stop"]
+                if shutil.which("llm-recipes")
+                else ["python3", str(Path(launcher.__file__).with_name("launch.py")), "stop"]
+            )
             raise LifecycleError(
-                f"Launcher instance(s) already running: {', '.join(names)}. "
-                "Stop them first, for example `python3 scripts/launch.py stop " + names[0] + "`."
+                f"Launcher instance(s) already running: {', '.join(names)}."
+                + command_hint("Stop the running instances", *([*stop, name] for name in names))
             )
         used = self._gpu_vram_gib()
         if used is not None and used > GPU_IN_USE_GIB:
@@ -215,8 +222,11 @@ class ContainerControl:
         if result.returncode:
             detail = result.stderr.strip() or "Docker inspection failed"
             raise LifecycleError(
-                f"Cannot inspect baseline container {self._container}: {detail}. "
-                f"Check sudo or Docker and stop it with: sudo docker stop {self._container}"
+                f"Cannot inspect baseline container {self._container}: {detail}."
+                + command_hint(
+                    "After checking Docker and sudo access, stop the baseline container",
+                    ["sudo", "docker", "stop", self._container],
+                )
             )
         return self._container in result.stdout.split()
 
@@ -229,6 +239,8 @@ class ContainerControl:
             if not self.is_running():
                 return
             raise LifecycleError(
-                f"Docker could not stop the server ({result.stderr.strip()}). "
-                f"Stop it yourself with: sudo docker stop {self._container}"
+                f"Docker could not stop the server ({result.stderr.strip()})."
+                + command_hint(
+                    "Stop the baseline container", ["sudo", "docker", "stop", self._container]
+                )
             )

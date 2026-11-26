@@ -7,7 +7,6 @@ be running; without ``--base-url``/``--context`` the run is set up by the guided
 import argparse
 import json
 import platform
-import shlex
 import shutil
 import signal
 import sys
@@ -23,6 +22,7 @@ import generate_configurations as generator
 import host_facts
 import paths
 import yaml
+from command_hints import command_hint
 from launcher import (
     Recipe,
     discover_recipes,
@@ -586,10 +586,11 @@ def _report_run(code: int, writer: RunWriter, root: Path) -> int:
             _progress(f"Problem: {problem}")
     if status == "complete":
         print(f"Baseline written to {writer.directory} (results: {results.name}, summary.md)")
-        print("To import this run, execute the following in the matching recipe checkout:")
         print(
-            shlex.join(
-                ["python3", "scripts/run_baseline.py", "import", str(writer.directory.resolve())]
+            command_hint(
+                "Import this run from the matching recipe checkout",
+                ["python3", "scripts/run_baseline.py", "import", str(writer.directory.resolve())],
+                stream=sys.stdout,
             )
         )
     else:

@@ -7,6 +7,7 @@ import os
 import sys
 from pathlib import Path
 
+from command_hints import command_hint
 from textual.widgets import TabbedContent
 from tui import LaunchScreen, LlmRecipesApp, load_recipes
 
@@ -88,7 +89,14 @@ def main(argv: list[str] | None = None) -> int:
     if stale:
         for path in stale:
             print(f"Missing or stale screenshot: {path}", file=sys.stderr)
-        print("Run .venv/bin/python scripts/generate_tui_screenshots.py", file=sys.stderr)
+        print(
+            command_hint(
+                "Regenerate the screenshots from the checkout",
+                ["python3", "scripts/generate_tui_screenshots.py"],
+                stream=sys.stderr,
+            ),
+            file=sys.stderr,
+        )
         return 1
     return 0
 

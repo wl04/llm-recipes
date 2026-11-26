@@ -198,22 +198,27 @@ def test_prepare_records_selected_lock_without_touching_baseline(
     assert "00001-of-00004.gguf" in calls[0][3]
 
 
-def test_prepare_host_mounts_runtime_and_selected_recipe(tmp_path: Path) -> None:
+@pytest.mark.parametrize("override", [False, True])
+def test_prepare_host_mounts_runtime_and_selected_recipe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, override: bool
+) -> None:
     import subprocess
     import sys
 
+    monkeypatch.setenv("LLM_RECIPES_HOME", str(tmp_path / "default"))
+    models = tmp_path / ("models" if override else "default")
+    argv = ["prepare_models.py", "--recipe", str(UNSLOTH)]
+    if override:
+        argv.extend(["--models", str(models)])
     with (
-        patch.object(
-            sys,
-            "argv",
-            ["prepare_models.py", "--recipe", str(UNSLOTH), "--models", str(tmp_path / "models")],
-        ),
+        patch.object(sys, "argv", argv),
         patch.object(
             prepare.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)
         ) as run,
     ):
         assert prepare.main() == 0
     command = run.call_args.args[0]
+    assert f"type=bind,src={models},dst=/models" in command
     assert f"type=bind,src={UNSLOTH},dst=/recipes/{UNSLOTH.name},readonly" in command
     assert f"type=bind,src={RUNTIME},dst=/runtime,readonly" in command
     assert command[-4:] == [

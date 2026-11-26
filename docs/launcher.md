@@ -109,7 +109,7 @@ The default directory is `<models root>/logs/<instance>`. The launcher takes the
 
 After Docker confirms the container, the launcher, dashboard, and baseline runner record its ID, image, effective launch options, configuration hashes, and host facts in `facts.json`. A rejected start preserves the previous file. An ordinary launch warns if facts cannot be written. A baseline run reports the failure and attempts to stop its own container. `run_baseline.py session <instance>` and `run_baseline.py import` read it; the [session report](baseline.md#report-a-coding-session) uses it to seed experiment profiles.
 
-Queries (`list`, `ps`, `status`) accept `--json` for machine-readable output.
+Queries (`list`, `ps`, `status`) accept `--json` for machine-readable output. For the scripts that print copyable follow-up commands, see the [command catalog](project-instructions.md#commands-suggested-by-scripts).
 
 ### Terminal dashboard
 

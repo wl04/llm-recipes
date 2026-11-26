@@ -268,7 +268,16 @@ if ((${#warnings[@]})); then
     echo "ATTENTION (${#warnings[@]} warning(s) above); the run still saved partial captures." >&2
     exit 1
 fi
+python3 - "$out" <<'PYTHON'
+import sys
+from scripts.command_hints import command_hint
+
+print(command_hint(
+    "Review the captures for private data and run the checks",
+    ["git", "diff", "--", sys.argv[1]],
+    ["bash", "scripts/check.sh"],
+    stream=sys.stdout,
+))
+PYTHON
 echo
-echo "Next: 1) review 'git diff -- $out' and delete anything personal"
-echo "      2) bash scripts/check.sh"
-echo "      3) note the server/engine version in tests/fixtures/README.md and commit"
+echo "Record the server and engine versions in tests/fixtures/README.md before committing."

@@ -9,6 +9,7 @@ from types import ModuleType
 from typing import Any
 from urllib.parse import urlsplit
 
+from command_hints import command_hint
 from launcher import Recipe
 
 
@@ -278,7 +279,8 @@ def diagnose(recipe: Recipe, models: Path, *, devices: Path = Path("/dev")) -> l
     docker = inspect_command(
         "Docker",
         ["version", "--format", "{{.Server.Version}}"],
-        "Check Docker installation/service; re-run to refresh sudo credentials if they timed out.",
+        "Check the Docker service."
+        + command_hint("If sudo credentials expired, refresh them", ["sudo", "-v"]),
     )
     findings = [docker]
     if docker.status == "PASS":

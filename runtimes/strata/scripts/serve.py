@@ -4,6 +4,7 @@ import argparse
 import copy
 import json
 import os
+import shlex
 import signal
 import subprocess
 import sys
@@ -49,6 +50,17 @@ def configure(
     return config
 
 
+def prepare_hint(detail: str, recipe_name: str) -> str:
+    command = [
+        "python3",
+        "runtimes/strata/scripts/prepare_models.py",
+        "--recipe",
+        f"recipes/{recipe_name}",
+    ]
+    label = "Repeat model preparation from the host checkout with the same data root"
+    return f"{detail}\n\n{label}\n\n{shlex.join(command)}"
+
+
 def validate_model_files(
     root: Path, lock: dict[str, Any], projector: dict[str, Any] | None = None
 ) -> None:
@@ -58,7 +70,7 @@ def validate_model_files(
         if projector and item["path"] == projector["source"]:
             path = (root.parents[1] / projector["path"]).with_name(path.name)
         if not path.is_file() or path.stat().st_size != item["size_bytes"]:
-            raise ValueError(f"Missing or incomplete model file: {path}; rerun prepare_models.py")
+            raise ValueError(prepare_hint(f"Missing or incomplete model file: {path}", root.name))
 
 
 def validate_files(config: dict[str, Any]) -> None:
@@ -175,9 +187,9 @@ def main() -> int:
                 Path(config["vision"]["mmproj"]) != target
                 or target.stat().st_size != projector["size_bytes"]
             ):
-                raise ValueError("Invalid shared vision projector; rerun prepare_models.py")
+                raise ValueError(prepare_hint("Invalid shared vision projector", recipe.name))
         if receipt != {"models": models, "image": expected}:
-            raise ValueError("Prepared model lock differs; rerun prepare_models.py")
+            raise ValueError(prepare_hint("Prepared model lock differs", recipe.name))
         validate_model_files(Path("/models") / folder, models, projector)
         validate_files(config)
         environment = dict(os.environ, HIP_VISIBLE_DEVICES=probe_device())

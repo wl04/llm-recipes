@@ -190,11 +190,15 @@ def test_adoption_selects_installed_strata_models_and_delete_restores_each(
     summary = capsys.readouterr().out.split("Strata v0.2.18 preparation complete\n")[1]
     for index, name in enumerate(installed_names, 1):
         section = summary.split(f"[{index}/2] {name}\n")[1].split("\n[")[0].splitlines()
-        assert section[0].strip() == "Start an interactive server"
-        assert shlex.split(section[1])[-5:] == ["start", name, "--models", str(models), "--detach"]
-        assert section[2].strip() == "Run the baseline"
-        assert shlex.split(section[3])[-4:] == ["run", name, "--models", str(models)]
+        commands = [shlex.split(line) for line in section if line.startswith("python3 ")]
+        assert commands == [
+            ["python3", "scripts/launch.py", "start", name],
+            ["python3", "scripts/run_baseline.py", "run", name],
+        ]
     candidate = root.parent / "reference-strata-v0.2.18"
+    assert ["cd", str(candidate)] in [
+        shlex.split(line) for line in summary.splitlines() if line.startswith("cd ")
+    ]
     old = discover_recipes(app / "recipes")
     trials = discover_recipes(candidate / "recipes")
     trial = trials[installed_names[0]]
@@ -251,3 +255,12 @@ def test_adoption_selects_installed_strata_models_and_delete_restores_each(
     assert not (data_dir / "prepared" / tag).exists()
     assert not candidate.exists()
     assert query("git", "rev-parse", f"strata-{tag}") == revision
+
+
+def test_candidate_preserves_relative_data_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("LLM_RECIPES_HOME", "my models")
+    models = data_home().resolve()
+    assert upgrade.candidate_model_args(tmp_path / "trial", models) == ["--models", str(models)]

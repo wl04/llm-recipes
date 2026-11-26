@@ -45,7 +45,7 @@ read -rp 'Strata release tag (vX.Y.Z): ' tag
 python3 scripts/upgrade_strata.py "$tag"
 ```
 
-The script creates or resumes a sibling worktree for the tag, checks the image, and prepares each installed Strata recipe with local weights. Choose one of the printed commands to start the candidate or run its baseline. The baseline starts its own server.
+The script creates or resumes a sibling worktree for the tag, checks the image, and prepares each installed Strata recipe with local weights. Enter the printed candidate directory, then choose either the start or baseline command for one recipe. The baseline starts its own server.
 
 The [upgrade configuration](../../runtimes/strata/upgrade.json) controls the ROCm base tag, build parallelism and engine options. For a second build of the same release, set a distinct image suffix and pass the same `--config <file>` to preparation, adoption and deletion.
 

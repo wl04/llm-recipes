@@ -6,7 +6,6 @@ import fcntl
 import hashlib
 import json
 import re
-import shlex
 import shutil
 import subprocess
 import sys
@@ -17,6 +16,7 @@ from contextlib import ExitStack
 from pathlib import Path
 from typing import Any
 
+from command_hints import command_hint
 from doctor import check_prepared, strata_weight_path
 from launcher import (
     Recipe,
@@ -355,31 +355,29 @@ def upgrade(tag: str, config: dict[str, Any], prepare_only: bool) -> None:
     print(f"Models root         {models}")
     print("\nChoose one recipe and one action. The baseline starts its own server.")
     print("Stop any interactive server before running a baseline or switching recipes.")
+    print(command_hint("Use the candidate checkout", ["cd", str(candidate)], stream=sys.stdout))
+    model_args = candidate_model_args(candidate, models)
     for index, name in enumerate(names, 1):
-        launch = shlex.join(
-            [
-                sys.executable,
-                str(candidate / "scripts/launch.py"),
-                "start",
-                name,
-                "--models",
-                str(models),
-                "--detach",
-            ]
-        )
-        baseline = shlex.join(
-            [
-                str(ROOT / ".venv/bin/python"),
-                str(candidate / "scripts/run_baseline.py"),
-                "run",
-                name,
-                "--models",
-                str(models),
-            ]
-        )
         print(f"\n[{index}/{len(names)}] {name}")
-        print(f"  Start an interactive server\n    {launch}")
-        print(f"  Run the baseline\n    {baseline}")
+        print(
+            command_hint(
+                "Start a foreground server",
+                ["python3", "scripts/launch.py", "start", name, *model_args],
+                stream=sys.stdout,
+            )
+        )
+        print(
+            command_hint(
+                "Run the baseline",
+                ["python3", "scripts/run_baseline.py", "run", name, *model_args],
+                stream=sys.stdout,
+            )
+        )
+
+
+def candidate_model_args(candidate: Path, models: Path) -> list[str]:
+    """Retain a relative data-home override when changing into the candidate checkout."""
+    return [] if (candidate / data_home()).resolve() == models else ["--models", str(models)]
 
 
 def stage_files(
@@ -599,9 +597,13 @@ def manage_trial(key: str, delete: bool, guards: ExitStack, runtime: str) -> Non
         for name in names:
             if name not in active:
                 save(overlays / (name + ".json"), [*selections[name], str(candidate)])
+        print(f"Adopted {key} for {', '.join(names)}.")
         print(
-            f"Adopted {key} for {', '.join(names)}. Publish with: "
-            f"git -C {shlex.quote(str(candidate))} push -u origin {branch}"
+            command_hint(
+                "Publish the adoption branch",
+                ["git", "-C", str(candidate), "push", "-u", "origin", branch],
+                stream=sys.stdout,
+            )
         )
         return
 

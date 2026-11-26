@@ -20,6 +20,23 @@
 - Follow the public behavior documented in the [launcher guide](launcher.md), including instance identity, mounts, persistent logs, and process lifecycle.
 - Keep client options, defaults, mounts, and operational-script output formats stable unless the task changes their contract. Commit formatting changes separately from behavior changes.
 
+## Commands suggested by scripts
+
+Print a short label, a blank line, and one shell-quoted command per line so each command can be copied directly. Host scripts use `scripts/command_hints.py`. On a terminal the commands appear in bold cyan. Set `NO_COLOR=1` for plain text. Redirected output, dumb terminals, stored diagnostics, and container recovery messages use plain text.
+
+| Entry point | When it suggests a command |
+| --- | --- |
+| `scripts/upgrade_runtime.py` | Resume a specific trial, verify its image before adoption, run the candidate baseline, or push the adoption branch. |
+| `scripts/upgrade_strata.py` | Enter the candidate checkout, start one recipe or run its baseline, or push the adoption branch. |
+| `scripts/run_baseline.py` / `llm-recipes-baseline` | Import a completed run from its matching checkout, stop conflicting instances, or recover a container after a failed stop. |
+| `scripts/install.py install` | Stop running recipe containers before replacing the installed snapshot. |
+| `llm-recipes doctor` | Refresh expired sudo credentials when Docker inspection fails. |
+| Strata runtime `scripts/serve.py` | Repeat model preparation from the host when weights or preparation metadata fail validation. Use the original data root. |
+| `scripts/generate_configurations.py --check` and `scripts/generate_tui_screenshots.py --check` | Regenerate stale documents or screenshots. |
+| `scripts/record_fixtures.sh` | Review the captured changes and run the repository checks. |
+
+Use the recipe and environment defaults when they reproduce the intended action. Include arguments that identify a trial, run, or nondefault location. Keep dry-run commands and machine-readable output suitable for their existing consumers.
+
 ## Development dependencies and checks
 
 Use Python 3.14 or later, as specified in `pyproject.toml`. Install the pinned development dependencies into the repository virtual environment:

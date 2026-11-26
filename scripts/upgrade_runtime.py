@@ -6,7 +6,6 @@ import fcntl
 import hashlib
 import json
 import re
-import shlex
 import subprocess
 import sys
 import tarfile
@@ -18,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import upgrade_strata as trials
+from command_hints import command_hint
 from doctor import check_prepared
 from launcher import Recipe, discover_recipes
 from paths import data_home
@@ -212,8 +212,13 @@ def run(recipe: Recipe, args: argparse.Namespace) -> None:
         files = state["files"]
         if recipe.name not in trials.trial_names(files):
             raise ValueError(f"{recipe.name} is not part of trial {key}")
+        resume = ["python3", "scripts/upgrade_runtime.py", recipe.name, "--resume", key]
         if args.adopt and not state.get("image_id"):
-            raise ValueError(f"Build and smoke-test this candidate with --resume {key} first")
+            raise ValueError(
+                command_hint(
+                    "Build and smoke-test the candidate before adopting", resume, stream=sys.stderr
+                )
+            )
         if args.adopt:
             image = files[str(pins / key / "runtime.json")]["image"]
             current_id = trials.output(
@@ -221,7 +226,11 @@ def run(recipe: Recipe, args: argparse.Namespace) -> None:
             )
             if current_id != state["image_id"]:
                 raise ValueError(
-                    f"The candidate image changed; verify it with --resume {key} first"
+                    command_hint(
+                        "Verify the changed candidate image before adopting",
+                        resume,
+                        stream=sys.stderr,
+                    )
                 )
         if args.adopt or args.delete:
             trials.manage(key, bool(args.delete), runtime)
@@ -266,7 +275,11 @@ def run(recipe: Recipe, args: argparse.Namespace) -> None:
     else:
         print(f"Python: {lock['python_version']}   PyTorch: {lock['torch_version']}")
     print(
-        f"Resume exact pins: python3 scripts/upgrade_runtime.py {recipe.name} --resume {key}",
+        command_hint(
+            "Resume this trial with its exact pins",
+            ["python3", "scripts/upgrade_runtime.py", recipe.name, "--resume", key],
+            stream=sys.stdout,
+        ),
         flush=True,
     )
     if args.prepare_only:
@@ -296,11 +309,18 @@ def run(recipe: Recipe, args: argparse.Namespace) -> None:
         return
     selected = discover_recipes(candidate / "recipes", local=False)[recipe.name]
     prepare_models(selected, models)
-    print("Run the candidate baseline from its checkout:")
-    print("cd " + shlex.quote(str(candidate)))
     print(
-        shlex.join(
-            [sys.executable, "scripts/run_baseline.py", "run", recipe.name, "--models", str(models)]
+        command_hint(
+            "Run the candidate baseline",
+            ["cd", str(candidate)],
+            [
+                "python3",
+                "scripts/run_baseline.py",
+                "run",
+                recipe.name,
+                *trials.candidate_model_args(candidate, models),
+            ],
+            stream=sys.stdout,
         )
     )
 

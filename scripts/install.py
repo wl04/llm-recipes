@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import paths
+from command_hints import command_hint
 from launcher import discover_recipes, local_selections, refresh_sudo_ticket
 
 RUNTIME_INCLUDES = ("scripts", "recipes", "runtimes", "assets", "templates")
@@ -280,8 +281,14 @@ def install(root: Path, prefix: Path, *, force: bool, with_dependencies: bool) -
         except BlockingIOError as error:
             raise RuntimeError("another installation is in progress") from error
         validate_shims(prefix)
-        if not force and running_instances():
-            log("refusing to swap while launcher instances run; stop them or pass --force")
+        if not force and (instances := running_instances()):
+            log(
+                command_hint(
+                    "Stop the running recipe containers before installing",
+                    ["sudo", "docker", "stop", *instances],
+                    stream=sys.stdout,
+                )
+            )
             return 1
         runtime_python = (
             prefix / "app/.venv/bin/python" if with_dependencies else development_python()

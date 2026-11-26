@@ -1,5 +1,7 @@
 """Starting and stopping a launcher container for a baseline, with Docker faked."""
 
+import shlex
+import shutil
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -87,12 +89,21 @@ def test_preflight_reports_failed_diagnostics(tmp_path: Path) -> None:
         make_control(tmp_path, FakeDocker(), findings=findings).preflight()
 
 
-def test_preflight_refuses_while_another_launcher_instance_runs(tmp_path: Path) -> None:
+@pytest.mark.parametrize("installed", [True, False])
+def test_preflight_refuses_while_another_launcher_instance_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, installed: bool
+) -> None:
+    monkeypatch.setattr(shutil, "which", lambda name: name if installed else None)
     docker = FakeDocker()
-    docker.managed = "coding\n"
+    docker.managed = "coding\nchat\n"
 
-    with pytest.raises(lifecycle.LifecycleError, match=r"coding.*launch\.py stop"):
+    with pytest.raises(lifecycle.LifecycleError, match="already running") as failure:
         make_control(tmp_path, docker).preflight()
+    commands = str(failure.value).split("\n\n")[-1].splitlines()
+    cli = ["llm-recipes"] if installed else ["python3", str(ROOT / "scripts/launch.py")]
+    assert [shlex.split(line) for line in commands] == [
+        [*cli, "stop", n] for n in ("coding", "chat")
+    ]
 
 
 def test_preflight_refuses_when_the_gpu_is_already_in_use(tmp_path: Path) -> None:
