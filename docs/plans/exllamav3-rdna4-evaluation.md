@@ -1,0 +1,10 @@
+# ExLlamaV3 follow-up trials on the RX 9070 XT
+
+Use the unpatched ExLlamaV3 1.6.7 build in [baseline 004](../../recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram/004-2026-11-26-baseline/summary.md) as the reference. Test each change separately with the same model, DFlash2 draft settings, GPU vision, 131,072-token context and ROCm/PyTorch image.
+
+- **TabbyAPI.** Evaluate revision `47281587f` against the recipe’s pinned server. Verify the dependency overlay and configuration schema, then exercise streamed Pi tool calls, vision and cached follow-up turns. [Candidate revision](https://github.com/theroyallab/tabbyAPI/commit/47281587f)
+- **RDNA4 kernels.** Check the license and applicability of the patch at `d8c5c742` against ExLlamaV3 1.6.7. Pin the patch checksum in a separate build. Compare stock kernels with the patched build, then test gfx12 WMMA verification and Q4 split-decode tuning individually. Verify the effective switches in the running image. [Patch](https://github.com/parth-thakre/exl3-rdna4-recipe/blob/d8c5c742/patches/exllamav3-rdna4.patch) · [Runtime switches](https://github.com/parth-thakre/exl3-rdna4-recipe/blob/d8c5c742/setup/env.sh)
+
+Run the baseline from each candidate checkout. Compare sampled decode near 120K, first output on cached 64K turns, draft acceptance and peak VRAM. Repeat promising runs and check tool calls, vision and retrieval before adopting. Baseline 004 marks two sustained coding cases as `insufficient_sample`; use cases with enough generated tokens for throughput comparisons. [Baseline guide](../baseline.md)
+
+If follow-up turns spend most of their time replaying recurrent state, investigate FlashStates and its server integration. If draft acceptance limits decode, check whether the rejection-sampling change supports the selected release. [FlashStates](https://github.com/turboderp-org/exllamav3/pull/595) · [TabbyAPI integration](https://github.com/theroyallab/tabbyAPI/pull/519) · [DFlash2 rejection sampling](https://github.com/turboderp-org/exllamav3/pull/423)

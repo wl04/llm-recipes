@@ -1,5 +1,5 @@
 {
-  "runtime": "exllamav3-tabbyapi/releases/v1.6.6-tabby-8f92fac5",
+  "runtime": "exllamav3-tabbyapi/releases/v1.6.7-rocm10.2.0-torch2.15.0-0558956e92e6",
   "port": 5000,
   "context": 4096,
   "draft": "on",

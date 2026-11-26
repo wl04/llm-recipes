@@ -8,11 +8,9 @@ To test a newer engine or ROCm image, follow [Upgrade a container runtime](../la
 
 Use the pinned build command in the recipe setup on Ubuntu x86_64 with Docker and working AMD `/dev/kfd` and `/dev/dri` devices. Lower `--max-jobs` if compiler memory use is excessive. The image check verifies engine imports and GPU matrix multiplication.
 
-[`versions.lock.json`](../../runtimes/exllamav3-tabbyapi/releases/v1.6.6-tabby-8f92fac5/container/versions.lock.json) pins the ROCm/PyTorch image digest and upstream ExLlamaV3 and TabbyAPI sources with archive hashes. Python dependencies are pinned with hashes in the [shared container inputs](../../runtimes/exllamav3-tabbyapi/container/requirements.lock). The base supplies Torch, the ROCm SDK, and Triton. ExLlamaV3 is compiled against that Torch with build isolation disabled. Source licenses remain under `/opt/src`.
+The recipe’s `config/launch.json` selects a release under [the runtime’s release directory](../../runtimes/exllamav3-tabbyapi/releases). Its `runtime.json` names the image, and `container/versions.lock.json` pins the AMD image digest, engine and API server revisions, and source archive hashes. Run `llm-recipes list` to see the selected image, including local trials.
 
-The image name and API-server/engine pairing live in [`runtime.json`](../../runtimes/exllamav3-tabbyapi/releases/v1.6.6-tabby-8f92fac5/runtime.json). Reuse the image while its lock matches; rebuild after changing build inputs or pins. Serving and draft conversion compare the image's build lock with the runtime lock.
-
-Normal builds and launches use `llm-recipes/exl3-rdna4:v1.6.6-tabby-8f92fac5` from the runtime descriptor.
+The base image supplies Torch, the ROCm SDK, and Triton. The [dependency overlay](../../runtimes/exllamav3-tabbyapi/container/requirements.lock) pins the remaining Python packages with hashes. ExLlamaV3 compiles against the base image’s Torch with build isolation disabled. Source licenses are under `/opt/src`. Serving and draft conversion verify the image’s build lock against the selected release.
 
 For a separate image, pass `--tag candidate` to the builder. Use `--runtime-image llm-recipes/exl3-rdna4:candidate` with the launcher or baseline and set `LLM_RECIPES_RUNTIME_IMAGE=llm-recipes/exl3-rdna4:candidate` for the preparation commands. Give a different build lock its own release key and image tag. Downloads are shared between builds of the recipe.
 

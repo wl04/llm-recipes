@@ -30,10 +30,10 @@ Prepared folders under `~/llm-recipes/recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-
 |---|---|
 | `qwen3.8-27b-exl3-3bpw` | Prepared target |
 | `qwen3.8-27b-dflash2-source` | Original draft |
-| `prepared/v1.6.6-tabby-8f92fac5/draft-conversion-work` | Conversion working files |
-| `prepared/v1.6.6-tabby-8f92fac5/qwen3.8-27b-dflash2-exl3-3bpw` | Converted draft and metadata |
+| `prepared/<build-key>/draft-conversion-work` | Conversion working files |
+| `prepared/<build-key>/qwen3.8-27b-dflash2-exl3-3bpw` | Converted draft and metadata |
 
-See [preparation and retry behavior](../../docs/runtimes/exllamav3-tabbyapi.md#preparation).
+Use the final component of `runtime` in the selected [launch manifest](config/launch.json) for `<build-key>`. See [preparation and retry behavior](../../docs/runtimes/exllamav3-tabbyapi.md#preparation).
 
 ## Launch
 
