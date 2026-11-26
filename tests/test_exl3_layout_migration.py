@@ -2,17 +2,20 @@
 
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-TOOL = ROOT / "tools/migrate_exl3_layout.py"
-RECIPE = next((ROOT / "recipes").glob("*-exl3-*"))
+RECIPE = ROOT / "recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram"
 KEY = "v1.6.6-tabby-8f92fac5"
-BUILD = ROOT / "runtimes/exllamav3-tabbyapi/container/versions.lock.json"
+RUNTIME = f"exllamav3-tabbyapi/releases/{KEY}"
+BUILD = Path("runtimes") / RUNTIME / "container/versions.lock.json"
+RunTool = Callable[..., subprocess.CompletedProcess[str]]
 
 
 @pytest.fixture
@@ -33,7 +36,7 @@ def data(tmp_path: Path) -> Path:
     (draft / "prepared.json").write_text(
         json.dumps(
             {
-                "build": json.loads(BUILD.read_text()),
+                "build": json.loads((ROOT / BUILD).read_text()),
                 "source": spec["draft"],
                 "arguments": ["-i", "/original", *spec["conversion"]["arguments"]],
                 "sha256": hashes,
@@ -45,27 +48,41 @@ def data(tmp_path: Path) -> Path:
     return root
 
 
-def run_tool(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, str(TOOL), "--models", str(root.parents[1]), *args],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+@pytest.fixture
+def run_tool(tmp_path: Path) -> RunTool:
+    checkout = tmp_path / "legacy-checkout"
+    tool = Path("tools/migrate_exl3_layout.py")
+    config = Path("recipes") / RECIPE.name / "config"
+    for path in (tool, Path("scripts/paths.py"), config / "models.lock.json", BUILD):
+        (checkout / path).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / path, checkout / path)
+    (checkout / config / "launch.json").write_text(json.dumps({"runtime": RUNTIME}))
+
+    def invoke(*args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(checkout / tool), "--models", str(tmp_path), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    return invoke
 
 
-def test_migration_preserves_artifacts_and_resumes_partial_move(data: Path) -> None:
+def test_migration_preserves_artifacts_and_resumes_partial_move(
+    data: Path, run_tool: RunTool
+) -> None:
     draft = data / "qwen3.8-27b-dflash2-exl3-3bpw"
     receipt = (draft / "prepared.json").read_bytes()
     inode = draft.stat().st_ino
     dest = data / "prepared" / KEY
-    assert run_tool(data, "--dry-run").returncode == 0
+    assert run_tool("--dry-run").returncode == 0
     assert not dest.exists()
     dest.mkdir(parents=True)
     draft.rename(dest / draft.name)
 
     for _ in range(2):
-        result = run_tool(data)
+        result = run_tool()
         assert result.returncode == 0, result.stderr
     assert (dest / draft.name).stat().st_ino == inode
     assert (dest / draft.name / "prepared.json").read_bytes() == receipt
@@ -73,12 +90,14 @@ def test_migration_preserves_artifacts_and_resumes_partial_move(data: Path) -> N
     assert (data / "qwen3.8-27b-exl3-3bpw").is_dir()
 
 
-def test_migration_moves_converted_draft_when_work_directory_is_absent(data: Path) -> None:
+def test_migration_moves_converted_draft_when_work_directory_is_absent(
+    data: Path, run_tool: RunTool
+) -> None:
     draft = data / "qwen3.8-27b-dflash2-exl3-3bpw"
     original = draft.stat().st_ino
     (data / "draft-conversion-work").rmdir()
 
-    result = run_tool(data)
+    result = run_tool()
 
     assert result.returncode == 0, result.stderr
     assert not draft.exists()
@@ -86,8 +105,18 @@ def test_migration_moves_converted_draft_when_work_directory_is_absent(data: Pat
     assert (data / "qwen3.8-27b-dflash2-source" / "prepared.json").is_file()
 
 
-@pytest.mark.parametrize("problem", ["conflict", "checksum", "build", "redirect"])
-def test_migration_refuses_invalid_input_before_moving_data(data: Path, problem: str) -> None:
+@pytest.mark.parametrize(
+    ("problem", "message"),
+    [
+        ("conflict", "exist; review them before migrating"),
+        ("checksum", "Checksum mismatch"),
+        ("build", "Draft receipt does not match"),
+        ("redirect", "Missing or redirected recipe data directory"),
+    ],
+)
+def test_migration_refuses_invalid_input_before_moving_data(
+    data: Path, run_tool: RunTool, problem: str, message: str
+) -> None:
     draft = data / "qwen3.8-27b-dflash2-exl3-3bpw"
     if problem == "conflict":
         (data / "prepared" / KEY / "draft-conversion-work").mkdir(parents=True)
@@ -98,6 +127,8 @@ def test_migration_refuses_invalid_input_before_moving_data(data: Path, problem:
     else:
         (draft / "prepared.json").write_text("{}")
 
-    assert run_tool(data).returncode != 0
+    result = run_tool()
+    assert result.returncode != 0
+    assert message in result.stderr
     assert draft.is_dir()
     assert (data / "draft-conversion-work").is_dir()

@@ -11,7 +11,7 @@ from unittest.mock import Mock
 import pytest
 import upgrade_runtime as upgrade
 import upgrade_strata as trials
-from launcher import local_selections
+from launcher import discover_recipes, local_selections
 
 
 def image(tag: str, arch: str = "amd64") -> dict[str, Any]:
@@ -88,8 +88,15 @@ def test_exllama_trial_checks_image_and_only_adopts_on_request(
 ) -> None:
     recipe = next((checkout / "recipes").glob("*-exl3-*"))
     reference = (recipe / "config/launch.json").read_bytes()
+    selected = discover_recipes(checkout / "recipes", local=False)[recipe.name]
+    source_lock = json.loads(
+        (selected.runtime_directory / "container/versions.lock.json").read_text()
+    )
+    current_torch = source_lock["torch_version"].split("+")[0]
+    python_minor = source_lock["python_version"]
     tags = [
-        image(f"rocm10.2.0_ubuntu24.04_py3.12_pytorch_release_{v}") for v in ("2.14.0", "2.15.0")
+        image(f"rocm10.2.0_ubuntu24.04_py{python_minor}_pytorch_release_{v}")
+        for v in (current_torch, "99.0.0")
     ]
     monkeypatch.setattr(upgrade, "registry_tags", lambda *args: tags)
     monkeypatch.setattr(trials, "resolve_revision", lambda repo, tag: "b" * 40)
@@ -130,8 +137,8 @@ def test_exllama_trial_checks_image_and_only_adopts_on_request(
     file = next((checkout / ".git/exllamav3-tabbyapi-trials").glob("*.json"))
     state = json.loads(file.read_text())
     lock = build.call_args.args[2]
-    assert lock["torch_version"] == "2.14.0+rocm10.2.0"
-    assert lock["sources"]["tabbyAPI"]["revision"] == "8f92fac5d9307bf1e09668c3715b32ff46ad0333"
+    assert lock["torch_version"] == f"{current_torch}+rocm10.2.0"
+    assert lock["sources"]["tabbyAPI"] == source_lock["sources"]["tabbyAPI"]
     assert lock["sources"]["exllamav3"]["archive_sha256"] == hashlib.sha256(b"archive").hexdigest()
     assert state["container_python"] == "Python 3.12.3"
     assert (recipe / "config/launch.json").read_bytes() == reference
