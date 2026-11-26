@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+import launch
 import pytest
 from launcher import (
     LaunchOptions,
@@ -64,6 +65,32 @@ def adopted_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[P
     selections.mkdir()
     (selections / "model.json").write_text(json.dumps([str(trial)]))
     return installed, trial
+
+
+def test_list_shows_adopted_release_and_exact_image(
+    adopted_checkout: tuple[Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    installed, trial = adopted_checkout
+    descriptor = trial / "runtimes/exllamav3-tabbyapi/runtime.json"
+    settings = json.loads(descriptor.read_text())
+    settings.update(
+        engine_version="1.0.2", engine_source_version="v1.1.0", image="recipes/model:trial"
+    )
+    descriptor.write_text(json.dumps(settings))
+    monkeypatch.setattr(launch, "ROOT", installed.parent)
+
+    assert launch.main(["list"]) == 0
+    row = capsys.readouterr().out.splitlines()[1]
+    assert "exllamav3 v1.1.0" in row
+    assert "recipes/model:trial" in row
+
+    assert launch.main(["list", "--json"]) == 0
+    (record,) = json.loads(capsys.readouterr().out)
+    assert record["engine_source_version"] == "v1.1.0"
+    assert record["engine_version"] == "1.0.2"
+    assert record["image"] == "recipes/model:trial"
 
 
 def test_discover_uses_installed_recipe_when_adopted_manifest_disappears_at_read(

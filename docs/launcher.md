@@ -15,6 +15,8 @@ llm-recipes logs <recipe> --follow
 llm-recipes stop <recipe>
 ```
 
+`list` shows the selected engine release and exact Docker image for each recipe, including locally adopted upgrades. It reads the recipe selections without querying Docker.
+
 Replace `<recipe>` with a directory identifier from `list`. Without `--name`, the recipe identifier becomes the instance name. Names contain up to 160 lowercase letters, digits, dots, dashes, or underscores and start with a letter or digit. Distinct instances require distinct names and available host ports. Docker reports name or port conflicts.
 
 `ps` discovers running instances through Docker labels. `status` reports container state; use the recipe's readiness endpoint or status page to confirm the model has loaded. `status`, `logs`, and `stop` select an instance independently of recipe discovery.

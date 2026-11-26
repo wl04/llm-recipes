@@ -32,6 +32,8 @@ class Recipe:
     context: int
     draft: str
     vision: str
+    engine_version: str | None = None
+    engine_source_version: str | None = None
 
     @property
     def runtime_source(self) -> Path:
@@ -214,7 +216,7 @@ def discover_recipes(directory: Path, *, local: bool = True) -> dict[str, Recipe
                 folder,
                 runtime_directory=runtime,
                 **data,
-                **{key: settings[key] for key in required},
+                **settings,
             )
             validate_options(
                 LaunchOptions(

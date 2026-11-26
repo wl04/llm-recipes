@@ -43,7 +43,9 @@ def parser() -> argparse.ArgumentParser:
     cli = argparse.ArgumentParser(description=__doc__)
     commands = cli.add_subparsers(dest="action", required=True)
     commands.add_parser("tui", help="open the terminal dashboard")
-    list_command = commands.add_parser("list", help="list available recipes")
+    list_command = commands.add_parser(
+        "list", help="list recipes and their selected runtime images"
+    )
     list_command.add_argument("--json", action="store_true", help="machine-readable output")
     ps_command = commands.add_parser("ps", help="list running launcher instances")
     ps_command.add_argument("--json", action="store_true", help="machine-readable output")
@@ -145,6 +147,8 @@ def _list(recipes: dict[str, Recipe], args: argparse.Namespace) -> int:
                         "runtime": recipe.runtime,
                         "adapter": recipe.adapter,
                         "engine": recipe.engine,
+                        "engine_version": recipe.engine_version,
+                        "engine_source_version": recipe.engine_source_version,
                         "image": recipe.image,
                         "port": recipe.port,
                         "context": recipe.context,
@@ -155,9 +159,13 @@ def _list(recipes: dict[str, Recipe], args: argparse.Namespace) -> int:
             )
         )
         return 0
-    print("RECIPE  |  API SERVER  |  ENGINE  |  PORT")
+    print("RECIPE  |  API SERVER  |  ENGINE  |  PORT  |  SELECTED IMAGE")
     for recipe in recipes.values():
-        print(f"{recipe.name}  |  {recipe.adapter}  |  {recipe.engine}  |  {recipe.port}")
+        version = recipe.engine_source_version or recipe.engine_version
+        engine = f"{recipe.engine} {version}" if version else recipe.engine
+        print(
+            f"{recipe.name}  |  {recipe.adapter}  |  {engine}  |  {recipe.port}  |  {recipe.image}"
+        )
     return 0
 
 
