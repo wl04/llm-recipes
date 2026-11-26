@@ -5,8 +5,10 @@ import argparse
 import json
 import os
 import shlex
+import shutil
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
 
 import paths
@@ -159,13 +161,36 @@ def _list(recipes: dict[str, Recipe], args: argparse.Namespace) -> int:
             )
         )
         return 0
-    print("RECIPE  |  API SERVER  |  ENGINE  |  PORT  |  SELECTED IMAGE")
+    if not recipes:
+        print("No launchable recipes found.")
+        return 0
+
+    headers = ("RECIPE", "API SERVER", "ENGINE", "PORT", "SELECTED IMAGE")
+    rows = []
     for recipe in recipes.values():
         version = recipe.engine_source_version or recipe.engine_version
         engine = f"{recipe.engine} {version}" if version else recipe.engine
-        print(
-            f"{recipe.name}  |  {recipe.adapter}  |  {engine}  |  {recipe.port}  |  {recipe.image}"
-        )
+        rows.append((recipe.name, recipe.adapter, engine, str(recipe.port), recipe.image))
+
+    width = shutil.get_terminal_size().columns
+    widths = [max(map(len, column)) for column in zip(headers, *rows, strict=True)]
+    if sum(widths) + 2 * (len(headers) - 1) <= width:
+        for row in [headers, *rows]:
+            print(
+                "  ".join(
+                    value.ljust(size) for value, size in zip(row, widths, strict=True)
+                ).rstrip()
+            )
+    else:
+        for index, (name, adapter, engine, port, image) in enumerate(rows):
+            if index:
+                print()
+            for line in (
+                name,
+                f"  API server: {adapter}    Engine: {engine}    Port: {port}",
+                f"  Image: {image}",
+            ):
+                print(textwrap.fill(line, width=width, break_on_hyphens=False))
     return 0
 
 

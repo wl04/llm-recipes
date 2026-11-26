@@ -93,6 +93,39 @@ def test_list_shows_adopted_release_and_exact_image(
     assert record["image"] == "recipes/model:trial"
 
 
+@pytest.mark.parametrize("columns", [80, 160])
+def test_list_aligns_fields_and_preserves_long_identifiers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    columns: int,
+) -> None:
+    names = ["model-a", "much-longer-model-id-for-the-second-recipe"]
+    for name in names:
+        write_recipe(tmp_path / "recipes", name)
+    descriptor = tmp_path / "runtimes/exllamav3-tabbyapi/runtime.json"
+    image = "local/engine:release-with-a-long-image-tag"
+    descriptor.write_text(json.dumps({**json.loads(descriptor.read_text()), "image": image}))
+    monkeypatch.setattr(launch, "ROOT", tmp_path)
+    monkeypatch.setenv("COLUMNS", str(columns))
+
+    assert launch.main(["list"]) == 0
+    output = capsys.readouterr().out
+    lines = output.splitlines()
+    assert all(len(line) <= columns for line in lines)
+    assert all(name in output for name in names)
+    assert output.count(image) == 2
+    if columns == 160:
+        for label, value in [
+            ("API SERVER", "tabbyapi"),
+            ("ENGINE", "exllamav3"),
+            ("SELECTED IMAGE", image),
+        ]:
+            assert all(line.index(value) == lines[0].index(label) for line in lines[1:])
+    else:
+        assert all(name in lines for name in names)
+
+
 def test_discover_uses_installed_recipe_when_adopted_manifest_disappears_at_read(
     adopted_checkout: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
