@@ -1,0 +1,69 @@
+id: Qwen3.8-27B / EXL3 / RX 9070 XT / 16 GB VRAM
+hardware:
+  gpu: Radeon RX 9070/9070 XT/9070 GRE (gfx1201)
+  cpu: AMD Ryzen 7 9800X3D 8-Core Processor
+  memory:
+    architecture: discrete
+    dedicated_vram_gib: 16
+    system_ram_gib: 59
+    unified_memory_gib: null
+os:
+  name: Ubuntu
+  version: '26.10'
+  kernel: 7.3.0-11-generic
+  kernel_driver: amdgpu
+software:
+  harness: llm-recipes baseline suite
+  harness_version: https://github.com/wl04/llm-recipes/commit/49d32e281bfdc155dfa8d8ea5448da14427ea9bc
+    (dirty)
+  engine: ExLlamaV3
+  engine_version: 1.6.7
+  engine_source_version: v1.6.7
+  revision: https://github.com/turboderp-org/exllamav3/commit/8c593e4e5c88da76a4aaf8f1b1838bb7c1fce4e0
+  rocm_version: 10.2.0
+  backend: ROCm / HIP
+  backend_api_version: null
+  gpu_driver: amdgpu
+  gpu_driver_version: null
+  pytorch: 2.15.0+rocm10.2.0
+  python: '3.12'
+  base_image_tag: https://hub.docker.com/r/rocm/pytorch/tags?name=rocm10.2.0_ubuntu24.04_py3.12_pytorch_release_2.15.0
+  base_image: rocm/pytorch@sha256:fe66c7b7b2d746d028471685eab44b399c8a31b89a66bf5ca6c6473cd5432fb1
+  server: TabbyAPI
+  server_version: https://github.com/theroyallab/tabbyAPI/commit/8f92fac5d9307bf1e09668c3715b32ff46ad0333
+  host_python: 3.14.8
+  running_image_id: sha256:19db105c74ec1378bebbcad682b88682abf4f447962275ba99f19df7f81a8a4c
+model:
+  name: Qwen3.8-27B EXL3
+  format: EXL3
+  quantization: null
+  repository: https://huggingface.co/turboderp/Qwen3.8-27B-exl3
+  artifacts: []
+  revision: https://huggingface.co/turboderp/Qwen3.8-27B-exl3/commit/86b95530f9d365d90dd24d01a997a8de0cdf6c55
+  draft_repository: https://huggingface.co/z-lab/Qwen3.8-27B-DFlash2
+  draft_revision: https://huggingface.co/z-lab/Qwen3.8-27B-DFlash2/commit/50307d4c4cde6860d4eee73e2547cd786fe8e8a4
+  draft_quantization: -b 3.0 --out_scales always -cb mul1
+  draft_size: null
+settings:
+  serving:
+    served_model_id: qwen3.8-27b-exl3-3bpw
+    cache_capacity: 131072
+    target_cache: Q4
+    draft_cache: Q4
+    chunk_size: 1024
+    max_batch_size: 1
+    tensor_parallel: false
+    sysmem_recurrent_cache_mib: 4096
+    vision: true
+    context_length_tokens: 131072
+    speculative_decoding: true
+  sampling: null
+  thinking:
+    enabled: false
+    control: chat_template_kwargs.enable_thinking=false
+  requests:
+    endpoint: /v1/chat/completions
+    token_counting: /v1/token/encode
+    streaming: Performance requests streamed
+    concurrency: 1
+  notes: null

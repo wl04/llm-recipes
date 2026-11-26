@@ -10,6 +10,7 @@ Run Qwen3.8-27B with TabbyAPI and ExLlamaV3 on ROCm, using a 3 bpw target, DFlas
 
 | Experiment | Runtime | Configuration | Results |
 |---|---|---|---|
+| 004 · 2026-11-26 — Baseline | ExLlamaV3 1.6.7 (v1.6.7) / ROCm 10.2.0 | [Configuration](004-2026-11-26-baseline/configuration.md) | [Results](004-2026-11-26-baseline/summary.md) |
 | 003 · 2026-11-26 — Baseline | ExLlamaV3 1.6.6 / ROCm 10.1.0 | [Configuration](003-2026-11-26-baseline/configuration.md) | [Results](003-2026-11-26-baseline/summary.md) |
 | 002 · 2026-11-07 — Pi software development: gpu-switcher | ExLlamaV3 1.6.6 / ROCm 10.1.0 | [Configuration](002-2026-11-07-coding-gpu-switcher/configuration.md) | [Results](002-2026-11-07-coding-gpu-switcher/summary.md) |
 | 001 · 2026-11-14 — Baseline | ExLlamaV3 1.6.6 / ROCm 10.1.0 | [Configuration](001-2026-11-14-baseline/configuration.md) | [Results](001-2026-11-14-baseline/summary.md) |
