@@ -40,31 +40,28 @@ See [preparation and retry behavior](../../docs/runtimes/exllamav3-tabbyapi.md#p
 ```bash
 sudo -v
 llm-recipes doctor qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
-llm-recipes start qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
-  --detach --vision on --context 131072
+llm-recipes start qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram --detach
 ```
 
 The instance name defaults to the recipe identifier; file logs land in `<models root>/logs/<instance>`.
 
 API: `http://127.0.0.1:5000/v1`; browser chat: `/ui/`; model status: `/ui/status`; the API serves `qwen3.8-27b-exl3-3bpw`.
 
-The manifest defaults to a 4,096-token context, drafting on and vision off; the launch command above overrides context and vision for the tested coding configuration. Override any launch default per start with the matching option ([launch options](../../docs/launcher.md#launch-options)). Edit [tabby.yml](config/tabby.yml) for sampling and other native defaults. Thinking is enabled by default, and clients control effort and reasoning budget.
+The [launch defaults](config/launch.json) use a 131,072-token context, DFlash2 drafting, and GPU-resident vision. Use `--context`, `--draft`, or `--vision` to [override them for one launch](../../docs/launcher.md#launch-options). Edit [tabby.yml](config/tabby.yml) for sampling and other native defaults. Thinking is enabled by default, and clients control effort and reasoning budget.
 
 ## Baseline
 
 Run with the installed command:
 
 ```bash
-llm-recipes-baseline run qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram \
-  --context 131072 \
-  --vision on
+llm-recipes-baseline run qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
 ```
 
-The options match the launch command above. Results and the server logs go to `~/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
+Results and the server logs go to `~/llm-recipes/baselines/<recipe>/<date-time>/`. See the [baseline guide](../../docs/baseline.md) for preconditions, the phases, and how to publish a result.
 
 ## Pi
 
-Follow [Pi setup](../../docs/clients/pi.md#configure-a-recipe) using [`config/pi.models.json`](config/pi.models.json). Select `tabby-local` / `qwen3.8-27b-exl3-3bpw`. The example matches the launch command above: 131,072 context tokens and text/image input.
+Follow [Pi setup](../../docs/clients/pi.md#configure-a-recipe) using [`config/pi.models.json`](config/pi.models.json). Select `tabby-local` / `qwen3.8-27b-exl3-3bpw`. The provider matches the recipe defaults for context and image input.
 
 ## Logs and stopping
 

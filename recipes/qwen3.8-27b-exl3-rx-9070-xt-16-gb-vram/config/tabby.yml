@@ -9,13 +9,14 @@ model:
   model_dir: /models/recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
   model_name: qwen3.8-27b-exl3-3bpw
   backend: exllamav3
-  max_seq_len: 4096
-  cache_size: 4096
+  max_seq_len: 131072
+  cache_size: 131072
   cache_mode: Q4
   chunk_size: 1024
   max_batch_size: 1
   tensor_parallel: false
-  vision: false
+  vision: true
+  vision_offload: false
   inline_model_loading: false
   template_vars_default:
     enable_thinking: true
