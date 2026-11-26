@@ -10,6 +10,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+import exl3_layout
 import gpu
 from ruamel.yaml import YAML
 
@@ -95,10 +96,10 @@ def verify_draft_manifest(
         )
 
 
-def verify_preparation(config: dict[str, Any], draft_on: bool, recipe: Path) -> None:
+def verify_preparation(config: dict[str, Any], draft_on: bool, recipe: Path, pins: Path) -> None:
     """Verify the mounted prepared models match the locked revisions and conversion settings."""
     models_lock = json.loads((recipe / "config/models.lock.json").read_text())
-    recipe_lock = json.loads((RUNTIME / "container/versions.lock.json").read_text())
+    recipe_lock = json.loads((RUNTIME / pins / "container/versions.lock.json").read_text())
     image_lock = json.loads(Path("/opt/build/versions.lock.json").read_text())
     if image_lock != recipe_lock:
         raise RuntimeError("Image pins differ from checkout; rebuild the recipe image")
@@ -138,18 +139,6 @@ def yaml_dump(config: dict[str, Any]) -> str:
     return stream.getvalue()
 
 
-def launch_runtime(path: Path) -> str:
-    """Read the recipe runtime selector, reporting unreadable or incomplete settings."""
-    try:
-        settings = json.loads(path.read_text())
-    except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"{path}: recipe launch settings are not readable") from exc
-    runtime = settings.get("runtime") if isinstance(settings, dict) else None
-    if not isinstance(runtime, str):
-        raise RuntimeError(f'{path}: recipe launch settings have no "runtime" field')
-    return runtime
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--recipe", type=Path, required=True)
@@ -162,21 +151,24 @@ def main() -> None:
         parser.error("context must be at least 1024 and a multiple of 256")
     recipe = args.recipe.resolve()
     try:
-        declared_runtime = launch_runtime(recipe / "config/launch.json")
-    except RuntimeError as error:
+        pins = exl3_layout.selection(recipe)
+    except ValueError as error:
         parser.error(str(error))
-    if declared_runtime != "exllamav3-tabbyapi":
-        parser.error("expected an exllamav3-tabbyapi recipe")
     yaml = YAML(typ="safe")
     config = yaml.load(recipe / "config/tabby.yml")
     if not isinstance(config, dict):
         raise RuntimeError(f"{recipe / 'config/tabby.yml'}: expected a YAML mapping")
     apply_overrides(config, args.context, args.vision == "on", args.draft == "on")
+    if pins.name and args.draft == "on":
+        draft = config["draft_model"]
+        draft["draft_model_dir"] = str(
+            exl3_layout.prepared_root(Path(draft["draft_model_dir"]), pins)
+        )
     validate_sections(config)
     print(yaml_dump(config), flush=True)
     if args.check_config:
         return
-    verify_preparation(config, args.draft == "on", recipe)
+    verify_preparation(config, args.draft == "on", recipe, pins)
     # Probe in a child process so visibility is set before the server initializes HIP.
     probe = (
         "import torch,json; "

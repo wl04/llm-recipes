@@ -187,7 +187,8 @@ def discover_recipes(directory: Path, *, local: bool = True) -> dict[str, Recipe
                 if type(data[key]) is not int:
                     raise ValueError(f"{key} must be an integer")
             if not re.fullmatch(
-                r"(?:[a-z0-9][a-z0-9-]*|strata/releases/v[0-9][A-Za-z0-9.-]*)", data["runtime"]
+                r"(?:[a-z0-9][a-z0-9-]*|(?:strata|exllamav3-tabbyapi)/releases/v[0-9][A-Za-z0-9.-]*)",
+                data["runtime"],
             ):
                 raise ValueError("invalid runtime identifier")
             runtime = (manifest.parents[3] / "runtimes" / data["runtime"]).resolve()

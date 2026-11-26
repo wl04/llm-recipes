@@ -81,7 +81,7 @@ def check_prepared(recipe: Recipe, models: Path) -> Finding:
         if recipe.adapter == "strata":
             _check_strata_preparation(lock, versions, root, recipe)
         else:
-            _check_gguf_preparation(lock, versions, root, recipe)
+            _check_exl3_preparation(lock, versions, root, recipe)
         return Finding("Prepared models", "PASS", f"Metadata and required artifacts: {root}")
     except (OSError, ValueError, KeyError, TypeError) as error:
         return Finding(
@@ -120,15 +120,20 @@ def _check_strata_preparation(
         require_file(prepared / filename)
 
 
-def _check_gguf_preparation(
+def _check_exl3_preparation(
     lock: dict[str, Any], versions: dict[str, Any], root: Path, recipe: Recipe
 ) -> None:
-    """Verify the preparation receipt and the artifacts of every GGUF folder."""
+    """Verify the preparation receipt and the artifacts of the target and converted draft."""
     entries = [(lock["target"]["directory"], lock["target"], False)]
     if recipe.draft == "on":
         entries.append((lock["conversion"]["directory"], lock["draft"], True))
     for directory, spec, converted in entries:
-        folder = root / directory
+        parent = (
+            root / "prepared" / recipe.runtime_directory.name
+            if converted and "/" in recipe.runtime
+            else root
+        )
+        folder = parent / directory
         receipt = read_json(folder / "prepared.json")
         if receipt.get("source") != spec:
             raise ValueError(f"Model lock differs from preparation receipt: {folder}")

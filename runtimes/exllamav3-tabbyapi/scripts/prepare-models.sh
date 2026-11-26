@@ -9,7 +9,7 @@ scripts_dir=$(cd -- "$runtime_dir/../../scripts" && pwd)
 recipe_dir=$(cd -- "$1" && pwd)
 container_recipe="/recipes/${recipe_dir##*/}"
 action=$2
-image=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["image"])' "$runtime_dir/runtime.json")
+image=$(python3 "$runtime_dir/scripts/exl3_layout.py" "$recipe_dir")
 image=${LLM_RECIPES_RUNTIME_IMAGE:-$image}
 if [[ ! $image =~ ^[a-zA-Z0-9][a-zA-Z0-9_./:@-]*$ ]]; then
     echo "Invalid runtime image reference: $image" >&2

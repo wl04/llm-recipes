@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     selection = parser.add_mutually_exclusive_group()
     selection.add_argument("--recipe", help="Build the image selected by this recipe")
-    selection.add_argument("--version", help="Build the selected Strata release lock")
+    selection.add_argument("--version", help="Build the selected runtime release lock")
     parser.add_argument("--tag", help="Override the image tag, for example v0.2.16-rocm10.2")
     parser.add_argument("--max-jobs", type=int, default=4)
     parser.add_argument("--check", action="store_true", help="Run the image's GPU smoke check")
@@ -57,8 +57,8 @@ def main(argv: list[str] | None = None) -> int:
     context = runtime / "container"
     pins = runtime
     if args.version:
-        if args.runtime != "strata" or not re.fullmatch(r"v[0-9][A-Za-z0-9.-]*", args.version):
-            parser.error("--version requires a Strata release identifier")
+        if not re.fullmatch(r"v[0-9][A-Za-z0-9.-]*", args.version):
+            parser.error("--version requires a release identifier")
         pins = runtime / "releases" / args.version
     try:
         if args.recipe:

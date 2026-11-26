@@ -278,3 +278,55 @@ def test_main_rejects_recipe_for_another_runtime(
 
     assert exit_call.value.code == 2
     assert "expected an exllamav3-tabbyapi recipe" in captured.err
+
+
+def test_main_selects_draft_and_build_from_recipe_release(
+    tabby_startup: tuple[Path, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    image_lock, _ = tabby_startup
+    config = tmp_path / "recipe/config"
+    key = "v1.6.6-rocm10.2"
+    spec = {"files": ["config.json"]}
+    (config / "launch.json").write_text(
+        json.dumps({"runtime": f"exllamav3-tabbyapi/releases/{key}"})
+    )
+    models = {"target": spec, "draft": spec, "conversion": {"arguments": ["-b", "3"]}}
+    (config / "models.lock.json").write_text(json.dumps(models))
+    native = json.loads((config / "tabby.yml").read_text())
+    native["draft_model"] = {
+        "draft_model_dir": str(tmp_path / "weights"),
+        "draft_model_name": "draft",
+    }
+    (config / "tabby.yml").write_text(json.dumps(native))
+    pins = tmp_path / "runtime/releases" / key / "container"
+    pins.mkdir(parents=True)
+    image_lock.write_text('{"version":"candidate"}')
+    (pins / "versions.lock.json").write_text(image_lock.read_text())
+    draft = tmp_path / "weights/prepared" / key / "draft"
+    draft.mkdir(parents=True)
+    (draft / "config.json").write_text("{}")
+    write_manifest(
+        draft,
+        {
+            "source": spec,
+            "build": {"version": "candidate"},
+            "arguments": ["-b", "3"],
+            "sha256": {"config.json": "fixture"},
+        },
+    )
+    instance = tmp_path / "server"
+    instance.mkdir()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HIP_VISIBLE_DEVICES", "0")
+    monkeypatch.setattr(subprocess, "check_output", lambda *_args, **_kwargs: '["RX 9070 XT"]')
+    monkeypatch.setattr(serve, "prepare_runtime", lambda _source: instance)
+    monkeypatch.setattr(os, "execv", Mock())
+    monkeypatch.setattr(sys, "argv", ["serve", "--recipe", str(config.parent)])
+
+    serve.main()
+
+    served = YAML(typ="safe").load(instance / "config.yml")
+    assert served["model"]["model_dir"] == str(tmp_path / "weights")
+    assert served["draft_model"]["draft_model_dir"] == str(draft.parent)

@@ -4,7 +4,13 @@ Run the 3 bpw target with a 3 bpw DFlash2 draft, optional GPU vision, and TabbyA
 
 ## Runtime and capacity
 
-Build and check the shared [ExLlamaV3 / TabbyAPI runtime](../../docs/runtimes/exllamav3-tabbyapi.md#build-and-check).
+Build the image selected by this recipe and run the GPU check:
+
+```bash
+python3 scripts/build_runtime.py exllamav3-tabbyapi --recipe qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram --check
+```
+
+See the shared [ExLlamaV3 / TabbyAPI runtime](../../docs/runtimes/exllamav3-tabbyapi.md#build-and-check).
 
 ## Prepare models
 
@@ -24,8 +30,8 @@ Prepared folders under `~/llm-recipes/recipes/qwen3.8-27b-exl3-rx-9070-xt-16-gb-
 |---|---|
 | `qwen3.8-27b-exl3-3bpw` | Prepared target |
 | `qwen3.8-27b-dflash2-source` | Original draft |
-| `draft-conversion-work` | Conversion working files |
-| `qwen3.8-27b-dflash2-exl3-3bpw` | Converted draft and metadata |
+| `prepared/v1.6.6-tabby-8f92fac5/draft-conversion-work` | Conversion working files |
+| `prepared/v1.6.6-tabby-8f92fac5/qwen3.8-27b-dflash2-exl3-3bpw` | Converted draft and metadata |
 
 See [preparation and retry behavior](../../docs/runtimes/exllamav3-tabbyapi.md#preparation).
 

@@ -177,7 +177,7 @@ def write_shims(prefix: Path, runtime_python: Path) -> None:
 
 
 def published_selections(staging: Path, prefix: Path) -> list[Path]:
-    """Find active Strata trials whose release and build lock the snapshot now ships."""
+    """Find active runtime trials whose release and build lock the snapshot now ships."""
     matches: list[Path] = []
     selections = sorted((prefix / "selections").glob("*.json"))
     if not selections:
@@ -185,7 +185,7 @@ def published_selections(staging: Path, prefix: Path) -> list[Path]:
     recipes = discover_recipes(staging / "recipes", local=False)
     for selection in selections:
         recipe = recipes.get(selection.stem)
-        if not recipe or not recipe.runtime.startswith("strata/releases/"):
+        if not recipe or "/releases/" not in recipe.runtime:
             continue
         stack = local_selections(recipe.name, prefix=prefix)
         if not stack:

@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+import exl3_layout
 import gpu
 
 RUNTIME = Path(__file__).resolve().parents[1]
@@ -83,16 +84,17 @@ def download(root: Path, spec: dict[str, Any]) -> None:
     print(f"Prepared: {destination}", flush=True)
 
 
-def quantize(root: Path, lock: dict[str, Any]) -> None:
+def quantize(root: Path, prepared: Path, lock: dict[str, Any], build: dict[str, Any]) -> None:
     source = root / lock["draft"]["directory"]
-    output = root / lock["conversion"]["directory"]
-    work = root / lock["conversion"]["work_directory"]
+    output = prepared / lock["conversion"]["directory"]
+    work = prepared / lock["conversion"]["work_directory"]
     for path in (output, work):
         if path.exists():
             raise RuntimeError(
                 f"Refusing to overwrite {path}; move it aside before a fresh conversion"
             )
     verify(source, lock["draft"])
+    prepared.mkdir(parents=True, exist_ok=True)
 
     import torch  # pyright: ignore[reportMissingImports]
     from exllamav3.conversion.convert_model import main, parser, prepare  # pyright: ignore[reportMissingImports]
@@ -126,12 +128,12 @@ def quantize(root: Path, lock: dict[str, Any]) -> None:
         for filename in set(json.loads(index.read_text())["weight_map"].values()):
             if not (output / filename).is_file():
                 raise RuntimeError(f"Missing converted shard: {filename}")
-    files = [path for path in output.iterdir() if path.is_file()]
+    files = [path for path in output.iterdir() if path.is_file() and path.name != "prepared.json"]
     write_json(
         output / "prepared.json",
         {
             "source": lock["draft"],
-            "build": json.loads((RUNTIME / "container/versions.lock.json").read_text()),
+            "build": build,
             "arguments": arguments,
             "sha256": {path.name: digest(path) for path in files},
         },
@@ -158,17 +160,6 @@ def preparation_lock(models: Path) -> Iterator[None]:
 
 def model_root(recipe: Path, models: Path) -> Path:
     """Resolve the recipe's data folder under the models mount: recipes/<recipe>."""
-    manifest_path = recipe / "config/launch.json"
-    try:
-        manifest = json.loads(manifest_path.read_text())
-    except json.JSONDecodeError as error:
-        raise ValueError(
-            f"{manifest_path}: invalid JSON at line {error.lineno}: {error.msg}"
-        ) from error
-    if not isinstance(manifest, dict):
-        raise ValueError(f"{manifest_path} must contain a JSON object")
-    if manifest.get("runtime") != "exllamav3-tabbyapi":
-        raise ValueError("expected an exllamav3-tabbyapi recipe")
     if not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,159}", recipe.name):
         raise ValueError("recipe folder name must match the recipe identifier")
     return models / "recipes" / recipe.name
@@ -182,11 +173,12 @@ def cli() -> None:
     args = parser.parse_args()
     recipe = args.recipe.resolve()
     try:
+        pins = exl3_layout.selection(recipe)
         args.models = model_root(recipe, args.models)
     except (OSError, ValueError) as error:
         parser.error(str(error))
     image_lock = json.loads(Path("/opt/build/versions.lock.json").read_text())
-    recipe_lock = json.loads((RUNTIME / "container/versions.lock.json").read_text())
+    recipe_lock = json.loads((RUNTIME / pins / "container/versions.lock.json").read_text())
     if image_lock != recipe_lock:
         raise RuntimeError("Image build pins differ from the checkout; rebuild the recipe image")
     lock = json.loads((recipe / "config/models.lock.json").read_text())
@@ -197,7 +189,7 @@ def cli() -> None:
             for name in ("target", "draft"):
                 download(args.models, lock[name])
         else:
-            quantize(args.models, lock)
+            quantize(args.models, exl3_layout.prepared_root(args.models, pins), lock, image_lock)
 
 
 if __name__ == "__main__":
