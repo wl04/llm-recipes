@@ -29,6 +29,13 @@ RUN python3 -m venv /opt/venv \
     && python3 -m pip check \
     && python3 /opt/build/fetch_sources.py
 
+# Configure CPU vision before the HIP build so source-layout errors fail early.
+RUN set -eux; . /opt/build/strata-build-paths.sh; set --; \
+    if [ "$STRATA_BUILD_LAYOUT" = legacy ]; then set -- -DLLAMA_DIR=/opt/src/llama_cpp; fi; \
+    cmake -S "$STRATA_VISION_SOURCE" -B /opt/build/vision -G Ninja \
+       -DCMAKE_BUILD_TYPE=Release "$@" \
+       -DSTRATA_VISION_CUDA=OFF -DSTRATA_VISION_HIP=OFF -DSTRATA_PORTABLE=ON
+
 # CMake can link ROCm libraries by absolute path; relocated executables also
 # need those directories registered with the runtime loader.
 RUN set -eux; \
@@ -40,21 +47,16 @@ RUN set -eux; \
 
 RUN set -eux; command -v hipcc; hipcc --version
 
-RUN set -eux; engine=/opt/src/strata; set -- -DSTRATA_PREFILL_MMQ=ON; \
-    if [ -d /opt/src/strata-source/engine ]; then engine=/opt/src/strata-source/engine; set --; fi; \
-    cmake -S "$engine" -C /opt/build/engine-options.cmake -B /opt/build/engine -G Ninja \
+RUN set -eux; . /opt/build/strata-build-paths.sh; set --; \
+    if [ "$STRATA_BUILD_LAYOUT" = legacy ]; then set -- -DSTRATA_PREFILL_MMQ=ON; fi; \
+    cmake -S "$STRATA_ENGINE_SOURCE" -C /opt/build/engine-options.cmake -B /opt/build/engine -G Ninja \
        -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/rocm \
        -DSTRATA_ENABLE_HIP=ON -DSTRATA_ENABLE_CUDA=OFF \
        -DCMAKE_HIP_ARCHITECTURES=gfx1201 -DSTRATA_BUILD_TESTS=OFF \
        "$@" -DSTRATA_PORTABLE=ON \
     && cmake --build /opt/build/engine --target strata --parallel "$MAX_JOBS"
 
-RUN set -eux; set -- -DLLAMA_DIR=/opt/src/llama_cpp; \
-    if [ -d /opt/src/strata-source/engine ]; then set --; fi; \
-    cmake -S /opt/src/strata/tools/vision -B /opt/build/vision -G Ninja \
-       -DCMAKE_BUILD_TYPE=Release "$@" \
-       -DSTRATA_VISION_CUDA=OFF -DSTRATA_VISION_HIP=OFF -DSTRATA_PORTABLE=ON \
-    && cmake --build /opt/build/vision --target strata-vision --parallel "$MAX_JOBS"
+RUN cmake --build /opt/build/vision --target strata-vision --parallel "$MAX_JOBS"
 
 RUN set -eux; mkdir -p /opt/strata/bin \
     && cp /opt/build/engine/strata /opt/build/vision/bin/strata-vision /opt/strata/bin/

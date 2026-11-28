@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import subprocess
 import sys
 import tarfile
 from collections.abc import Callable
@@ -13,22 +14,27 @@ from types import ModuleType
 import pytest
 
 
-@pytest.fixture(params=["strata", "exllamav3-tabbyapi"])
-def extract(
-    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> Callable[[bytes, str], Path]:
-    runtime = str(request.param)
+def load_fetcher(runtime: str) -> ModuleType:
     script = (
         Path(__file__).resolve().parents[1] / "runtimes" / runtime / "container/fetch_sources.py"
     )
-    torch = ModuleType("torch")
-    torch.__version__ = "test"  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "torch", torch)
     spec = importlib.util.spec_from_file_location(f"fetch_{runtime}", script)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture(params=["strata", "exllamav3-tabbyapi"])
+def extract(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> Callable[[bytes, str], Path]:
+    runtime = str(request.param)
+    torch = ModuleType("torch")
+    torch.__version__ = "test"  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "torch", torch)
+    module = load_fetcher(runtime)
     staging = tmp_path / "staging"
     staging.mkdir()
     monkeypatch.setattr(module.tempfile, "tempdir", str(staging))
@@ -124,3 +130,105 @@ def test_extract_rejects_escape_and_cleans_partial_extraction(
     assert outside.read_text() == "unchanged"
     assert not (tmp_path / "published").exists()
     assert list((tmp_path / "staging").iterdir()) == []
+
+
+def arrange_strata_sources(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    layout: str | None,
+    projects: tuple[str, ...],
+) -> tuple[ModuleType, Path, Path]:
+    module = load_fetcher("strata")
+    stream = io.BytesIO()
+    with tarfile.open(fileobj=stream, mode="w:gz") as archive:
+        for project in projects:
+            content = b"cmake_minimum_required(VERSION 3.21)\nproject(fixture NONE)\n"
+            entry = tarfile.TarInfo(f"project/{project}/CMakeLists.txt")
+            entry.size = len(content)
+            archive.addfile(entry, io.BytesIO(content))
+    payload = stream.getvalue()
+    build = tmp_path / "build"
+    source = tmp_path / "source trees"
+    build.mkdir()
+    lock: dict[str, object] = {
+        "sources": {
+            "strata": {
+                "repository": "example/strata",
+                "revision": "0123456789abcdef",
+                "sha256": hashlib.sha256(payload).hexdigest(),
+            },
+        },
+    }
+    if layout is not None:
+        lock["layout"] = layout
+    (build / "versions.lock.json").write_text(json.dumps(lock))
+    monkeypatch.setattr(module.urllib.request, "urlopen", lambda *a, **kw: io.BytesIO(payload))
+    return module, build, source
+
+
+@pytest.mark.parametrize(
+    ("layout", "projects", "engine", "vision"),
+    [
+        (None, (".", "tools/vision"), "strata", "strata/tools/vision"),
+        (
+            "engine-terminal",
+            ("engine", "terminal/tools/vision"),
+            "strata-source/engine",
+            "strata-source/terminal/tools/vision",
+        ),
+    ],
+    ids=["legacy", "split"],
+)
+def test_fetch_sources_exports_physical_build_paths_for_locked_layout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    layout: str | None,
+    projects: tuple[str, ...],
+    engine: str,
+    vision: str,
+) -> None:
+    module, build, source = arrange_strata_sources(
+        tmp_path, monkeypatch, layout=layout, projects=projects
+    )
+
+    module.main(build_root=build, source_root=source)
+
+    command = (
+        '. "$1"; printf "%s\\n" '
+        '"$STRATA_BUILD_LAYOUT" "$STRATA_ENGINE_SOURCE" "$STRATA_VISION_SOURCE"'
+    )
+    config = subprocess.check_output(
+        ["/bin/sh", "-ec", command, "sh", str(build / "strata-build-paths.sh")], text=True
+    ).splitlines()
+    assert config == [layout or "legacy", str(source / engine), str(source / vision)]
+    assert (source / vision).resolve() == source / vision
+    assert (source / "strata" / "tools/vision").resolve() == source / vision
+    assert (source / "strata" / "BUILD_ID").read_text() == "012345678\n"
+
+
+def test_fetch_sources_rejects_missing_project_for_locked_layout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module, build, source = arrange_strata_sources(
+        tmp_path, monkeypatch, layout="engine-terminal", projects=("engine",)
+    )
+
+    with pytest.raises(ValueError, match=r"engine-terminal.*terminal/tools/vision/CMakeLists\.txt"):
+        module.main(build_root=build, source_root=source)
+
+    assert not (build / "strata-build-paths.sh").exists()
+
+
+def test_fetch_sources_rejects_unrecognized_layout_before_downloading_archive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module, build, source = arrange_strata_sources(
+        tmp_path, monkeypatch, layout="unrecognized", projects=()
+    )
+    monkeypatch.setattr(module.urllib.request, "urlopen", lambda *a, **kw: pytest.fail("Download"))
+
+    with pytest.raises(ValueError, match="Unsupported Strata source layout: unrecognized"):
+        module.main(build_root=build, source_root=source)
+
+    assert not (source / "strata").exists()

@@ -13,6 +13,8 @@ To test a newer engine or ROCm image, follow [Upgrade a container runtime](../la
 
 Docker needs access to `/dev/kfd` and `/dev/dri`. The recipe's build command reads its selected release lock and checks binary startup, API imports and a HIP kernel. If the compiler runs short of RAM, add `--max-jobs 2`.
 
+The builder chooses the source layout from the runtime lock. CMake uses the physical upstream directories; `/opt/src/strata` is the runtime path. Vision configures before the HIP engine build, so an unsupported source layout or missing CMake dependency fails before compilation.
+
 ## Preparation
 
 The data root defaults to `~/llm-recipes`. Set `LLM_RECIPES_HOME` before preparation and launch to use another location. Preparation verifies the published GGUF shards under `recipes/<recipe>/models/`. Recipes using the same pinned checkpoint share the verified BF16 MTP source under `.cache/strata/mtp/<repository>/<revision>/`.
