@@ -28,11 +28,10 @@ exit with code 0. Docker or authentication failures return `"status": "error"` w
 
 ## Upgrade a container runtime
 
-From the main checkout, set `recipe` to a container recipe ID from `llm-recipes list`. Run the upgrader with the GPU free:
+From the main checkout, run the upgrader with the GPU free. A runtime ID selects the installed model recipes under `LLM_RECIPES_HOME` (default `~/llm-recipes`); a recipe ID from `llm-recipes list` selects one recipe. Recipes present only in the catalog are skipped in runtime mode.
 
 ```bash
-recipe=qwen3.8-27b-exl3-rx-9070-xt-16-gb-vram
-python3 scripts/upgrade_runtime.py "$recipe"
+python3 scripts/upgrade_runtime.py strata --release v0.2.23
 ```
 
 A fresh trial selects the latest stable upstream engine release and the newest matching Linux/amd64 ROCm image. ExLlamaV3 uses the newest matching PyTorch release for the runtime's supported Python minor and keeps the recipe's TabbyAPI revision. Strata uses the Ubuntu ROCm dev image and its distribution Python. The command prints the resolved source revisions, AMD tag, digest and candidate key.
@@ -44,14 +43,18 @@ A fresh trial selects the latest stable upstream engine release and the newest m
 | `--pytorch X.Y.Z` or `--pytorch current` | Pin PyTorch or keep the recipe's version when testing ExLlamaV3. |
 | `--prepare-only` | Write the candidate checkout and locks without Docker or weights. |
 | `--image-only` | Build or reuse the image and run the GPU smoke test without preparing weights. |
+| `--verify` | Rehash reusable serving artifacts and published weights. |
+| `--allow-copy` | Permit a full payload copy if a hard link and a reflink are both unavailable. |
 
-The full run prepares the selected recipe and prints its baseline command. Recipes with identical build inputs share one image. Their generated model files live in separate recipe directories. To continue an image-only run or retry an exact candidate, use the printed key:
+The upgrader resolves and smoke-tests one image per compatible build lock. Model preparation runs with networking disabled. It reuses serving files where possible and rebuilds only from verified local inputs. If a recipe is incomplete, the diagnostic names the file and prints an explicit preparation command. Move damaged files aside before repairing them; do not edit a shared payload in place.
+
+Each candidate records its recipe list. Use its key to retry, even if the installed recipe list changes:
 
 ```bash
-python3 scripts/upgrade_runtime.py "$recipe" --resume <key>
+python3 scripts/upgrade_runtime.py strata --resume <key>
 ```
 
-Run the printed baseline from the candidate worktree. Normal installed launches use the published recipe until adoption. To adopt the candidate's participating recipes, use `--adopt <key>` from the main checkout; adoption prints the branch publication command. Use `--delete <key>` to discard or roll back an unpublished trial. Stop candidate containers before cleanup.
+Run every printed baseline from the candidate worktree. A successful image smoke test does not show that the model loads. Check generation, drafting, vision where enabled, and the target context. Once those checks pass, use `--adopt <key> --confirm-model-load` from the main checkout. Use `--delete <key>` to discard an unpublished trial or roll back the local selection; stop its containers first. Neither operation deletes published weights or another preparation's hard-linked payloads.
 
 ## Diagnose a recipe
 
@@ -135,13 +138,13 @@ The launcher discovers `recipes/*/config/launch.json`. The recipe directory supp
 | `draft` | Default `on` or `off` |
 | `vision` | TabbyAPI: `on/off`; Strata: `cpu/off` |
 
-Strata and ExLlamaV3 recipes can select `<runtime>/releases/<build-key>` to use release-specific pins with the shared serving scripts. Installed commands honor the recipe’s [locally adopted release](runtimes/strata.md#adopt-and-publish). The selected runtime's `runtime.json` defines `adapter`, `engine`, and `image`. Set `engine_version` to the engine’s reported version. Use `engine_source_version` when the source tag or distance from that tag adds detail, such as `v0.2.13 + 95 commits`. Both `start` and `doctor` accept `--runtime-image` for a candidate image with the selected runtime lock. Supported pairs are `tabbyapi` / `exllamav3` and `strata` / `strata`. The launcher validates the runtime identifier and serving entry point before constructing a command. The recipe's model data folder is `<data home>/recipes/<recipe-id>/`, derived from the recipe folder name and not configurable. Native server settings remain recipe-local. Keep the native server port equal to the manifest port; `--port` changes only the host mapping. The [container recipe template](../templates/container/config/launch.json) selects the shared ExLlamaV3/TabbyAPI runtime.
+Strata and ExLlamaV3 recipes can select `<runtime>/releases/<build-key>` to use release-specific pins with the shared serving scripts. Installed commands honor the recipe’s [locally adopted release](#upgrade-a-container-runtime). The selected runtime's `runtime.json` defines `adapter`, `engine`, and `image`. Set `engine_version` to the engine’s reported version. Use `engine_source_version` when the source tag or distance from that tag adds detail, such as `v0.2.13 + 95 commits`. Both `start` and `doctor` accept `--runtime-image` for a candidate image with the selected runtime lock. Supported pairs are `tabbyapi` / `exllamav3` and `strata` / `strata`. The launcher validates the runtime identifier and serving entry point before constructing a command. The recipe's model data folder is `<data home>/recipes/<recipe-id>/`, derived from the recipe folder name and not configurable. Native server settings remain recipe-local. Keep the native server port equal to the manifest port; `--port` changes only the host mapping. The [container recipe template](../templates/container/config/launch.json) selects the shared ExLlamaV3/TabbyAPI runtime.
 
 ## Shared runtimes
 
 [ExLlamaV3 / TabbyAPI](runtimes/exllamav3-tabbyapi.md) and [Strata](runtimes/strata.md) each own a container build, dependency locks, preparation helpers, serving integration, and API checks. Multiple recipes can select one runtime while keeping their model locks, native configuration, data directories, and results independent. Select a recipe directly; model variants use separate recipe identifiers.
 
-The launcher mounts the selected recipe at `/recipes/<recipe-id>` and runtime at `/runtime`, both read-only, plus prepared models at `/models` read-only and writable `/cache` and `/logs`. It then calls `/runtime/scripts/serve.py --recipe /recipes/<recipe-id>`. Preparation helpers also take an explicit recipe directory. Existing prepared files remain usable when model and build locks match.
+The launcher mounts the selected recipe at `/recipes/<recipe-id>`, runtime at `/runtime`, shared helpers at `/repo-scripts`, and prepared models at `/models`, all read-only. It mounts `/cache` and `/logs` writable, then calls `/runtime/scripts/serve.py --recipe /recipes/<recipe-id>`. Preparation helpers also take an explicit recipe directory.
 
 [`scripts/launch.py`](../scripts/launch.py) handles CLI presentation. [`scripts/launcher.py`](../scripts/launcher.py) handles discovery, validation, command planning, and lifecycle operations. Docker labels record instance, recipe, runtime, API-server adapter, and engine. API-server integrations remain distinct from inference engines.
 

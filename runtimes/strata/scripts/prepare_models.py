@@ -140,10 +140,8 @@ def prepare_projector(projector: dict[str, Any], data_root: Path) -> None:
             partial.replace(target)
 
 
-def prepare_weights(
-    root: Path, lock: dict[str, Any], projector: dict[str, Any] | None, *, reuse: bool
-) -> None:
-    """Prepare published GGUF files, reusing existing shards for a matching receipt."""
+def prepare_weights(root: Path, lock: dict[str, Any], projector: dict[str, Any] | None) -> None:
+    """Prepare published GGUF files, verifying any existing files before reuse."""
     for item in lock["files"]:
         path = root / "models" / item["path"]
         url = (
@@ -151,18 +149,25 @@ def prepare_weights(
             f"{item.get('revision', lock['revision'])}/{item['path']}"
         )
         if projector and item["path"] == projector["source"]:
+            if (root.parents[1] / projector["path"]).is_file():
+                continue
             path = (root.parents[1] / projector["path"]).with_name(path.name)
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.with_suffix(".lock").open("a") as guard:
                 fcntl.flock(guard, fcntl.LOCK_EX)
                 download(url, path, item["size_bytes"], item["sha256"])
-        elif not reuse:
+        else:
             download(url, path, item["size_bytes"], item["sha256"])
-        elif path.stat().st_size != item["size_bytes"]:
-            raise ValueError(f"Invalid shared GGUF: {item['path']}")
 
 
-def prepare(recipe: Path, root: Path) -> None:
+def prepare(
+    recipe: Path,
+    root: Path,
+    *,
+    donor: str | None = None,
+    allow_copy: bool = False,
+    verify_local: bool = False,
+) -> None:
     """Prepare the locked target, CPU projector, tokenizer, and Q2_0 MTP runtime."""
     config, _ = recipe_paths(recipe)
     lock = json.loads((config / "models.lock.json").read_text())
@@ -176,41 +181,11 @@ def prepare(recipe: Path, root: Path) -> None:
     tools = Path("/opt/src/strata/tools")
     if pinned_mtp_revision(tools / "mtp_fetch.py") != lock["mtp"]["revision"]:
         raise ValueError("MTP revision differs from the pinned upstream downloader")
+    if donor is not None and root.resolve() != root:
+        raise ValueError(f"Redirected recipe model directory: {root}")
     root.mkdir(parents=True, exist_ok=True)
     with (root / ".prepare.lock").open("w") as guard:
         fcntl.flock(guard, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        final = root / "prepared" / key if key else root
-        if key and final.exists():
-            validate_outputs(final)
-            if json.loads((final / "prepared.json").read_text()) != {
-                "models": lock,
-                "image": versions,
-            }:
-                raise ValueError(f"Conflicting preparation at {final}")
-            prepare_weights(root, lock, projector, reuse=True)
-            if projector:
-                prepare_projector(projector, root.parents[1])
-            print(f"Reusing {final}", flush=True)
-            return
-        output = final.with_name("." + key + ".partial") if key else root
-        if key and (output.resolve() != output or final.resolve() != final):
-            raise ValueError(
-                "Versioned preparation directory must be inside the recipe data directory"
-            )
-        if key:
-            marker = output / "preparing.json"
-            inputs = {"models": lock, "image": versions}
-            if output.exists():
-                if json.loads(marker.read_text()) != inputs:
-                    raise ValueError(f"Different preparation already in progress at {output}")
-            else:
-                output.mkdir(parents=True)
-                marker.write_text(json.dumps(inputs) + "\n")
-        else:
-            output.mkdir(parents=True, exist_ok=True)
-        receipt = output / "prepared.json"
-        receipt.unlink(missing_ok=True)
-        prepare_weights(root, lock, projector, reuse=False)
         environment = dict(
             os.environ,
             STRATA_GGUF_PY="/opt/src/llama_cpp/gguf-py",
@@ -225,6 +200,64 @@ def prepare(recipe: Path, root: Path) -> None:
                 [sys.executable, str(tools / script), *args], env=environment, check=True
             )
 
+        if donor is not None:
+            from reuse_artifacts import LocalPreparation
+
+            if not key:
+                raise ValueError("Local upgrade preparation requires a versioned candidate")
+            local = LocalPreparation(
+                root,
+                key,
+                donor,
+                lock,
+                projector,
+                versions,
+                tools,
+                tensor_hashes(tools / "mtp_fetch.py"),
+                allow_copy=allow_copy,
+                verify=verify_local,
+            )
+            local.prepare(run, lambda output: pack_arguments(lock, root, output), prepare_projector)
+            return
+        final = root / "prepared" / key if key else root
+        if key and final.exists():
+            validate_outputs(final)
+            saved = json.loads((final / "prepared.json").read_text())
+            if saved.get("models") != lock or saved.get("image") != versions:
+                raise ValueError(f"Conflicting preparation at {final}")
+            prepare_weights(root, lock, projector)
+            if projector:
+                prepare_projector(projector, root.parents[1])
+            print(f"Reusing {final}", flush=True)
+            return
+        output = final.with_name("." + key + ".partial") if key else root
+        if key and (output.resolve() != output or final.resolve() != final):
+            raise ValueError(
+                "Versioned preparation directory must be inside the recipe data directory"
+            )
+        if key:
+            marker = output / "preparing.json"
+            inputs = {"models": lock, "image": versions}
+            if output.exists():
+                previous = json.loads(marker.read_text()) if marker.exists() else {}
+                if previous == {**inputs, "mode": "local"}:
+                    shutil.rmtree(output)
+                elif previous != inputs and any(output.iterdir()):
+                    raise ValueError(f"Different preparation already in progress at {output}")
+            output.mkdir(parents=True, exist_ok=True)
+            marker.write_text(json.dumps(inputs) + "\n")
+        receipt = output / "prepared.json"
+        prepare_weights(root, lock, projector)
+        receipt.unlink(missing_ok=True)
+        if not key:
+            # Converters must never open a hard-linked donor payload for writing.
+            outputs = [output / "packs/iq3_xxs", output / "mtp/rt"]
+            if any(path.resolve() != path for path in outputs):
+                raise ValueError(f"Redirected preparation output under {output}")
+            for path in outputs:
+                if path.exists():
+                    shutil.rmtree(path)
+            (output / "mtp/mtp-q2_0.gguf").unlink(missing_ok=True)
         run("iq_pack.py", *pack_arguments(lock, root, output))
         mtp = output / "mtp"
         source = shared_source(
@@ -293,12 +326,24 @@ def main() -> int:
     )
     parser.add_argument("--recipe", type=Path, required=True, help="recipe directory")
     parser.add_argument("--inside-container", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--local-only", action="store_true", help="Prepare without networking")
+    parser.add_argument("--donor", default="base", help=argparse.SUPPRESS)
+    parser.add_argument("--allow-copy", action="store_true")
+    parser.add_argument("--verify", action="store_true")
     args = parser.parse_args()
     recipe = args.recipe.expanduser().resolve()
     try:
         config, folder = recipe_paths(recipe)
         if args.inside_container:
-            prepare(recipe, Path("/models") / folder)
+            if args.local_only:
+                sys.path.append("/repo-scripts")
+            prepare(
+                recipe,
+                Path("/models") / folder,
+                donor=args.donor if args.local_only else None,
+                allow_copy=args.allow_copy,
+                verify_local=args.verify,
+            )
             return 0
         models = args.models.expanduser().resolve()
         if any(char in str(models) + str(recipe) + str(RUNTIME) for char in (",", "\n")):
@@ -316,6 +361,7 @@ def main() -> int:
             "docker",
             "run",
             "--rm",
+            *(["--network=none", "--pull=never"] if args.local_only else []),
             "--init",
             "--user",
             f"{os.getuid()}:{os.getgid()}",
@@ -331,12 +377,23 @@ def main() -> int:
             f"type=bind,src={models},dst=/models",
             "--mount",
             f"type=bind,src={models / '.cache'},dst=/cache",
+            *(
+                [
+                    "--mount",
+                    f"type=bind,src={RUNTIME.parents[1] / 'scripts'},dst=/repo-scripts,readonly",
+                ]
+                if args.local_only
+                else []
+            ),
             image,
             "python3",
             "/runtime/scripts/prepare_models.py",
             "--recipe",
             f"/recipes/{recipe.name}",
             "--inside-container",
+            *(["--local-only", "--donor", args.donor] if args.local_only else []),
+            *(["--allow-copy"] if args.allow_copy else []),
+            *(["--verify"] if args.verify else []),
         ]
         return subprocess.run(command, check=False).returncode
     except (OSError, ValueError, subprocess.CalledProcessError) as error:

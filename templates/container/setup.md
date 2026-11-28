@@ -10,6 +10,8 @@ Link to `docs/runtimes/<runtime>.md#build-and-check`. For a versioned runtime, g
 
 Provide the runtime preparation command with this recipe’s directory and the models root used by the launcher. Link `config/models.lock.json`; describe conversion choices and output location specific to this model. Link the runtime guide for verification, resume, and retry behavior.
 
+For upgrades on machines with installed models, link to [Upgrade a container runtime](../../docs/launcher.md#upgrade-a-container-runtime). Keep model acquisition and repair explicit; include the preparation command needed if a locked local input is missing.
+
 ## Launch
 
 The `llm-recipes` command comes from the installed serving snapshot; link to [Quick start](../../README.md#quick-start) for installation and refresh. After preparation, check the recipe before starting. Link to [diagnostics](../../docs/launcher.md#diagnose-a-recipe) for check scope and troubleshooting.

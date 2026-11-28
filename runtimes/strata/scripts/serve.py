@@ -68,7 +68,7 @@ def validate_model_files(
     for item in lock["files"]:
         path = root / "models" / item["path"]
         if projector and item["path"] == projector["source"]:
-            path = (root.parents[1] / projector["path"]).with_name(path.name)
+            continue
         if not path.is_file() or path.stat().st_size != item["size_bytes"]:
             raise ValueError(prepare_hint(f"Missing or incomplete model file: {path}", root.name))
 
@@ -188,8 +188,19 @@ def main() -> int:
                 or target.stat().st_size != projector["size_bytes"]
             ):
                 raise ValueError(prepare_hint("Invalid shared vision projector", recipe.name))
-        if receipt != {"models": models, "image": expected}:
+        if receipt.get("models") != models or receipt.get("image") != expected:
             raise ValueError(prepare_hint("Prepared model lock differs", recipe.name))
+        if "artifact_schema" in receipt:
+            sys.path.append("/repo-scripts")
+            from model_artifacts import verify_output_receipt
+
+            layout = {"pack": "packs/iq3_xxs"}
+            if options.draft == "on":
+                layout["mtp"] = "mtp/rt"
+            try:
+                verify_output_receipt(prepared, layout)
+            except ValueError as error:
+                raise ValueError(prepare_hint(str(error), recipe.name)) from error
         validate_model_files(Path("/models") / folder, models, projector)
         validate_files(config)
         environment = dict(os.environ, HIP_VISIBLE_DEVICES=probe_device())

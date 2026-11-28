@@ -45,7 +45,7 @@ def test_resolver_selects_full_dev_tag_for_strata() -> None:
 @pytest.fixture
 def checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     root = tmp_path / "repo"
-    for subdir in ("runtimes", "recipes"):
+    for subdir in ("runtimes", "recipes", "scripts"):
         shutil.copytree(trials.ROOT / subdir, root / subdir)
     prefix = tmp_path / "prefix"
     shutil.copytree(root, prefix / "app")
@@ -145,7 +145,11 @@ def test_exllama_trial_checks_image_and_only_adopts_on_request(
     assert not local_selections(recipe.name)
 
     monkeypatch.setattr(trials, "check_ready_recipe", lambda *args: None)
-    assert upgrade.main([recipe.name, "--adopt", file.stem]) == 0
+    with pytest.raises(SystemExit) as missing_confirmation:
+        upgrade.main([recipe.name, "--adopt", file.stem])
+    assert missing_confirmation.value.code == 1
+    assert not local_selections(recipe.name)
+    assert upgrade.main([recipe.name, "--adopt", file.stem, "--confirm-model-load"]) == 0
     assert local_selections(recipe.name) == [state["candidate"]]
     assert upgrade.main([recipe.name, "--delete", file.stem]) == 0
     assert not local_selections(recipe.name)
@@ -159,3 +163,41 @@ def test_resolver_rejects_python_override_and_strata_pytorch(checkout: Path) -> 
         upgrade.main([name, "--python", "3.13"])
     with pytest.raises(SystemExit):
         upgrade.main([name, "--pytorch", "2.15.0"])
+
+
+def test_runtime_upgrade_builds_once_and_resumes_saved_installed_recipes(
+    checkout: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    recipes = discover_recipes(checkout / "recipes", local=False)
+    names = sorted(name for name, recipe in recipes.items() if recipe.adapter == "strata")
+    for name in names:
+        (checkout.parent / "weights" / recipes[name].data_subpath / "models").mkdir(parents=True)
+    catalog = checkout / "recipes/catalog-only"
+    shutil.copytree(recipes[names[0]].directory, catalog)
+    subprocess.run(["git", "add", "."], cwd=checkout, check=True)
+    subprocess.run(["git", "commit", "-qm", "catalog fixture"], cwd=checkout, check=True)
+    monkeypatch.setattr(upgrade, "registry_tags", lambda *args: [image("10.2.0-full")])
+    release = Mock(return_value=("a" * 40, "b" * 64, "0.1.68"))
+    monkeypatch.setattr(trials, "release", release)
+    build = Mock(return_value="sha256:" + "8" * 64)
+    monkeypatch.setattr(trials, "build_or_check", build)
+    original = trials.output
+
+    def inspect(*cmd: str, cwd: Path | None = None) -> str:
+        return "Python 3.12" if "docker" in cmd else original(*cmd, cwd=cwd)
+
+    monkeypatch.setattr(trials, "output", inspect)
+    prepared = Mock()
+    monkeypatch.setattr(upgrade, "prepare_models", prepared)
+
+    assert upgrade.main(["strata", "--release", "v0.2.23"]) == 0
+
+    build.assert_called_once()
+    assert sorted(release.call_args.args[1]) == names
+    assert [call.args[0].name for call in prepared.call_args_list] == names
+    record = next((checkout / ".git/strata-trials").glob("*.json"))
+    shutil.rmtree(checkout.parent / "weights")
+    prepared.reset_mock()
+    assert upgrade.main(["strata", "--resume", record.stem]) == 0
+    assert [call.args[0].name for call in prepared.call_args_list] == names
+    release.assert_called_once()

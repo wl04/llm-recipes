@@ -22,6 +22,8 @@ An optional third argument selects the host models directory; its default is the
 
 Interrupted downloads can be rerun. Conversion requires fresh output and work directories: move failed outputs aside before retrying. With a release selected, the converter puts both directories under `prepared/<build-key>/` within the recipe data folder. The serving helper resolves TabbyAPI’s draft directory under the same key. The target and original draft stay at their model-lock paths.
 
+Test an upgrade against the installed target and converted draft with `python3 scripts/upgrade_runtime.py exllamav3-tabbyapi`. If the draft source lock, target compatibility and conversion settings match, the candidate can use the verified EXL3 files without the original draft. The candidate baseline must load the EXL3 files and exercise DFlash2 generation; a successful image test alone does not verify the draft format. If conversion settings change, have the locked original draft available locally.
+
 ## Serving
 
 The [launcher](../launcher.md#shared-runtimes) provides mounts and invokes the serving helper.

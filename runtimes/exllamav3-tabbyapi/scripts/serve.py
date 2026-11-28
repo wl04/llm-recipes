@@ -122,6 +122,19 @@ def verify_preparation(config: dict[str, Any], draft_on: bool, recipe: Path, pin
         else:
             verify_prepared_manifest(manifest, spec, manifest_path)
 
+        exl3_layout.check_inventory(folder, set(manifest["sha256"]))
+        if section == "draft_model" and "target" in manifest:
+            if manifest["target"] != models_lock["target"]:
+                raise ValueError(f"Converted draft target differs from the model lock: {folder}")
+            sys.path.append("/repo-scripts")
+            from model_artifacts import verify_inventory
+
+            if set(manifest["inventory"]) != set(manifest["sha256"]):
+                raise ValueError(f"Incomplete converted draft inventory: {folder}")
+            verify_inventory(folder, manifest["inventory"], sizes_only=True)
+            target = Path(config["model"]["model_dir"]) / config["model"]["model_name"]
+            verify_inventory(target, manifest["target_inventory"], sizes_only=True)
+
 
 def prepare_runtime(source: Path) -> Path:
     """Keep relative runtime writes owned by the invoking user."""

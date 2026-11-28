@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ $# -lt 2 || $# -gt 3 || ( "$2" != download && "$2" != quantize-draft ) ]]; then
-    echo "Usage: bash $0 recipe-directory {download|quantize-draft} [model-directory]" >&2
+if [[ $# -lt 2 || ( "$2" != download && "$2" != quantize-draft && "$2" != upgrade-local ) || ( "$2" != upgrade-local && $# -gt 3 ) ]]; then
+    echo "Usage: bash $0 recipe-directory {download|quantize-draft|upgrade-local} [model-directory]" >&2
     exit 2
 fi
 runtime_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
@@ -25,13 +25,21 @@ done
 mkdir -p -- "$model_dir"
 model_dir=$(cd -- "$model_dir" && pwd)
 gpu_args=()
-if [[ $action == quantize-draft ]]; then
+local_args=()
+action_args=()
+if [[ $action == quantize-draft || $action == upgrade-local ]]; then
     gpu_access=$(python3 "$scripts_dir/gpu_access.py")
     mapfile -t gpu_args <<<"$gpu_access"
+fi
+if [[ $action == upgrade-local ]]; then
+    local_args=(--network=none --pull=never --env HF_HUB_OFFLINE=1
+        --mount "type=bind,src=$scripts_dir,dst=/repo-scripts,readonly")
+    action_args=("${@:4}")
 fi
 sudo docker run --rm \
     --user "$(id -u):$(id -g)" \
     "${gpu_args[@]}" \
+    "${local_args[@]}" \
     --env HF_HOME=/models/.cache/huggingface \
     --env XDG_CACHE_HOME=/models/.cache \
     --env TRITON_CACHE_DIR=/models/.cache/triton \
@@ -40,4 +48,4 @@ sudo docker run --rm \
     --mount "type=bind,src=$runtime_dir,dst=/runtime,readonly" \
     --mount "type=bind,src=$model_dir,dst=/models" \
     "$image" \
-    python3 /runtime/scripts/prepare_models.py --recipe "$container_recipe" "$action"
+    python3 /runtime/scripts/prepare_models.py --recipe "$container_recipe" "$action" "${action_args[@]}"

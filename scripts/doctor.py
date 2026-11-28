@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 
 from command_hints import command_hint
 from launcher import Recipe
+from model_artifacts import verify_inventory, verify_output_receipt
 
 
 @dataclass(frozen=True)
@@ -104,8 +105,14 @@ def _check_strata_preparation(
     """Verify the strata receipt, the locked weight sizes, and the pack layout."""
     prepared = root / "prepared" / recipe.runtime_directory.name if "/" in recipe.runtime else root
     pack_lock = {key: value for key, value in lock.items() if key != "projector"}
-    if read_json(prepared / "prepared.json") != {"models": pack_lock, "image": versions}:
+    receipt = read_json(prepared / "prepared.json")
+    if receipt.get("models") != pack_lock or receipt.get("image") != versions:
         raise ValueError("Preparation receipt differs from model or runtime lock")
+    if "artifact_schema" in receipt:
+        layout = {"pack": "packs/iq3_xxs"}
+        if recipe.draft == "on":
+            layout["mtp"] = "mtp/rt"
+        verify_output_receipt(prepared, layout)
     projector = lock.get("projector")
     if projector:
         path = root.parents[1] / projector["path"]
@@ -114,6 +121,8 @@ def _check_strata_preparation(
             raise ValueError(f"Size differs from projector lock: {path}")
     for item in lock["files"]:
         path = strata_weight_path(root, lock, item["path"])
+        if projector and item["path"] == projector["source"]:
+            continue
         require_file(path)
         if path.stat().st_size != item["size_bytes"]:
             raise ValueError(f"Size differs from model lock: {path}")
@@ -143,6 +152,16 @@ def _check_exl3_preparation(
             raise ValueError(f"Missing artifact checksums: {folder}")
         if converted:
             _check_conversion_receipt(receipt, lock, versions, checksums, folder)
+            if receipt.get("target", lock["target"]) != lock["target"]:
+                raise ValueError(f"Draft was prepared for a different target: {folder}")
+            if "target_inventory" in receipt:
+                verify_inventory(
+                    root / lock["target"]["directory"], receipt["target_inventory"], sizes_only=True
+                )
+            if "inventory" in receipt:
+                if set(receipt["inventory"]) != set(checksums):
+                    raise ValueError(f"Incomplete converted draft inventory: {folder}")
+                verify_inventory(folder, receipt["inventory"], sizes_only=True)
         elif not set(spec["files"]).issubset(checksums):
             raise ValueError(f"Incomplete target manifest: {folder}")
         require_file(folder / "config.json")

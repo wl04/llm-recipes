@@ -314,12 +314,14 @@ def start_command(
     for setting in (
         "XDG_CACHE_HOME=/cache",
         "HF_HOME=/cache/huggingface",
+        "HF_HUB_OFFLINE=1",
         "TRITON_CACHE_DIR=/cache/triton",
         "PYTHONUNBUFFERED=1",
     ):
         command += ["--env", setting]
     command += mount(recipe.directory, f"/recipes/{recipe.name}", readonly=True)
     command += mount(recipe.runtime_source, "/runtime", readonly=True)
+    command += mount(Path(__file__).resolve().parent, "/repo-scripts", readonly=True)
     command += mount(models, "/models", readonly=True)
     command += mount(models / ".cache", "/cache")
     command += mount(logs, "/logs")

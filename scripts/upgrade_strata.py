@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from command_hints import command_hint
-from doctor import check_prepared, strata_weight_path
+from doctor import check_prepared, read_json, strata_weight_path
 from launcher import (
     Recipe,
     discover_recipes,
@@ -387,8 +387,15 @@ def stage_files(
     candidate: Path,
     models: Path,
     names: list[str],
+    *,
+    metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    state = {"files": generated, "models": str(models), "candidate": str(candidate)}
+    state = {
+        **(metadata or {}),
+        "files": generated,
+        "models": str(models),
+        "candidate": str(candidate),
+    }
     if prior and (
         prior["models"] != str(models)
         or prior["candidate"] != str(candidate)
@@ -536,7 +543,7 @@ def manage_trial(key: str, delete: bool, guards: ExitStack, runtime: str) -> Non
             ):
                 continue
             raise ValueError(f"Modified trial file: {path}")
-    previous_ids = state.get("previous", {})
+    previous_ids: dict[str, list[str]] = state.get("previous", {})
     if isinstance(previous_ids, list) and len(names) == 1:
         previous_ids = {names[0]: previous_ids}
     app = runtime_prefix() / "app"
@@ -546,7 +553,10 @@ def manage_trial(key: str, delete: bool, guards: ExitStack, runtime: str) -> Non
         for name in names:
             check_ready_recipe(candidates[name], models)
         stamp = app / "VERSION"
-        if not stamp.exists() or json.loads(stamp.read_text()).get("version") != "2":
+        needs_artifact_helpers = (
+            state.get("model_locks") and not (app / "scripts/model_artifacts.py").is_file()
+        )
+        if not stamp.exists() or read_json(stamp).get("version") != "2" or needs_artifact_helpers:
             if app.exists():
                 installed = discover_recipes(app / "recipes", local=False)
                 reference = discover_recipes(ROOT / "recipes", local=False)
@@ -630,6 +640,7 @@ def manage_trial(key: str, delete: bool, guards: ExitStack, runtime: str) -> Non
             raise ValueError("Refusing to remove a redirected preparation directory")
         if (
             partial.exists()
+            and any(path.name != "preparing.json" for path in partial.iterdir())
             and json.loads((partial / "preparing.json").read_text()).get("image")
             != files[str(pins / "container/versions.lock.json")]
         ):

@@ -26,8 +26,9 @@ def tabby_startup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path
     model = weights / "target"
     model.mkdir(parents=True)
     (model / "config.json").write_text("{}")
-    spec = {"files": ["config.json"]}
-    write_manifest(model, {"source": spec, "sha256": {"config.json": "fixture"}})
+    (model / "model.safetensors").write_bytes(b"weights")
+    spec = {"files": ["config.json", "model.safetensors"]}
+    write_manifest(model, {"source": spec, "sha256": dict.fromkeys(spec["files"], "fixture")})
     (config / "launch.json").write_text('{"runtime":"exllamav3-tabbyapi"}')
     (config / "models.lock.json").write_text(json.dumps({"target": spec}))
     (config / "tabby.yml").write_text(
@@ -288,7 +289,7 @@ def test_main_selects_draft_and_build_from_recipe_release(
     image_lock, _ = tabby_startup
     config = tmp_path / "recipe/config"
     key = "v1.6.6-rocm10.2"
-    spec = {"files": ["config.json"]}
+    spec = {"files": ["config.json", "model.safetensors"]}
     (config / "launch.json").write_text(
         json.dumps({"runtime": f"exllamav3-tabbyapi/releases/{key}"})
     )
@@ -307,13 +308,14 @@ def test_main_selects_draft_and_build_from_recipe_release(
     draft = tmp_path / "weights/prepared" / key / "draft"
     draft.mkdir(parents=True)
     (draft / "config.json").write_text("{}")
+    (draft / "model.safetensors").write_bytes(b"weights")
     write_manifest(
         draft,
         {
             "source": spec,
             "build": {"version": "candidate"},
             "arguments": ["-b", "3"],
-            "sha256": {"config.json": "fixture"},
+            "sha256": dict.fromkeys(spec["files"], "fixture"),
         },
     )
     instance = tmp_path / "server"

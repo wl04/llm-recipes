@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Resolve and test a container recipe's upstream engine and AMD base image."""
+"""Build and test a runtime upgrade against locally installed model artifacts."""
 
 import argparse
 import fcntl
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -18,9 +19,9 @@ from typing import Any
 
 import upgrade_strata as trials
 from command_hints import command_hint
-from doctor import check_prepared
+from doctor import check_configuration, check_prepared, read_json
 from launcher import Recipe, discover_recipes
-from paths import data_home
+from paths import data_home, runtime_prefix
 
 VERSION = r"[0-9]+\.[0-9]+\.[0-9]+"
 HUB = "https://hub.docker.com/v2/repositories/"
@@ -39,8 +40,11 @@ class BaseImage:
 
 
 def json_url(url: str) -> dict[str, Any]:
-    with urllib.request.urlopen(url, timeout=30) as response:
-        result = json.load(response)
+    try:
+        with urllib.request.urlopen(url, timeout=30) as response:
+            result = json.load(response)
+    except (OSError, ValueError) as error:
+        raise ValueError(f"Cannot read release metadata from {url}: {error}") from error
     if not isinstance(result, dict):
         raise ValueError(f"Expected a JSON object from {url}")
     return result
@@ -109,12 +113,16 @@ def select_image(
 
 
 def resolve(
-    recipe: Recipe, release: str | None, rocm: str | None, pytorch: str | None
+    recipe: Recipe,
+    release: str | None,
+    rocm: str | None,
+    pytorch: str | None,
+    requirements: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[str, dict[str, Any], dict[str, Any]]:
     runtime = recipe.runtime_source.name
     repo = REPOS[recipe.adapter]
-    lock = json.loads((recipe.runtime_directory / "container/versions.lock.json").read_text())
-    descriptor = json.loads((recipe.runtime_directory / "runtime.json").read_text())
+    lock = read_json(recipe.runtime_directory / "container/versions.lock.json")
+    descriptor = read_json(recipe.runtime_directory / "runtime.json")
     python = lock["python_version"] if recipe.adapter == "tabbyapi" else None
     if pytorch is not None and not python:
         raise ValueError("--pytorch applies only to ExLlamaV3")
@@ -138,9 +146,11 @@ def resolve(
         build_inputs_sha256=trials.build_fingerprint(trials.ROOT, runtime),
     )
     if recipe.adapter == "strata":
-        model = json.loads((recipe.directory / "config/models.lock.json").read_text())
+        if requirements is None:
+            model = read_json(recipe.directory / "config/models.lock.json")
+            requirements = {recipe.name: model["mtp"]}
         revision, checksum, engine = trials.release(
-            release, {recipe.name: model["mtp"]}, lock.get("engine_options", {})
+            release, requirements, lock.get("engine_options", {})
         )
         lock.update(layout="engine-terminal")
         lock["sources"]["strata"].update(revision=revision, sha256=checksum)
@@ -165,39 +175,107 @@ def resolve(
     return key, lock, descriptor
 
 
-def prepare_models(recipe: Recipe, models: Path) -> None:
+def preparation_commands(recipe: Recipe, models: Path) -> list[list[str]]:
+    scripts = recipe.runtime_source / "scripts"
     if recipe.adapter == "strata":
-        subprocess.run(
+        return [
             [
                 sys.executable,
-                str(recipe.runtime_source / "scripts/prepare_models.py"),
+                str(scripts / "prepare_models.py"),
                 "--recipe",
                 str(recipe.directory),
                 "--models",
                 str(models),
-            ],
-            check=True,
-        )
-    elif check_prepared(recipe, models).status != "PASS":
-        wrapper = str(recipe.runtime_source / "scripts/prepare-models.sh")
+            ]
+        ]
+    commands = [
+        ["bash", str(scripts / "prepare-models.sh"), str(recipe.directory), "download", str(models)]
+    ]
+    if recipe.draft == "on":
+        commands.append([*commands[0][:3], "quantize-draft", str(models)])
+    return commands
+
+
+def prepare_models(
+    recipe: Recipe, models: Path, donor: str, image_id: str, *, allow_copy: bool, verify: bool
+) -> None:
+    commands = preparation_commands(recipe, models)
+    options = ["--donor", donor]
+    if allow_copy:
+        options.append("--allow-copy")
+    if verify:
+        options.append("--verify")
+    if recipe.adapter == "strata":
+        command = [*commands[0], "--local-only", "--runtime-image", image_id, *options]
+    else:
+        command = [*commands[0][:3], "upgrade-local", str(models), *options]
+        if recipe.draft == "off":
+            command.append("--no-draft")
+    try:
         subprocess.run(
-            ["bash", wrapper, str(recipe.directory), "download", str(models)], check=True
+            command, check=True, env={**os.environ, "LLM_RECIPES_RUNTIME_IMAGE": image_id}
         )
-        if recipe.draft == "on" and check_prepared(recipe, models).status != "PASS":
-            subprocess.run(
-                ["bash", wrapper, str(recipe.directory), "quantize-draft", str(models)], check=True
+        finding = check_prepared(recipe, models)
+        if finding.status != "PASS":
+            raise ValueError(finding.detail)
+    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+        raise ValueError(
+            command_hint(
+                f"{recipe.name}: {error}\nFor missing or damaged inputs, explicitly prepare them",
+                *commands,
+                stream=sys.stderr,
             )
-    finding = check_prepared(recipe, models)
-    if finding.status != "PASS":
-        raise ValueError(finding.detail)
+        ) from error
 
 
-def run(recipe: Recipe, args: argparse.Namespace) -> None:
-    root = trials.ROOT
+def select_recipes(
+    runtime: str, subject: str, catalog: dict[str, Recipe], models: Path
+) -> list[Recipe]:
+    installed = discover_recipes(runtime_prefix() / "app/recipes")
+    if subject in catalog:
+        return [installed.get(subject, catalog[subject])]
+    selected = []
+    for name, default in catalog.items():
+        if default.runtime_source.name != runtime:
+            continue
+        recipe = installed.get(name, default)
+        root = models / recipe.data_subpath
+        lock = read_json(recipe.directory / "config/models.lock.json")
+        markers = (
+            ("models", "packs", "mtp")
+            if recipe.adapter == "strata"
+            else (
+                lock["target"]["directory"],
+                lock["draft"]["directory"],
+                lock["conversion"]["directory"],
+            )
+        )
+        if any((root / path).exists() for path in (*markers, "prepared", "prepared.json")):
+            selected.append(recipe)
+    if not selected:
+        raise ValueError(f"No local {runtime} model installations under {models / 'recipes'}")
+    return selected
+
+
+def grouped_inputs(recipes: list[Recipe], pytorch: str | None) -> list[list[Recipe]]:
+    groups: dict[str, list[Recipe]] = {}
+    for recipe in recipes:
+        lock = read_json(recipe.runtime_directory / "container/versions.lock.json")
+        for field in ("base_tag", "base_image", "build_inputs_sha256", "layout"):
+            lock.pop(field, None)
+        lock["sources"].pop(recipe.engine)
+        if pytorch != "current":
+            lock.pop("torch_version", None)
+        else:
+            lock["torch_version"] = lock["torch_version"].partition("+")[0]
+        groups.setdefault(json.dumps(lock, sort_keys=True), []).append(recipe)
+    return list(groups.values())
+
+
+def run(subject: str, runtime: str, catalog: dict[str, Recipe], args: argparse.Namespace) -> None:
     models = data_home().resolve()
-    runtime = recipe.runtime_source.name
-    key = args.resume or args.adopt or args.delete
     pins = Path("runtimes") / runtime / "releases"
+    key = args.resume or args.adopt or args.delete
     if key:
         if not re.fullmatch(r"v[0-9][A-Za-z0-9.-]{0,126}", key):
             raise ValueError("Invalid candidate key")
@@ -205,85 +283,251 @@ def run(recipe: Recipe, args: argparse.Namespace) -> None:
             raise ValueError("An existing candidate already has locked versions")
         record = trials.trial_record(key, runtime)
         if not record.exists():
-            if args.delete and not root.with_name(f"{root.name}-{runtime}-{key}").exists():
+            if (
+                args.delete
+                and not trials.ROOT.with_name(f"{trials.ROOT.name}-{runtime}-{key}").exists()
+            ):
                 return
             raise ValueError(f"No saved {runtime} trial for {key}")
-        state = json.loads(record.read_text())
+        state = read_json(record)
         files = state["files"]
-        if recipe.name not in trials.trial_names(files):
-            raise ValueError(f"{recipe.name} is not part of trial {key}")
-        resume = ["python3", "scripts/upgrade_runtime.py", recipe.name, "--resume", key]
-        if args.adopt and not state.get("image_id"):
-            raise ValueError(
-                command_hint(
-                    "Build and smoke-test the candidate before adopting", resume, stream=sys.stderr
-                )
-            )
+        if subject in catalog and subject not in trials.trial_names(files):
+            raise ValueError(f"{subject} is not part of trial {key}")
         if args.adopt:
-            image = files[str(pins / key / "runtime.json")]["image"]
-            current_id = trials.output(
-                "sudo", "docker", "image", "inspect", "--format", "{{.Id}}", image
+            check_adoption(
+                subject, key, state, files[str(pins / key / "runtime.json")]["image"], args
             )
-            if current_id != state["image_id"]:
-                raise ValueError(
-                    command_hint(
-                        "Verify the changed candidate image before adopting",
-                        resume,
-                        stream=sys.stderr,
-                    )
-                )
         if args.adopt or args.delete:
             trials.manage(key, bool(args.delete), runtime)
             return
-        lock = files[str(pins / key / "container/versions.lock.json")]
-        descriptor = files[str(pins / key / "runtime.json")]
-    else:
-        key, lock, descriptor = resolve(recipe, args.release, args.rocm, args.pytorch)
-        record = trials.trial_record(key, runtime)
-        state = json.loads(record.read_text()) if record.exists() else {}
-    generated = dict(state.get("files", {}))
-    manifest = trials.manifest_path(recipe.name)
-    if str(manifest) not in generated:
-        if state.get("previous"):
-            raise ValueError(
-                "The trial has been adopted; publish or roll it back before extending it"
+        stage_trial(
+            subject,
+            runtime,
+            key,
+            files[str(pins / key / "container/versions.lock.json")],
+            files[str(pins / key / "runtime.json")],
+            [],
+            models,
+        )
+        if not args.prepare_only:
+            run_trial(runtime, key, models, args)
+        return
+
+    if runtime == "strata" and args.pytorch is not None:
+        raise ValueError("--pytorch applies only to ExLlamaV3")
+    recipes = select_recipes(runtime, subject, catalog, models)
+    locks = {recipe.name: validated_model_lock(recipe) for recipe in recipes}
+    candidates: dict[str, tuple[dict[str, Any], dict[str, Any], list[Recipe]]] = {}
+    for group in grouped_inputs(recipes, args.pytorch):
+        anchor = group[0]
+        requirements = (
+            {recipe.name: locks[recipe.name]["mtp"] for recipe in group}
+            if runtime == "strata"
+            else None
+        )
+        key, lock, descriptor = resolve(anchor, args.release, args.rocm, args.pytorch, requirements)
+        _, _, names = candidates.setdefault(key, (lock, descriptor, []))
+        names.extend(group)
+    for key, (lock, descriptor, group) in candidates.items():
+        stage_trial(subject, runtime, key, lock, descriptor, group, models)
+    if not args.prepare_only:
+        for key in candidates:
+            run_trial(runtime, key, models, args)
+
+
+def validated_model_lock(recipe: Recipe) -> dict[str, Any]:
+    path = recipe.directory / "config/models.lock.json"
+    lock = read_json(path)
+    try:
+        if recipe.adapter == "strata":
+            validate_strata_lock(lock)
+        else:
+            validate_exl3_lock(lock)
+    except (ValueError, KeyError, TypeError) as error:
+        raise ValueError(f"{recipe.name}: invalid {path}: {error}") from error
+    finding = check_configuration(recipe)
+    if finding.status == "FAIL":
+        raise ValueError(f"{recipe.name}: {finding.detail}")
+    return lock
+
+
+def local_name(name: str, *, flat: bool = False) -> str:
+    path = Path(name)
+    if (
+        not path.parts
+        or path.is_absolute()
+        or ".." in path.parts
+        or (flat and len(path.parts) != 1)
+    ):
+        raise ValueError(f"Expected a local artifact path, got {name!r}")
+    return path.as_posix()
+
+
+def validate_strata_lock(lock: dict[str, Any]) -> None:
+    def checked_spec(file: dict[str, Any]) -> str:
+        if type(file["size_bytes"]) is not int or file["size_bytes"] <= 0:
+            raise ValueError(f"Invalid byte size for {file['path']}")
+        if not re.fullmatch(r"[a-f0-9]{64}", file["sha256"]):
+            raise ValueError(f"Invalid SHA-256 for {file['path']}")
+        return local_name(file["path"])
+
+    files = [checked_spec(item) for item in lock["files"]]
+    if len(set(files)) != len(files) or not any(
+        re.search(r"-00001-of-\d{5}\.gguf$", x) for x in files
+    ):
+        raise ValueError("Expected unique files and a first target shard")
+    if not re.fullmatch(r"[a-f0-9]{40}", lock["mtp"]["revision"]):
+        raise ValueError("Expected a pinned MTP revision")
+    local_name(lock["mtp"]["draft_vocabulary"], flat=True)
+    if lock.get("projector"):
+        projector = lock["projector"]
+        checked_spec(projector)
+        if local_name(projector["source"], flat=True) not in files:
+            raise ValueError("Projector conversion source is not locked")
+
+
+def validate_exl3_lock(lock: dict[str, Any]) -> None:
+    dirs = []
+    for spec in (lock["target"], lock["draft"]):
+        dirs.append(local_name(spec["directory"], flat=True))
+        if not re.fullmatch(r"[a-f0-9]{40}", spec["revision"]):
+            raise ValueError(f"Expected a pinned revision for {spec['directory']}")
+        files = [local_name(name, flat=True) for name in spec["files"]]
+        if (
+            len(files) != len(set(files))
+            or "config.json" not in files
+            or not any(name.endswith(".safetensors") for name in files)
+        ):
+            raise ValueError(f"Incomplete or duplicate artifact paths for {spec['directory']}")
+    conversion = lock["conversion"]
+    dirs.extend(
+        local_name(conversion[field], flat=True) for field in ("directory", "work_directory")
+    )
+    if len(dirs) != len(set(dirs)):
+        raise ValueError("Target, draft, conversion and work directories must differ")
+    arguments = conversion["arguments"]
+    if (
+        not isinstance(arguments, list)
+        or not arguments
+        or not all(isinstance(arg, str) for arg in arguments)
+    ):
+        raise ValueError("Expected locked draft conversion arguments")
+
+
+def check_adoption(
+    subject: str, key: str, state: dict[str, Any], image: str, args: argparse.Namespace
+) -> None:
+    resume = ["python3", "scripts/upgrade_runtime.py", subject, "--resume", key]
+    if not state.get("image_id"):
+        raise ValueError(
+            command_hint(
+                "Build and smoke-test the candidate before adopting",
+                resume,
+                stream=sys.stderr,
             )
-        settings = json.loads((root / manifest).read_text())
-        settings["runtime"] = f"{runtime}/releases/{key}"
-        generated[str(manifest)] = settings
-    generated[str(pins / key / "runtime.json")] = descriptor
-    generated[str(pins / key / "container/versions.lock.json")] = lock
+        )
+    current_id = trials.output("sudo", "docker", "image", "inspect", "--format", "{{.Id}}", image)
+    if current_id != state["image_id"]:
+        raise ValueError(
+            command_hint(
+                "Verify the changed candidate image before adopting",
+                resume,
+                stream=sys.stderr,
+            )
+        )
+    if state.get("model_locks") and not args.confirm_model_load:
+        raise ValueError(
+            "Run every candidate baseline before adopting; then pass --confirm-model-load"
+        )
+    for name, lock in state.get("model_locks", {}).items():
+        path = Path(state["candidate"]) / trials.manifest_path(name).with_name("models.lock.json")
+        if read_json(path) != lock:
+            raise ValueError(f"{name}: model lock differs from the saved trial")
+
+
+def stage_trial(
+    subject: str,
+    runtime: str,
+    key: str,
+    lock: dict[str, Any],
+    descriptor: dict[str, Any],
+    recipes: list[Recipe],
+    models: Path,
+) -> None:
+    root = trials.ROOT
+    pins = Path("runtimes") / runtime / "releases" / key
+    record = trials.trial_record(key, runtime)
+    state = read_json(record) if record.exists() else {}
+    generated = dict(state.get("files", {}))
+    donor_keys: dict[str, str] = dict(state.get("donors", {}))
+    model_locks: dict[str, Any] = dict(state.get("model_locks", {}))
+    for recipe in recipes:
+        manifest = trials.manifest_path(recipe.name)
+        if str(manifest) not in generated:
+            if state.get("previous"):
+                raise ValueError(
+                    "The trial has been adopted; publish or roll it back before extending it"
+                )
+            settings = read_json(recipe.directory / "config/launch.json")
+            settings["runtime"] = f"{runtime}/releases/{key}"
+            generated[str(manifest)] = settings
+        donor_keys.setdefault(
+            recipe.name, Path(recipe.runtime).name if "/" in recipe.runtime else "base"
+        )
+        model_locks.setdefault(recipe.name, read_json(recipe.directory / "config/models.lock.json"))
+    generated[str(pins / "runtime.json")] = descriptor
+    generated[str(pins / "container/versions.lock.json")] = lock
     names = trials.trial_names(generated)
     allowed = {str(trials.manifest_path(name)) for name in names}
-    allowed.update(
-        (str(pins / key / "runtime.json"), str(pins / key / "container/versions.lock.json"))
-    )
-    if set(generated) != allowed:
+    allowed.update((str(pins / "runtime.json"), str(pins / "container/versions.lock.json")))
+    if not names or set(generated) != allowed:
         raise ValueError(f"Unexpected files in trial record {record}")
     candidate = trials.worktree(root, key, tuple(names), runtime, update_reference=False)
     if trials.build_fingerprint(candidate, runtime) != lock["build_inputs_sha256"]:
         raise ValueError("Candidate Docker build inputs differ from the resolved lock")
-    trials.stage_files(record, state, generated, candidate, models, names)
+    trials.stage_files(
+        record,
+        state,
+        generated,
+        candidate,
+        models,
+        names,
+        metadata={"donors": donor_keys, "model_locks": model_locks},
+    )
+    selected = discover_recipes(candidate / "recipes", local=False)
+    for name in names:
+        if (model_lock := validated_model_lock(selected[name])) != model_locks.get(
+            name, model_lock
+        ):
+            raise ValueError(f"{name}: model lock differs from the saved trial")
     print(
         f"Candidate: {key}\nCheckout: {candidate}\nBase: {lock['base_tag']} ({lock['base_image']})"
     )
-    print(f"Image: {descriptor['image']}")
+    print(f"Image: {descriptor['image']}\nRecipes: {', '.join(names)}")
     for source, pin in lock["sources"].items():
         print(f"{source}: {pin['revision']}")
-    if runtime == "strata":
-        print("Python: supplied by Ubuntu 24.04 (recorded after the image check)")
-    else:
-        print(f"Python: {lock['python_version']}   PyTorch: {lock['torch_version']}")
     print(
         command_hint(
             "Resume this trial with its exact pins",
-            ["python3", "scripts/upgrade_runtime.py", recipe.name, "--resume", key],
+            ["python3", "scripts/upgrade_runtime.py", subject, "--resume", key],
             stream=sys.stdout,
         ),
         flush=True,
     )
-    if args.prepare_only:
-        return
+
+
+def run_trial(runtime: str, key: str, models: Path, args: argparse.Namespace) -> None:
+    record = trials.trial_record(key, runtime)
+    state = read_json(record)
+    files = state["files"]
+    pins = Path("runtimes") / runtime / "releases" / key
+    lock = files[str(pins / "container/versions.lock.json")]
+    descriptor = files[str(pins / "runtime.json")]
+    candidate = Path(state["candidate"])
+    names = trials.trial_names(files)
+    selected = discover_recipes(candidate / "recipes", local=False)
+    donor_keys = state.get("donors", {})
+    model_locks = state.get("model_locks", {})
     image_id = trials.build_or_check(candidate, descriptor["image"], lock, args.max_jobs, runtime)
     container_python = trials.output(
         "sudo",
@@ -297,43 +541,73 @@ def run(recipe: Recipe, args: argparse.Namespace) -> None:
         "--version",
     )
     print(f"Verified image: {image_id} ({container_python})", flush=True)
-    trials.save(
-        record,
-        {
-            **json.loads(record.read_text()),
-            "image_id": image_id,
-            "container_python": container_python,
-        },
-    )
+    state = {**read_json(record), "image_id": image_id, "container_python": container_python}
+    trials.save(record, state)
     if args.image_only:
         return
-    selected = discover_recipes(candidate / "recipes", local=False)[recipe.name]
-    prepare_models(selected, models)
-    print(
-        command_hint(
-            "Run the candidate baseline",
-            ["cd", str(candidate)],
-            [
-                "python3",
-                "scripts/run_baseline.py",
-                "run",
-                recipe.name,
-                *trials.candidate_model_args(candidate, models),
-            ],
-            stream=sys.stdout,
+    failures = []
+    for name in names:
+        recipe = selected[name]
+        try:
+            if (
+                name not in model_locks
+                and not args.verify
+                and check_prepared(recipe, models).status == "PASS"
+            ):
+                print(f"{name}: reusing the existing trial preparation")
+            else:
+                prepare_models(
+                    recipe,
+                    models,
+                    donor_keys.get(name, "base"),
+                    image_id,
+                    allow_copy=args.allow_copy,
+                    verify=args.verify,
+                )
+        except ValueError as error:
+            failures.append(str(error))
+            continue
+        print(
+            command_hint(
+                f"Run the candidate baseline for {name}",
+                ["cd", str(candidate)],
+                [
+                    "python3",
+                    "scripts/run_baseline.py",
+                    "run",
+                    name,
+                    *trials.candidate_model_args(candidate, models),
+                ],
+                stream=sys.stdout,
+            )
         )
-    )
+    if failures:
+        raise ValueError("\n\n".join(failures))
+    print("Preparation is complete; verify model loading with the candidate baselines.")
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("recipe", help="Recipe ID from llm-recipes list")
+    parser.add_argument(
+        "subject", help="Runtime ID (strata or exllamav3-tabbyapi) or one recipe ID"
+    )
     parser.add_argument("--release", help="Upstream engine tag (default: latest stable release)")
     parser.add_argument("--rocm", help="Exact ROCm X.Y.Z (default: newest compatible stable image)")
     parser.add_argument(
         "--pytorch", help="ExLlamaV3 only: exact X.Y.Z or current (default: newest compatible)"
     )
     parser.add_argument("--max-jobs", type=int, default=4)
+    parser.add_argument(
+        "--allow-copy",
+        action="store_true",
+        help="Allow copying payloads if links and reflinks are unavailable",
+    )
+    parser.add_argument("--verify", action="store_true", help="Rehash reusable artifacts")
+    parser.add_argument(
+        "--confirm-model-load",
+        action="store_true",
+        help="Confirm all candidate baseline runs passed before adoption",
+    )
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument(
         "--resume", metavar="KEY", help="Reuse a trial's saved pins without resolving versions"
@@ -357,15 +631,19 @@ def main(argv: list[str] | None = None) -> int:
     ):
         parser.error("Invalid build options for the requested operation")
     try:
-        recipe = discover_recipes(trials.ROOT / "recipes", local=False).get(args.recipe)
-        if recipe is None:
-            raise ValueError(f"Unknown container recipe: {args.recipe}")
+        catalog = discover_recipes(trials.ROOT / "recipes", local=False)
+        if args.subject in catalog:
+            runtime = catalog[args.subject].runtime_source.name
+        elif args.subject in ("strata", "exllamav3-tabbyapi"):
+            runtime = args.subject
+        else:
+            raise ValueError(f"Unknown runtime or container recipe: {args.subject}")
         common = Path(
             trials.output("git", "rev-parse", "--path-format=absolute", "--git-common-dir")
         )
-        with (common / f"{recipe.runtime_source.name}-upgrade.lock").open("a") as guard:
+        with (common / f"{runtime}-upgrade.lock").open("a") as guard:
             fcntl.flock(guard, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            run(recipe, args)
+            run(args.subject, runtime, catalog, args)
     except (
         KeyError,
         TypeError,

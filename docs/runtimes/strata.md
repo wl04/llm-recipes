@@ -38,38 +38,15 @@ git pull --ff-only
 python3 scripts/install.py install
 ```
 
-To prepare **all installed Strata recipes together** for a specific upstream release, run the following in Bash from your main checkout with the GPU free:
+From the main checkout with the GPU free, select all installed Strata recipes or pass a single recipe ID:
 
 ```bash
-read -rp 'Strata release tag (vX.Y.Z): ' tag
-python3 scripts/upgrade_strata.py "$tag"
+python3 scripts/upgrade_runtime.py strata --release v0.2.23
 ```
 
-The script creates or resumes a sibling worktree for the tag, checks the image, and prepares each installed Strata recipe with local weights. Enter the printed candidate directory, then choose either the start or baseline command for one recipe. The baseline starts its own server.
+The published GGUFs and the verified Q8_0 projector stay at their original paths. The candidate can reuse the projector without its BF16 source. ISTA and Unsloth retain separate target packs; recipes with the same MTP inputs can share the runtime payloads. The upgrader only needs source tensors or conversion intermediates for stages that cannot reuse a serving artifact.
 
-The [upgrade configuration](../../runtimes/strata/upgrade.json) controls the ROCm base tag, build parallelism and engine options. For a second build of the same release, set a distinct image suffix and pass the same `--config <file>` to preparation, adoption and deletion.
-
-### Adopt and publish
-
-To select the tested candidate locally, run this from the main checkout:
-
-```bash
-python3 scripts/upgrade_strata.py "$tag" --adopt
-```
-
-Adoption verifies the prepared recipes, commits their release selections and pins in the candidate branch, and points the installed launcher at that worktree. Keep the worktree while it is selected. To publish, use the push command printed by the script and merge the branch through your usual review workflow. Other machines can then pull and reinstall.
-
-On reinstall, a recipe switches to the installed settings if its release and build lock match the active trial. Otherwise the launcher keeps the trial selected. If the trial's `config/launch.json` is missing, the launcher warns and uses the installed recipe and runtime for that recipe only. Restoring the manifest reactivates the trial without reinstalling. To adopt another trial for the affected recipe, first restore the manifest or roll back the trial.
-
-### Discard or roll back
-
-Stop the trial's containers. To discard an unpublished trial or restore the previous local selection:
-
-```bash
-python3 scripts/upgrade_strata.py "$tag" --delete
-```
-
-Deletion removes the trial worktree, image tag and version-specific preparations. Published weights and baseline reports stay in the data root. Roll back stacked trials newest first. The command refuses deletion while the main checkout or installed defaults select that release.
+Run the printed baseline for each recipe. Check text generation, nonzero MTP acceptance, CPU vision and the long-context workload. Follow the [launcher guide](../launcher.md#upgrade-a-container-runtime) to resume, adopt or roll back. Use `scripts/upgrade_strata.py` with its original tag and configuration to manage trials created by that entry point.
 
 ---
 

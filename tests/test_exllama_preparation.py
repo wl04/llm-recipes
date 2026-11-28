@@ -169,3 +169,92 @@ def test_download_rejects_corrupt_artifact_without_publishing_receipt(
         preparation.download(tmp_path, model_spec)
 
     assert not (tmp_path / "model/prepared.json").exists()
+
+
+def test_local_upgrade_reuses_converted_draft_without_original_weights(
+    tmp_path: Path, preparation: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = {"directory": "target", "files": ["config.json", ARTIFACT]}
+    source = {"directory": "original", "files": ["config.json", ARTIFACT]}
+    draft = {"directory": "converted", "work_directory": "work", "arguments": ["-b", "3.0"]}
+    lock = {"target": target, "draft": source, "conversion": draft}
+    old_build = {"torch_version": "old"}
+    new_build = {"torch_version": "new"}
+    donor = tmp_path / "prepared/v1.0.0/converted"
+    for folder in (tmp_path / "target", donor):
+        folder.mkdir(parents=True)
+        (folder / "config.json").write_text("{}")
+        (folder / ARTIFACT).write_bytes(PAYLOAD)
+    sums = {"config.json": hashlib.sha256(b"{}").hexdigest(), ARTIFACT: CHECKSUM}
+    (tmp_path / "target/prepared.json").write_text(json.dumps({"source": target, "sha256": sums}))
+    old_receipt = {
+        "source": source,
+        "build": old_build,
+        "arguments": ["-d", "0", "-b", "3.0"],
+        "sha256": sums,
+    }
+    (donor / "prepared.json").write_text(json.dumps(old_receipt))
+    monkeypatch.setattr(preparation, "quantize", lambda *args: pytest.fail("unexpected converter"))
+
+    preparation.prepare_local(tmp_path, tmp_path / "prepared/v1.0.1", "v1.0.0", lock, new_build)
+
+    output = tmp_path / "prepared/v1.0.1/converted"
+    assert (output / ARTIFACT).samefile(donor / ARTIFACT)
+    assert not (output / "config.json").samefile(donor / "config.json")
+    new_receipt = json.loads((output / "prepared.json").read_text())
+    assert new_receipt["build"] == new_build
+    assert new_receipt["producer"] == old_build
+    assert json.loads((donor / "prepared.json").read_text()) == old_receipt
+    assert not (tmp_path / "original").exists()
+
+
+def test_local_upgrade_rebuilds_only_draft_when_quantization_changes(
+    tmp_path: Path, preparation: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = {"directory": "target", "files": ["config.json", ARTIFACT]}
+    source = {"directory": "original", "files": ["config.json", ARTIFACT]}
+    conversion = {"directory": "converted", "work_directory": "work", "arguments": ["-b", "4.0"]}
+    lock = {"target": target, "draft": source, "conversion": conversion}
+    manifest = {
+        "source": source,
+        "build": {"engine": "old"},
+        "arguments": ["-b", "3.0"],
+        "sha256": {"config.json": hashlib.sha256(b"{}").hexdigest(), ARTIFACT: CHECKSUM},
+    }
+    target_manifest = {"source": target, "sha256": manifest["sha256"]}
+    donor = tmp_path / "prepared/v1.0.0/converted"
+    for folder, receipt in ((tmp_path / "target", target_manifest), (donor, manifest)):
+        folder.mkdir(parents=True)
+        (folder / "config.json").write_text("{}")
+        (folder / ARTIFACT).write_bytes(PAYLOAD)
+        (folder / "prepared.json").write_text(json.dumps(receipt))
+    build = {"engine": "new"}
+
+    def quantize(root: Path, stage: Path, inputs: object, image: object) -> None:
+        assert (root, inputs, image) == (tmp_path, lock, build)
+        output = stage / "converted"
+        output.mkdir()
+        (output / "config.json").write_text("{}")
+        (output / ARTIFACT).write_bytes(b"converted anew")
+        checksums = {
+            "config.json": hashlib.sha256(b"{}").hexdigest(),
+            ARTIFACT: hashlib.sha256(b"converted anew").hexdigest(),
+        }
+        (output / "prepared.json").write_text(
+            json.dumps(
+                {
+                    **manifest,
+                    "build": build,
+                    "arguments": conversion["arguments"],
+                    "sha256": checksums,
+                }
+            )
+        )
+
+    monkeypatch.setattr(preparation, "quantize", quantize)
+
+    preparation.prepare_local(tmp_path, tmp_path / "prepared/v1.0.1", "v1.0.0", lock, build)
+
+    assert (tmp_path / "prepared/v1.0.1/converted" / ARTIFACT).read_bytes() == b"converted anew"
+    assert (tmp_path / "target" / ARTIFACT).read_bytes() == PAYLOAD
+    assert (donor / ARTIFACT).read_bytes() == PAYLOAD
